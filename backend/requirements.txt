@@ -1,4 +1,8 @@
 fastapi
+openpyxl
+pandas
+PyMuPDF
 python-dotenv
+python-multipart
 sqlalchemy
 uvicorn[standard]

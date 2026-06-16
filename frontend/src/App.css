@@ -22,7 +22,8 @@ body {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
   padding: 32px;
   background:
     linear-gradient(135deg, rgba(0, 95, 115, 0.12), transparent 38%),
@@ -31,7 +32,7 @@ body {
 }
 
 .dashboard {
-  width: min(100%, 760px);
+  width: min(100%, 1040px);
   padding: 48px;
   border: 1px solid #d6dee2;
   border-radius: 8px;
@@ -47,7 +48,7 @@ body {
 }
 
 h1 {
-  margin: 0 0 32px;
+  margin: 0 0 24px;
   color: #111827;
   font-size: clamp(40px, 7vw, 72px);
   line-height: 1;
@@ -98,6 +99,198 @@ h1 {
   font-weight: 700;
 }
 
+.upload-section {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid #d6dee2;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #005f73;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #005f73;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.upload-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.file-input-label {
+  display: inline-grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px dashed #005f73;
+  border-radius: 6px;
+  color: #005f73;
+  background: #eef9f8;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.file-input-label input {
+  display: none;
+}
+
+.selected-file {
+  min-width: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+  border: 1px solid #d6dee2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 14px;
+}
+
+.form-message--success {
+  color: #287c71;
+}
+
+.form-message--error,
+.table-state--error {
+  color: #b42336;
+}
+
+.form-message--info {
+  color: #5a6675;
+}
+
+.file-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.file-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.file-table th,
+.file-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5ebef;
+  text-align: left;
+  vertical-align: top;
+}
+
+.file-table th {
+  color: #5a6675;
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.file-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-state {
+  margin: 0;
+  padding: 24px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.parse-empty,
+.parse-summary {
+  margin: 0;
+  color: #5a6675;
+}
+
+.parse-result {
+  display: grid;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.parse-summary {
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.parse-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  color: #334155;
+}
+
+.missing-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: #334155;
+}
+
+.preview-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e5ebef;
+  border-radius: 6px;
+}
+
+.preview-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #edf2f5;
+  text-align: left;
+}
+
+.preview-table th {
+  background: #f8fafc;
+  color: #5a6675;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding: 20px;
@@ -109,5 +302,22 @@ h1 {
 
   .status-panel {
     align-items: flex-start;
+  }
+
+  .section-heading,
+  .upload-form {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    align-items: stretch;
+  }
+
+  .selected-file {
+    white-space: normal;
+  }
+
+  .parse-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,0 +1,42 @@
+from fastapi import APIRouter, Depends, File as FormFile, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.schemas.file import FileResponse
+from app.services.file_service import FileUploadError, get_file_by_id, list_files, save_uploaded_file
+from app.services.parser_service import FileParseError, parse_file
+
+router = APIRouter(prefix="/api/files", tags=["files"])
+
+
+@router.post("/upload", response_model=FileResponse, status_code=status.HTTP_201_CREATED)
+async def upload_file(file: UploadFile = FormFile(...), db: Session = Depends(get_db)) -> FileResponse:
+    try:
+        return await save_uploaded_file(db=db, upload_file=file)
+    except FileUploadError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+@router.get("", response_model=list[FileResponse])
+def get_files(db: Session = Depends(get_db)) -> list[FileResponse]:
+    return list_files(db)
+
+
+@router.get("/{file_id}", response_model=FileResponse)
+def get_file(file_id: int, db: Session = Depends(get_db)) -> FileResponse:
+    file_record = get_file_by_id(db, file_id)
+    if file_record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
+    return file_record
+
+
+@router.post("/{file_id}/parse", response_model=FileResponse)
+def parse_uploaded_file(file_id: int, db: Session = Depends(get_db)) -> FileResponse:
+    file_record = get_file_by_id(db, file_id)
+    if file_record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
+
+    try:
+        return parse_file(db, file_record)
+    except FileParseError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
