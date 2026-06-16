@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Environment
+.env
+backend/.env
+
+# Database
+*.db
+backend/data/
+data/
+
+# Storage
+backend/storage/uploads/
+backend/storage/charts/
+backend/storage/reports/
+storage/
+
+# Node
+node_modules/
+dist/
+frontend/dist/
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

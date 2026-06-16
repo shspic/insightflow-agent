@@ -1,0 +1,113 @@
+:root {
+  color: #18202a;
+  background: #eef2f4;
+  font-family:
+    Inter,
+    "Microsoft YaHei",
+    "PingFang SC",
+    system-ui,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    linear-gradient(135deg, rgba(0, 95, 115, 0.12), transparent 38%),
+    linear-gradient(315deg, rgba(238, 155, 0, 0.14), transparent 42%),
+    #eef2f4;
+}
+
+.dashboard {
+  width: min(100%, 760px);
+  padding: 48px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 80px rgba(24, 32, 42, 0.12);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #005f73;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0 0 32px;
+  color: #111827;
+  font-size: clamp(40px, 7vw, 72px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.status-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 88px;
+  padding: 20px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.status-dot {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.status-panel--ok .status-dot {
+  background: #2a9d8f;
+}
+
+.status-panel--error .status-dot {
+  background: #d1495b;
+}
+
+.status-label,
+.status-message {
+  margin: 0;
+}
+
+.status-label {
+  color: #5a6675;
+  font-size: 14px;
+}
+
+.status-message {
+  margin-top: 6px;
+  color: #18202a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 20px;
+  }
+
+  .dashboard {
+    padding: 28px;
+  }
+
+  .status-panel {
+    align-items: flex-start;
+  }
+}
