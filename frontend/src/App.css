@@ -137,6 +137,18 @@ button:disabled {
   opacity: 0.65;
 }
 
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.unsupported-action {
+  color: #64748b;
+  font-size: 13px;
+}
+
 .upload-form {
   display: grid;
   grid-template-columns: minmax(180px, 220px) 1fr auto;
@@ -245,6 +257,22 @@ button:disabled {
   padding: 4px 0;
 }
 
+.analysis-result {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.analysis-result h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
 .parse-summary {
   max-height: 160px;
   overflow: auto;
@@ -262,6 +290,12 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
+  color: #334155;
+}
+
+.top-values {
+  display: grid;
+  gap: 8px;
   color: #334155;
 }
 

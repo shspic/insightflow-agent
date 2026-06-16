@@ -28,6 +28,10 @@ function renderList(values) {
   return values.join("，");
 }
 
+function isAnalyzable(file) {
+  return file.file_type === "csv" || file.file_type === "xlsx";
+}
+
 function ParseResult({ file }) {
   const schema = parseSchema(file.schema_json);
 
@@ -61,6 +65,7 @@ function ParseResult({ file }) {
           ))}
         </div>
         <PreviewTable rows={schema.preview_rows ?? []} columns={schema.columns ?? []} />
+        <AnalysisResult analysis={schema.analysis_result} />
       </div>
     );
   }
@@ -85,6 +90,122 @@ function ParseResult({ file }) {
       </div>
     </div>
   );
+}
+
+function AnalysisResult({ analysis }) {
+  if (!analysis) {
+    return null;
+  }
+
+  return (
+    <div className="analysis-result">
+      <h3>数据分析结果</h3>
+      <div className="parse-grid">
+        {analysis.sheet_name && <span>Sheet：{analysis.sheet_name}</span>}
+        <span>行数：{analysis.row_count}</span>
+        <span>列数：{analysis.column_count}</span>
+        <span>字段：{renderList(analysis.columns)}</span>
+        <span>字段类型：{renderKeyValueMap(analysis.column_types)}</span>
+        <span>数值列：{renderList(analysis.numeric_columns)}</span>
+        <span>文本列：{renderList(analysis.text_columns)}</span>
+        <span>日期列：{renderList(analysis.date_columns)}</span>
+      </div>
+
+      <div className="missing-values">
+        <strong>缺失值统计：</strong>
+        {Object.entries(analysis.missing_values ?? {}).map(([column, count]) => (
+          <span key={column}>
+            {column}: {count}
+          </span>
+        ))}
+      </div>
+
+      <NumericStatsTable statistics={analysis.numeric_statistics ?? {}} />
+      <TextTopValues topValues={analysis.text_top_values ?? {}} />
+      <PreviewTable rows={analysis.preview_rows ?? []} columns={analysis.columns ?? []} />
+    </div>
+  );
+}
+
+function renderKeyValueMap(values) {
+  if (!values || Object.keys(values).length === 0) {
+    return "-";
+  }
+
+  return Object.entries(values)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("，");
+}
+
+function NumericStatsTable({ statistics }) {
+  const entries = Object.entries(statistics);
+  if (entries.length === 0) {
+    return <p className="parse-empty">暂无数值列统计</p>;
+  }
+
+  return (
+    <div className="preview-table-wrap">
+      <table className="preview-table">
+        <thead>
+          <tr>
+            <th>字段</th>
+            <th>count</th>
+            <th>mean</th>
+            <th>min</th>
+            <th>max</th>
+            <th>sum</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(([column, stats]) => (
+            <tr key={column}>
+              <td>{column}</td>
+              <td>{formatNumber(stats.count)}</td>
+              <td>{formatNumber(stats.mean)}</td>
+              <td>{formatNumber(stats.min)}</td>
+              <td>{formatNumber(stats.max)}</td>
+              <td>{formatNumber(stats.sum)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TextTopValues({ topValues }) {
+  const entries = Object.entries(topValues);
+  if (entries.length === 0) {
+    return <p className="parse-empty">暂无文本列高频值</p>;
+  }
+
+  return (
+    <div className="top-values">
+      <strong>文本列高频值：</strong>
+      {entries.map(([column, values]) => (
+        <div key={column}>
+          <span>{column}：</span>
+          <span>
+            {values.length === 0
+              ? "-"
+              : values.map((item) => `${item.value} (${item.count})`).join("，")}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined) {
+    return "-";
+  }
+
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? value : value.toFixed(2);
+  }
+
+  return value;
 }
 
 function PreviewTable({ rows, columns }) {
@@ -116,7 +237,16 @@ function PreviewTable({ rows, columns }) {
   );
 }
 
-function FileList({ files, isLoading, error, parsingFileIds, onParse, onRefresh }) {
+function FileList({
+  files,
+  isLoading,
+  error,
+  parsingFileIds,
+  analyzingFileIds,
+  onParse,
+  onAnalyze,
+  onRefresh,
+}) {
   if (isLoading) {
     return <p className="table-state">正在加载文件列表</p>;
   }
@@ -159,13 +289,26 @@ function FileList({ files, isLoading, error, parsingFileIds, onParse, onRefresh 
                 <td>{file.status}</td>
                 <td>{formatDate(file.created_at)}</td>
                 <td>
-                  <button
-                    type="button"
-                    onClick={() => onParse(file.id)}
-                    disabled={parsingFileIds.includes(file.id)}
-                  >
-                    {parsingFileIds.includes(file.id) ? "解析中" : "解析"}
-                  </button>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      onClick={() => onParse(file.id)}
+                      disabled={parsingFileIds.includes(file.id)}
+                    >
+                      {parsingFileIds.includes(file.id) ? "解析中" : "解析"}
+                    </button>
+                    {isAnalyzable(file) ? (
+                      <button
+                        type="button"
+                        onClick={() => onAnalyze(file.id)}
+                        disabled={analyzingFileIds.includes(file.id)}
+                      >
+                        {analyzingFileIds.includes(file.id) ? "分析中" : "分析"}
+                      </button>
+                    ) : (
+                      <span className="unsupported-action">不支持分析</span>
+                    )}
+                  </div>
                 </td>
               </tr>
               <tr>

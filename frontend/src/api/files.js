@@ -35,3 +35,11 @@ export async function parseFile(fileId) {
 
   return parseResponse(response);
 }
+
+export async function analyzeFile(fileId) {
+  const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/analyze`, {
+    method: "POST",
+  });
+
+  return parseResponse(response);
+}
