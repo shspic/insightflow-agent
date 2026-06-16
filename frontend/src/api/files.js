@@ -43,3 +43,11 @@ export async function analyzeFile(fileId) {
 
   return parseResponse(response);
 }
+
+export async function generateCharts(fileId) {
+  const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/charts`, {
+    method: "POST",
+  });
+
+  return parseResponse(response);
+}

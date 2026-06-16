@@ -1,5 +1,7 @@
 import { Fragment } from "react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
 function formatDate(value) {
   if (!value) {
     return "-";
@@ -66,6 +68,7 @@ function ParseResult({ file }) {
         </div>
         <PreviewTable rows={schema.preview_rows ?? []} columns={schema.columns ?? []} />
         <AnalysisResult analysis={schema.analysis_result} />
+        <ChartResult charts={schema.charts ?? []} />
       </div>
     );
   }
@@ -123,6 +126,31 @@ function AnalysisResult({ analysis }) {
       <NumericStatsTable statistics={analysis.numeric_statistics ?? {}} />
       <TextTopValues topValues={analysis.text_top_values ?? {}} />
       <PreviewTable rows={analysis.preview_rows ?? []} columns={analysis.columns ?? []} />
+    </div>
+  );
+}
+
+function ChartResult({ charts }) {
+  if (!charts || charts.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="chart-result">
+      <h3>图表结果</h3>
+      <div className="chart-grid">
+        {charts.map((chart) => (
+          <div className="chart-item" key={chart.chart_type}>
+            <h4>{chart.title}</h4>
+            <p>{chart.description}</p>
+            {chart.skipped ? (
+              <p className="parse-empty">未生成：{chart.description}</p>
+            ) : (
+              <img src={`${API_BASE_URL}${chart.url_path}`} alt={chart.title} />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -243,8 +271,10 @@ function FileList({
   error,
   parsingFileIds,
   analyzingFileIds,
+  chartingFileIds,
   onParse,
   onAnalyze,
+  onGenerateCharts,
   onRefresh,
 }) {
   if (isLoading) {
@@ -298,15 +328,24 @@ function FileList({
                       {parsingFileIds.includes(file.id) ? "解析中" : "解析"}
                     </button>
                     {isAnalyzable(file) ? (
-                      <button
-                        type="button"
-                        onClick={() => onAnalyze(file.id)}
-                        disabled={analyzingFileIds.includes(file.id)}
-                      >
-                        {analyzingFileIds.includes(file.id) ? "分析中" : "分析"}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onAnalyze(file.id)}
+                          disabled={analyzingFileIds.includes(file.id)}
+                        >
+                          {analyzingFileIds.includes(file.id) ? "分析中" : "分析"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onGenerateCharts(file.id)}
+                          disabled={chartingFileIds.includes(file.id)}
+                        >
+                          {chartingFileIds.includes(file.id) ? "生成中" : "生成图表"}
+                        </button>
+                      </>
                     ) : (
-                      <span className="unsupported-action">不支持分析</span>
+                      <span className="unsupported-action">不支持分析 / 图表</span>
                     )}
                   </div>
                 </td>

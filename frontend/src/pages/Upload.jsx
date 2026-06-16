@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { analyzeFile, fetchFiles, parseFile } from "../api/files";
+import { analyzeFile, fetchFiles, generateCharts, parseFile } from "../api/files";
 import FileList from "../components/FileList";
 import FileUploader from "../components/FileUploader";
 
@@ -9,8 +9,10 @@ function Upload() {
   const [error, setError] = useState("");
   const [parsingFileIds, setParsingFileIds] = useState([]);
   const [analyzingFileIds, setAnalyzingFileIds] = useState([]);
+  const [chartingFileIds, setChartingFileIds] = useState([]);
   const [parseError, setParseError] = useState("");
   const [analysisError, setAnalysisError] = useState("");
+  const [chartError, setChartError] = useState("");
 
   const loadFiles = useCallback(async () => {
     setIsLoading(true);
@@ -60,6 +62,21 @@ function Upload() {
     }
   }
 
+  async function handleGenerateCharts(fileId) {
+    setChartError("");
+    setChartingFileIds((currentIds) => [...currentIds, fileId]);
+
+    try {
+      await generateCharts(fileId);
+      await loadFiles();
+    } catch (generateChartsError) {
+      setChartError(generateChartsError.message);
+      await loadFiles();
+    } finally {
+      setChartingFileIds((currentIds) => currentIds.filter((id) => id !== fileId));
+    }
+  }
+
   return (
     <section className="upload-section">
       <div className="section-heading">
@@ -72,14 +89,17 @@ function Upload() {
       <FileUploader onUploaded={loadFiles} />
       {parseError && <p className="form-message form-message--error">{parseError}</p>}
       {analysisError && <p className="form-message form-message--error">{analysisError}</p>}
+      {chartError && <p className="form-message form-message--error">{chartError}</p>}
       <FileList
         files={files}
         isLoading={isLoading}
         error={error}
         parsingFileIds={parsingFileIds}
         analyzingFileIds={analyzingFileIds}
+        chartingFileIds={chartingFileIds}
         onParse={handleParse}
         onAnalyze={handleAnalyze}
+        onGenerateCharts={handleGenerateCharts}
         onRefresh={loadFiles}
       />
     </section>
