@@ -105,6 +105,30 @@ h1 {
   border-top: 1px solid #d6dee2;
 }
 
+.workspace-section,
+.history-section {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid #d6dee2;
+}
+
+.app-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.app-tabs button {
+  color: #005f73;
+  background: #ffffff;
+}
+
+.app-tabs button.active {
+  color: #ffffff;
+  background: #005f73;
+}
+
 .section-heading {
   display: flex;
   align-items: center;
@@ -155,6 +179,34 @@ button:disabled {
   gap: 12px;
   align-items: center;
   margin-bottom: 24px;
+}
+
+.task-form {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.task-form label {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.task-form select,
+.task-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d6dee2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #18202a;
+  font: inherit;
+}
+
+.task-form textarea {
+  resize: vertical;
 }
 
 .file-input-label {
@@ -322,6 +374,91 @@ button:disabled {
   background: #ffffff;
 }
 
+.task-result {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.task-result h3,
+.task-result p {
+  margin: 0;
+}
+
+.task-result pre,
+.trace-item pre {
+  max-width: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #18202a;
+  white-space: pre-wrap;
+}
+
+.trace-list {
+  display: grid;
+  gap: 12px;
+}
+
+.trace-item {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.trace-item p {
+  margin: 0;
+  color: #334155;
+}
+
+.trace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.task-history-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 18px;
+}
+
+.task-history-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.task-history-item {
+  display: grid;
+  gap: 6px;
+  height: auto;
+  padding: 12px;
+  border-color: #d6dee2;
+  color: #18202a;
+  background: #ffffff;
+  text-align: left;
+}
+
+.task-history-item span {
+  color: #5a6675;
+  font-size: 13px;
+}
+
+.task-history-detail {
+  min-width: 0;
+}
+
 .parse-summary {
   max-height: 160px;
   overflow: auto;
@@ -401,6 +538,10 @@ button:disabled {
   }
 
   .parse-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-history-layout {
     grid-template-columns: 1fr;
   }
 }

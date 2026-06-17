@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import TaskHistory from "./pages/TaskHistory";
 import Upload from "./pages/Upload";
+import Workspace from "./pages/Workspace";
 import "./App.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 function App() {
+  const [activePage, setActivePage] = useState("upload");
   const [health, setHealth] = useState({
     status: "checking",
     message: "正在检查后端连接",
@@ -55,7 +58,21 @@ function App() {
           </div>
         </div>
 
-        <Upload />
+        <nav className="app-tabs">
+          <button type="button" className={activePage === "upload" ? "active" : ""} onClick={() => setActivePage("upload")}>
+            文件
+          </button>
+          <button type="button" className={activePage === "workspace" ? "active" : ""} onClick={() => setActivePage("workspace")}>
+            工作区
+          </button>
+          <button type="button" className={activePage === "history" ? "active" : ""} onClick={() => setActivePage("history")}>
+            历史
+          </button>
+        </nav>
+
+        {activePage === "upload" && <Upload />}
+        {activePage === "workspace" && <Workspace />}
+        {activePage === "history" && <TaskHistory />}
       </section>
     </main>
   );
