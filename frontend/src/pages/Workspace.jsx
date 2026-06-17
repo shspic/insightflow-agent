@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchFiles } from "../api/files";
-import { createTask, fetchTaskTrace } from "../api/tasks";
+import { createTask, fetchTaskReport, fetchTaskTrace } from "../api/tasks";
 import AgentTrace from "../components/AgentTrace";
+import ReportViewer from "../components/ReportViewer";
 import TaskInput from "../components/TaskInput";
 
 const STATUS_LABELS = {
@@ -20,6 +21,7 @@ function Workspace() {
   const [taskError, setTaskError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
+  const [report, setReport] = useState(null);
   const [trace, setTrace] = useState([]);
 
   const loadFiles = useCallback(async () => {
@@ -41,12 +43,15 @@ function Workspace() {
     setIsSubmitting(true);
     setTaskError("");
     setCurrentTask(null);
+    setReport(null);
     setTrace([]);
 
     try {
       const task = await createTask(payload);
       const taskTrace = await fetchTaskTrace(task.id);
+      const taskReport = task.report_path ? await fetchTaskReport(task.id) : null;
       setCurrentTask(task);
+      setReport(taskReport);
       setTrace(taskTrace);
     } catch (error) {
       setTaskError(error.message);
@@ -80,6 +85,7 @@ function Workspace() {
         </div>
       )}
 
+      <ReportViewer report={report} />
       <AgentTrace trace={trace} />
     </section>
   );

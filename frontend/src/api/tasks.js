@@ -37,3 +37,20 @@ export async function fetchTaskTrace(taskId) {
   const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/trace`);
   return parseResponse(response);
 }
+
+export async function generateTaskReport(taskId) {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/report`, {
+    method: "POST",
+  });
+
+  return parseResponse(response);
+}
+
+export async function fetchTaskReport(taskId) {
+  const response = await fetch(`${API_BASE_URL}/api/reports/${taskId}`);
+  return parseResponse(response);
+}
+
+export function getReportDownloadUrl(downloadUrl) {
+  return `${API_BASE_URL}${downloadUrl}`;
+}

@@ -4,6 +4,7 @@ TOOL_MAP = {
     "file_summary": ["file_summary_tool"],
     "document_qa": ["pdf_retrieval_tool"],
     "image_extract": ["image_ocr_tool"],
+    "report_generation": ["report_writer_tool"],
     "unsupported": [],
 }
 

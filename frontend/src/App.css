@@ -384,12 +384,25 @@ button:disabled {
   background: #ffffff;
 }
 
+.report-viewer {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
 .task-result h3,
-.task-result p {
+.task-result p,
+.report-viewer h3,
+.report-viewer p {
   margin: 0;
 }
 
 .task-result pre,
+.report-viewer pre,
 .trace-item pre {
   max-width: 100%;
   max-height: 260px;
@@ -401,6 +414,23 @@ button:disabled {
   color: #18202a;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.report-viewer pre {
+  max-height: 420px;
+}
+
+.download-link {
+  display: inline-grid;
+  place-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #005f73;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #005f73;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .trace-list {

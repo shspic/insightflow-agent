@@ -18,8 +18,10 @@ def write_result(state: AgentState) -> AgentState:
         state.final_answer = _write_document_qa(state.tool_results.get("pdf_retrieval_tool", {}))
     elif state.task_type == "image_extract":
         state.final_answer = _write_image_extract(state.tool_results.get("image_ocr_tool", {}))
+    elif state.task_type == "report_generation":
+        state.final_answer = _write_report_generation(state.tool_results.get("report_writer_tool", {}))
     else:
-        state.final_answer = "暂不支持该任务类型。当前支持：数据分析、图表生成、文件总结、PDF 文档问答、图片 OCR。"
+        state.final_answer = "暂不支持该任务类型。当前支持：数据分析、图表生成、文件总结、PDF 文档问答、图片 OCR、报告生成。"
 
     return state
 
@@ -79,6 +81,15 @@ def _write_image_extract(result: dict[str, Any]) -> str:
         return f"图片文件：{filename}\nOCR 识别文本：\n{text}"
 
     return f"图片文件：{filename}\nOCR 识别文本：未识别到明显文字。\n说明：{_to_text(message)}"
+
+
+def _write_report_generation(result: dict[str, Any]) -> str:
+    return (
+        f"报告已生成。\n"
+        f"报告标题：{_to_text(result.get('title'))}\n"
+        f"报告路径：{_to_text(result.get('report_path'))}\n"
+        f"下载提示：请在前端点击“下载报告”，或访问 {_to_text(result.get('download_url'))}。"
+    )
 
 
 def _join_or_empty(values: Any) -> str:

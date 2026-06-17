@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchTask, fetchTaskTrace, fetchTasks } from "../api/tasks";
+import { fetchTask, fetchTaskReport, fetchTaskTrace, fetchTasks, generateTaskReport } from "../api/tasks";
 import AgentTrace from "../components/AgentTrace";
+import ReportViewer from "../components/ReportViewer";
 
 function formatDate(value) {
   if (!value) {
@@ -23,6 +24,7 @@ function formatStatus(status) {
 function TaskHistory() {
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [report, setReport] = useState(null);
   const [trace, setTrace] = useState([]);
   const [error, setError] = useState("");
 
@@ -43,13 +45,32 @@ function TaskHistory() {
 
   async function handleSelectTask(taskId) {
     setError("");
+    setReport(null);
 
     try {
       const [task, taskTrace] = await Promise.all([fetchTask(taskId), fetchTaskTrace(taskId)]);
+      const taskReport = task.report_path ? await fetchTaskReport(taskId) : null;
       setSelectedTask(task);
+      setReport(taskReport);
       setTrace(taskTrace);
     } catch (loadError) {
       setError(loadError.message);
+    }
+  }
+
+  async function handleGenerateReport() {
+    if (!selectedTask) {
+      return;
+    }
+
+    setError("");
+    try {
+      const taskReport = await generateTaskReport(selectedTask.id);
+      const task = await fetchTask(selectedTask.id);
+      setSelectedTask(task);
+      setReport(taskReport);
+    } catch (reportError) {
+      setError(reportError.message);
     }
   }
 
@@ -93,11 +114,15 @@ function TaskHistory() {
                 <p>状态：{formatStatus(selectedTask.status)}</p>
                 <p>类型：{selectedTask.task_type}</p>
                 <p>文件 ID：{selectedTask.file_ids.join("，")}</p>
+                <button type="button" onClick={handleGenerateReport}>
+                  {selectedTask.report_path ? "重新生成报告" : "生成报告"}
+                </button>
                 {selectedTask.status === "failed" && (
                   <p className="form-message form-message--error">任务执行失败，请查看下方失败节点。</p>
                 )}
                 <pre>{selectedTask.final_answer}</pre>
               </div>
+              <ReportViewer report={report} />
               <AgentTrace trace={trace} />
             </>
           ) : (

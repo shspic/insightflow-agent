@@ -9,6 +9,7 @@ from app.services.analysis_service import analyze_file
 from app.services.chart_service import generate_charts
 from app.services.ocr_service import get_or_run_image_ocr
 from app.services.rag_service import answer_pdf_question
+from app.services.report_service import generate_task_report
 
 
 def execute_selected_tools(state: AgentState, db: Session) -> AgentState:
@@ -38,6 +39,9 @@ def execute_tool(tool_name: str, state: AgentState, db: Session) -> dict[str, An
 
     if tool_name == "image_ocr_tool":
         return _run_image_ocr_tool(state, db)
+
+    if tool_name == "report_writer_tool":
+        return _run_report_writer_tool(state, db)
 
     raise ValueError(f"未知工具：{tool_name}")
 
@@ -97,6 +101,21 @@ def _run_image_ocr_tool(state: AgentState, db: Session) -> dict[str, Any]:
         "filename": file_record.filename,
         "file_type": file_record.file_type,
         "ocr_result": result,
+    }
+
+
+def _run_report_writer_tool(state: AgentState, db: Session) -> dict[str, Any]:
+    report = generate_task_report(
+        db=db,
+        task_id=state.task_id,
+        task_type=state.task_type,
+        final_answer=state.final_answer,
+    )
+    return {
+        "task_id": state.task_id,
+        "title": report["title"],
+        "report_path": report["report_path"],
+        "download_url": report["download_url"],
     }
 
 
