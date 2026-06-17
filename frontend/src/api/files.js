@@ -71,3 +71,11 @@ export async function searchPdf(fileId, query, topK = 5) {
 
   return parseResponse(response);
 }
+
+export async function runImageOcr(fileId) {
+  const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/ocr`, {
+    method: "POST",
+  });
+
+  return parseResponse(response);
+}

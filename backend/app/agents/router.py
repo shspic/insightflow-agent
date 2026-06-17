@@ -3,6 +3,7 @@ TOOL_MAP = {
     "chart_generation": ["chart_generation_tool"],
     "file_summary": ["file_summary_tool"],
     "document_qa": ["pdf_retrieval_tool"],
+    "image_extract": ["image_ocr_tool"],
     "unsupported": [],
 }
 

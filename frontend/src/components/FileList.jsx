@@ -38,6 +38,10 @@ function isPdf(file) {
   return file.file_type === "pdf";
 }
 
+function isImage(file) {
+  return file.file_type === "png" || file.file_type === "jpg" || file.file_type === "jpeg";
+}
+
 function ParseResult({ file }) {
   const schema = parseSchema(file.schema_json);
 
@@ -98,8 +102,14 @@ function ParseResult({ file }) {
         <span>文件名：{schema.filename}</span>
         <span>类型：{schema.file_type}</span>
         <span>大小：{schema.file_size} 字节</span>
-        <span>OCR：暂未实现</span>
+        <span>OCR：{schema.ocr_result ? "已执行" : "未执行"}</span>
       </div>
+      {schema.ocr_result && (
+        <div className="analysis-result">
+          <h3>OCR 识别结果</h3>
+          <p className="parse-summary">{schema.ocr_result.text || "未识别到明显文字。"}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -282,10 +292,12 @@ function FileList({
   analyzingFileIds,
   chartingFileIds,
   indexingFileIds,
+  ocrFileIds,
   onParse,
   onAnalyze,
   onGenerateCharts,
   onIndexPdf,
+  onRunOcr,
   onRefresh,
 }) {
   if (isLoading) {
@@ -365,6 +377,15 @@ function FileList({
                         disabled={indexingFileIds.includes(file.id)}
                       >
                         {indexingFileIds.includes(file.id) ? "索引中" : "索引 PDF"}
+                      </button>
+                    )}
+                    {isImage(file) && (
+                      <button
+                        type="button"
+                        onClick={() => onRunOcr(file.id)}
+                        disabled={ocrFileIds.includes(file.id)}
+                      >
+                        {ocrFileIds.includes(file.id) ? "识别中" : "执行 OCR"}
                       </button>
                     )}
                   </div>

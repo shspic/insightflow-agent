@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { analyzeFile, fetchFiles, generateCharts, indexPdf, parseFile } from "../api/files";
+import { analyzeFile, fetchFiles, generateCharts, indexPdf, parseFile, runImageOcr } from "../api/files";
 import FileList from "../components/FileList";
 import FileUploader from "../components/FileUploader";
 
@@ -11,10 +11,12 @@ function Upload() {
   const [analyzingFileIds, setAnalyzingFileIds] = useState([]);
   const [chartingFileIds, setChartingFileIds] = useState([]);
   const [indexingFileIds, setIndexingFileIds] = useState([]);
+  const [ocrFileIds, setOcrFileIds] = useState([]);
   const [parseError, setParseError] = useState("");
   const [analysisError, setAnalysisError] = useState("");
   const [chartError, setChartError] = useState("");
   const [indexError, setIndexError] = useState("");
+  const [ocrError, setOcrError] = useState("");
 
   const loadFiles = useCallback(async () => {
     setIsLoading(true);
@@ -94,6 +96,21 @@ function Upload() {
     }
   }
 
+  async function handleRunOcr(fileId) {
+    setOcrError("");
+    setOcrFileIds((currentIds) => [...currentIds, fileId]);
+
+    try {
+      await runImageOcr(fileId);
+      await loadFiles();
+    } catch (runOcrError) {
+      setOcrError(runOcrError.message);
+      await loadFiles();
+    } finally {
+      setOcrFileIds((currentIds) => currentIds.filter((id) => id !== fileId));
+    }
+  }
+
   return (
     <section className="upload-section">
       <div className="section-heading">
@@ -108,6 +125,7 @@ function Upload() {
       {analysisError && <p className="form-message form-message--error">{analysisError}</p>}
       {chartError && <p className="form-message form-message--error">{chartError}</p>}
       {indexError && <p className="form-message form-message--error">{indexError}</p>}
+      {ocrError && <p className="form-message form-message--error">{ocrError}</p>}
       <FileList
         files={files}
         isLoading={isLoading}
@@ -116,10 +134,12 @@ function Upload() {
         analyzingFileIds={analyzingFileIds}
         chartingFileIds={chartingFileIds}
         indexingFileIds={indexingFileIds}
+        ocrFileIds={ocrFileIds}
         onParse={handleParse}
         onAnalyze={handleAnalyze}
         onGenerateCharts={handleGenerateCharts}
         onIndexPdf={handleIndexPdf}
+        onRunOcr={handleRunOcr}
         onRefresh={loadFiles}
       />
     </section>

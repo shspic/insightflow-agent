@@ -33,6 +33,8 @@ class Settings:
     chart_dir: str = _get_env("CHART_DIR", "./storage/charts")
     report_dir: str = _get_env("REPORT_DIR", "./storage/reports")
     cors_origins_raw: str = _get_env("CORS_ORIGINS", "http://localhost:5173")
+    tesseract_cmd: str = _get_env("TESSERACT_CMD", "")
+    ocr_lang: str = _get_env("OCR_LANG", "chi_sim+eng")
 
     @property
     def cors_origins(self) -> list[str]:

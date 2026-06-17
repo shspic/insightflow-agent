@@ -16,8 +16,10 @@ def write_result(state: AgentState) -> AgentState:
         state.final_answer = _write_file_summary(state.tool_results.get("file_summary_tool", {}))
     elif state.task_type == "document_qa":
         state.final_answer = _write_document_qa(state.tool_results.get("pdf_retrieval_tool", {}))
+    elif state.task_type == "image_extract":
+        state.final_answer = _write_image_extract(state.tool_results.get("image_ocr_tool", {}))
     else:
-        state.final_answer = "暂不支持该任务类型。当前支持：数据分析、图表生成、文件总结、PDF 文档问答。"
+        state.final_answer = "暂不支持该任务类型。当前支持：数据分析、图表生成、文件总结、PDF 文档问答、图片 OCR。"
 
     return state
 
@@ -65,6 +67,18 @@ def _write_document_qa(result: dict[str, Any]) -> str:
         )
 
     return f"{answer}\n\n" + "\n".join(source_lines)
+
+
+def _write_image_extract(result: dict[str, Any]) -> str:
+    filename = _to_text(result.get("filename"))
+    ocr_result = result.get("ocr_result") or {}
+    text = (ocr_result.get("text") or "").strip()
+    message = ocr_result.get("message")
+
+    if text:
+        return f"图片文件：{filename}\nOCR 识别文本：\n{text}"
+
+    return f"图片文件：{filename}\nOCR 识别文本：未识别到明显文字。\n说明：{_to_text(message)}"
 
 
 def _join_or_empty(values: Any) -> str:

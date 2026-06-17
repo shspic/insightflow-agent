@@ -7,6 +7,7 @@ from app.schemas.rag import FileIndexResponse, FileSearchRequest, FileSearchResp
 from app.services.analysis_service import FileAnalysisError, analyze_file
 from app.services.chart_service import FileChartError, generate_charts
 from app.services.file_service import FileUploadError, get_file_by_id, list_files, save_uploaded_file
+from app.services.ocr_service import FileOcrError, run_image_ocr
 from app.services.parser_service import FileParseError, parse_file
 from app.services.rag_service import RagServiceError, index_pdf_file, search_pdf_chunks
 
@@ -91,4 +92,16 @@ def search_pdf(file_id: int, payload: FileSearchRequest, db: Session = Depends(g
     try:
         return search_pdf_chunks(db, file_record, query=payload.query, top_k=payload.top_k)
     except RagServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+
+
+@router.post("/{file_id}/ocr", response_model=FileResponse)
+def ocr_image(file_id: int, db: Session = Depends(get_db)) -> FileResponse:
+    file_record = get_file_by_id(db, file_id)
+    if file_record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
+
+    try:
+        return run_image_ocr(db, file_record)
+    except FileOcrError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc

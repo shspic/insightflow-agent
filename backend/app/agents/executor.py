@@ -7,6 +7,7 @@ from app.agents.state import AgentState
 from app.models.file import File
 from app.services.analysis_service import analyze_file
 from app.services.chart_service import generate_charts
+from app.services.ocr_service import get_or_run_image_ocr
 from app.services.rag_service import answer_pdf_question
 
 
@@ -34,6 +35,9 @@ def execute_tool(tool_name: str, state: AgentState, db: Session) -> dict[str, An
 
     if tool_name == "pdf_retrieval_tool":
         return _run_pdf_retrieval_tool(state, db)
+
+    if tool_name == "image_ocr_tool":
+        return _run_image_ocr_tool(state, db)
 
     raise ValueError(f"未知工具：{tool_name}")
 
@@ -82,6 +86,17 @@ def _run_pdf_retrieval_tool(state: AgentState, db: Session) -> dict[str, Any]:
         "sources": result["sources"],
         "results": result["results"],
         "message": result.get("message"),
+    }
+
+
+def _run_image_ocr_tool(state: AgentState, db: Session) -> dict[str, Any]:
+    file_record = _get_primary_file(state, db)
+    result = get_or_run_image_ocr(db=db, file_record=file_record)
+    return {
+        "file_id": file_record.id,
+        "filename": file_record.filename,
+        "file_type": file_record.file_type,
+        "ocr_result": result,
     }
 
 

@@ -3,7 +3,9 @@ langgraph
 matplotlib
 openpyxl
 pandas
+pillow
 PyMuPDF
+pytesseract
 python-dotenv
 python-multipart
 sqlalchemy
