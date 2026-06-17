@@ -4,6 +4,16 @@ import { createTask, fetchTaskTrace } from "../api/tasks";
 import AgentTrace from "../components/AgentTrace";
 import TaskInput from "../components/TaskInput";
 
+const STATUS_LABELS = {
+  success: "成功",
+  failed: "失败",
+  running: "执行中",
+};
+
+function formatStatus(status) {
+  return STATUS_LABELS[status] ?? status ?? "-";
+}
+
 function Workspace() {
   const [files, setFiles] = useState([]);
   const [filesError, setFilesError] = useState("");
@@ -61,8 +71,11 @@ function Workspace() {
       {currentTask && (
         <div className="task-result">
           <h3>任务结果</h3>
-          <p>状态：{currentTask.status}</p>
+          <p>状态：{formatStatus(currentTask.status)}</p>
           <p>类型：{currentTask.task_type}</p>
+          {currentTask.status === "failed" && (
+            <p className="form-message form-message--error">任务执行失败，请查看下方失败节点。</p>
+          )}
           <pre>{currentTask.final_answer}</pre>
         </div>
       )}

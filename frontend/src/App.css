@@ -392,13 +392,15 @@ button:disabled {
 .task-result pre,
 .trace-item pre {
   max-width: 100%;
+  max-height: 260px;
   margin: 0;
   padding: 12px;
-  overflow-x: auto;
+  overflow: auto;
   border-radius: 6px;
   background: #f1f5f9;
   color: #18202a;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .trace-list {
@@ -425,6 +427,42 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.trace-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e5ebef;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.trace-status--success {
+  background: #dff3ef;
+  color: #287c71;
+}
+
+.trace-status--failed {
+  background: #f9d7dc;
+  color: #b42336;
+}
+
+.trace-status--running {
+  background: #fff1c2;
+  color: #8a5a00;
+}
+
+.trace-json {
+  display: grid;
+  gap: 8px;
+}
+
+.trace-json summary {
+  color: #5a6675;
+  cursor: pointer;
+  line-height: 1.5;
 }
 
 .task-history-layout {

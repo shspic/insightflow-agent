@@ -10,6 +10,12 @@ from app.services.chart_service import generate_charts
 
 
 def execute_selected_tools(state: AgentState, db: Session) -> AgentState:
+    if not state.selected_tools and state.task_type == "unsupported":
+        state.tool_results["unsupported_handler"] = {
+            "message": "当前任务类型暂不支持，未调用业务工具。",
+        }
+        return state
+
     for tool_name in state.selected_tools:
         state.tool_results[tool_name] = execute_tool(tool_name, state, db)
     return state

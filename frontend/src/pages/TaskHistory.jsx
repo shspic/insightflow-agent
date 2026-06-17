@@ -10,6 +10,16 @@ function formatDate(value) {
   return new Date(value).toLocaleString("zh-CN");
 }
 
+const STATUS_LABELS = {
+  success: "成功",
+  failed: "失败",
+  running: "执行中",
+};
+
+function formatStatus(status) {
+  return STATUS_LABELS[status] ?? status ?? "-";
+}
+
 function TaskHistory() {
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -67,7 +77,7 @@ function TaskHistory() {
                 onClick={() => handleSelectTask(task.id)}
               >
                 <strong>#{task.id} {task.task_type}</strong>
-                <span>{task.status}</span>
+                <span>{formatStatus(task.status)}</span>
                 <span>{task.user_input}</span>
                 <span>{formatDate(task.created_at)}</span>
               </button>
@@ -80,9 +90,12 @@ function TaskHistory() {
             <>
               <div className="task-result">
                 <h3>任务详情</h3>
-                <p>状态：{selectedTask.status}</p>
+                <p>状态：{formatStatus(selectedTask.status)}</p>
                 <p>类型：{selectedTask.task_type}</p>
                 <p>文件 ID：{selectedTask.file_ids.join("，")}</p>
+                {selectedTask.status === "failed" && (
+                  <p className="form-message form-message--error">任务执行失败，请查看下方失败节点。</p>
+                )}
                 <pre>{selectedTask.final_answer}</pre>
               </div>
               <AgentTrace trace={trace} />

@@ -23,7 +23,7 @@ def run_basic_agent(task_id: int, user_input: str, file_ids: list[int], db: Sess
         db=db,
         state=state,
         node_name="classify_task",
-        tool_name="rule_classifier",
+        tool_name="task_classifier",
         input_payload={"user_input": user_input},
         step=lambda current: _classify(current),
         output_builder=lambda current: {"task_type": current.task_type},
@@ -32,7 +32,7 @@ def run_basic_agent(task_id: int, user_input: str, file_ids: list[int], db: Sess
         db=db,
         state=state,
         node_name="plan_task",
-        tool_name="rule_planner",
+        tool_name="planner",
         input_payload={"task_type": state.task_type},
         step=lambda current: _plan(current),
         output_builder=lambda current: {"plan": current.plan},
@@ -41,7 +41,7 @@ def run_basic_agent(task_id: int, user_input: str, file_ids: list[int], db: Sess
         db=db,
         state=state,
         node_name="route_tools",
-        tool_name="rule_router",
+        tool_name="tool_router",
         input_payload={"task_type": state.task_type},
         step=lambda current: _route(current),
         output_builder=lambda current: {"selected_tools": current.selected_tools},
@@ -50,7 +50,7 @@ def run_basic_agent(task_id: int, user_input: str, file_ids: list[int], db: Sess
         db=db,
         state=state,
         node_name="execute_tool",
-        tool_name=_format_tool_name(state.selected_tools),
+        tool_name=_format_execute_tool_name(state),
         input_payload={"file_ids": state.file_ids, "selected_tools": state.selected_tools},
         step=lambda current: execute_selected_tools(current, db),
         output_builder=lambda current: {"tool_results": current.tool_results},
@@ -145,5 +145,11 @@ def _record_tool_call(
     db.commit()
 
 
-def _format_tool_name(selected_tools: list[str]) -> str:
-    return ",".join(selected_tools) if selected_tools else "no_tool"
+def _format_execute_tool_name(state: AgentState) -> str:
+    if state.selected_tools:
+        return ",".join(str(tool_name) for tool_name in state.selected_tools)
+
+    if state.task_type == "unsupported":
+        return "unsupported_handler"
+
+    return "no_tool"

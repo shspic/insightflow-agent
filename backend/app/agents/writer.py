@@ -40,13 +40,36 @@ def _write_chart_generation(result: dict[str, Any]) -> str:
 
 def _write_file_summary(result: dict[str, Any]) -> str:
     return (
-        f"文件 ID：{result.get('file_id')}\n"
-        f"文件名：{result.get('filename')}\n"
-        f"文件类型：{result.get('file_type')}\n"
-        f"当前状态：{result.get('status')}\n"
-        f"摘要：{result.get('summary')}"
+        f"文件 ID：{_to_text(result.get('file_id'))}\n"
+        f"文件名：{_to_text(result.get('filename'))}\n"
+        f"文件类型：{_to_text(result.get('file_type'))}\n"
+        f"当前状态：{_to_text(result.get('status'))}\n"
+        f"摘要：{_to_text(result.get('summary'))}"
     )
 
 
-def _join_or_empty(values: list[str]) -> str:
-    return "、".join(values) if values else "无"
+def _join_or_empty(values: Any) -> str:
+    if values is None:
+        return "无"
+
+    if isinstance(values, dict):
+        values = values.keys()
+    elif isinstance(values, (str, int, float, bool)):
+        values = [values]
+
+    try:
+        items = list(values)
+    except TypeError:
+        items = [values]
+
+    if not items:
+        return "无"
+
+    return "、".join(_to_text(item) for item in items)
+
+
+def _to_text(value: Any) -> str:
+    if value is None:
+        return "无"
+
+    return str(value)
