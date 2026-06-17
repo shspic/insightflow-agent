@@ -3,7 +3,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.agents.agent_service import run_basic_agent
+from app.agents.agent_service import run_langgraph_agent
 from app.models.file import File
 from app.models.task import Task
 from app.models.tool_call import ToolCall
@@ -34,10 +34,12 @@ def create_task(db: Session, user_input: str, file_ids: list[int]) -> Task:
     db.refresh(task)
 
     try:
-        state = run_basic_agent(task_id=task.id, user_input=user_input, file_ids=[file_id], db=db)
-        task.task_type = state.task_type
-        task.final_answer = state.final_answer
-        task.status = "failed" if state.errors else "success"
+        state = run_langgraph_agent(task_id=task.id, user_input=user_input, file_ids=[file_id], db=db)
+        db.refresh(task)
+        if task.status == "running":
+            task.task_type = state.task_type
+            task.final_answer = state.final_answer
+            task.status = "failed" if state.errors else "success"
     except Exception as exc:
         task.final_answer = f"任务执行失败：{exc}"
         task.status = "failed"

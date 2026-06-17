@@ -6,7 +6,7 @@ function formatDate(value) {
   return new Date(value).toLocaleString("zh-CN");
 }
 
-const NODE_ORDER = ["classify_task", "plan_task", "route_tools", "execute_tool", "write_result"];
+const NODE_ORDER = ["classify_task", "plan_task", "route_tools", "execute_tool", "write_result", "save_result"];
 
 const STATUS_LABELS = {
   success: "成功",
