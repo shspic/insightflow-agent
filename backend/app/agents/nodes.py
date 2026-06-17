@@ -11,6 +11,7 @@ from app.agents.planner import build_plan
 from app.agents.router import select_tools
 from app.agents.state import AgentState, AgentStateDict, state_from_dict, state_to_dict
 from app.agents.writer import write_result as write_agent_result
+from app.models.file import File
 from app.models.task import Task
 from app.models.tool_call import ToolCall
 
@@ -27,7 +28,7 @@ def build_node_map(db: Session) -> dict[str, Callable[[AgentStateDict], AgentSta
             node_name="classify_task",
             tool_name="task_classifier",
             input_builder=lambda current: {"user_input": current.user_input},
-            step=_classify_task,
+            step=lambda current: _classify_task(current, db),
             output_builder=lambda current: {"task_type": current.task_type},
         ),
         "plan_task": lambda state: _run_traced_node(
@@ -86,8 +87,8 @@ def build_node_map(db: Session) -> dict[str, Callable[[AgentStateDict], AgentSta
     }
 
 
-def _classify_task(state: AgentState) -> AgentState:
-    state.task_type = classify_user_task(state.user_input)
+def _classify_task(state: AgentState, db: Session) -> AgentState:
+    state.task_type = classify_user_task(state.user_input, file_type=_get_primary_file_type(state, db))
     return state
 
 
@@ -187,3 +188,14 @@ def _format_execute_tool_name(state: AgentState) -> str:
         return "unsupported_handler"
 
     return "no_tool"
+
+
+def _get_primary_file_type(state: AgentState, db: Session) -> str | None:
+    if not state.file_ids:
+        return None
+
+    file_record = db.get(File, state.file_ids[0])
+    if file_record is None:
+        return None
+
+    return file_record.file_type

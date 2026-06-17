@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { analyzeFile, fetchFiles, generateCharts, parseFile } from "../api/files";
+import { analyzeFile, fetchFiles, generateCharts, indexPdf, parseFile } from "../api/files";
 import FileList from "../components/FileList";
 import FileUploader from "../components/FileUploader";
 
@@ -10,9 +10,11 @@ function Upload() {
   const [parsingFileIds, setParsingFileIds] = useState([]);
   const [analyzingFileIds, setAnalyzingFileIds] = useState([]);
   const [chartingFileIds, setChartingFileIds] = useState([]);
+  const [indexingFileIds, setIndexingFileIds] = useState([]);
   const [parseError, setParseError] = useState("");
   const [analysisError, setAnalysisError] = useState("");
   const [chartError, setChartError] = useState("");
+  const [indexError, setIndexError] = useState("");
 
   const loadFiles = useCallback(async () => {
     setIsLoading(true);
@@ -77,6 +79,21 @@ function Upload() {
     }
   }
 
+  async function handleIndexPdf(fileId) {
+    setIndexError("");
+    setIndexingFileIds((currentIds) => [...currentIds, fileId]);
+
+    try {
+      await indexPdf(fileId);
+      await loadFiles();
+    } catch (indexPdfError) {
+      setIndexError(indexPdfError.message);
+      await loadFiles();
+    } finally {
+      setIndexingFileIds((currentIds) => currentIds.filter((id) => id !== fileId));
+    }
+  }
+
   return (
     <section className="upload-section">
       <div className="section-heading">
@@ -90,6 +107,7 @@ function Upload() {
       {parseError && <p className="form-message form-message--error">{parseError}</p>}
       {analysisError && <p className="form-message form-message--error">{analysisError}</p>}
       {chartError && <p className="form-message form-message--error">{chartError}</p>}
+      {indexError && <p className="form-message form-message--error">{indexError}</p>}
       <FileList
         files={files}
         isLoading={isLoading}
@@ -97,9 +115,11 @@ function Upload() {
         parsingFileIds={parsingFileIds}
         analyzingFileIds={analyzingFileIds}
         chartingFileIds={chartingFileIds}
+        indexingFileIds={indexingFileIds}
         onParse={handleParse}
         onAnalyze={handleAnalyze}
         onGenerateCharts={handleGenerateCharts}
+        onIndexPdf={handleIndexPdf}
         onRefresh={loadFiles}
       />
     </section>

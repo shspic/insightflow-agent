@@ -1,6 +1,6 @@
 from app.db.session import Base, engine, ensure_sqlite_parent_dir
 from app.core.config import settings
-from app.models import File, Task, ToolCall
+from app.models import File, FileChunk, Task, ToolCall
 
 
 def init_db() -> None:

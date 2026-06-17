@@ -7,6 +7,7 @@ from app.agents.state import AgentState
 from app.models.file import File
 from app.services.analysis_service import analyze_file
 from app.services.chart_service import generate_charts
+from app.services.rag_service import answer_pdf_question
 
 
 def execute_selected_tools(state: AgentState, db: Session) -> AgentState:
@@ -30,6 +31,9 @@ def execute_tool(tool_name: str, state: AgentState, db: Session) -> dict[str, An
 
     if tool_name == "file_summary_tool":
         return _run_file_summary_tool(state, db)
+
+    if tool_name == "pdf_retrieval_tool":
+        return _run_pdf_retrieval_tool(state, db)
 
     raise ValueError(f"未知工具：{tool_name}")
 
@@ -64,6 +68,20 @@ def _run_file_summary_tool(state: AgentState, db: Session) -> dict[str, Any]:
         "file_type": file_record.file_type,
         "status": file_record.status,
         "summary": file_record.summary or "该文件还没有摘要，请先解析文件。",
+    }
+
+
+def _run_pdf_retrieval_tool(state: AgentState, db: Session) -> dict[str, Any]:
+    file_record = _get_primary_file(state, db)
+    result = answer_pdf_question(db=db, file_record=file_record, question=state.user_input)
+    return {
+        "file_id": file_record.id,
+        "filename": file_record.filename,
+        "query": state.user_input,
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "results": result["results"],
+        "message": result.get("message"),
     }
 
 

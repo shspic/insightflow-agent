@@ -51,3 +51,23 @@ export async function generateCharts(fileId) {
 
   return parseResponse(response);
 }
+
+export async function indexPdf(fileId) {
+  const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/index`, {
+    method: "POST",
+  });
+
+  return parseResponse(response);
+}
+
+export async function searchPdf(fileId, query, topK = 5) {
+  const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/search`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query, top_k: topK }),
+  });
+
+  return parseResponse(response);
+}

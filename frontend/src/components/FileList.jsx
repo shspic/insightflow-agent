@@ -34,6 +34,10 @@ function isAnalyzable(file) {
   return file.file_type === "csv" || file.file_type === "xlsx";
 }
 
+function isPdf(file) {
+  return file.file_type === "pdf";
+}
+
 function ParseResult({ file }) {
   const schema = parseSchema(file.schema_json);
 
@@ -77,6 +81,11 @@ function ParseResult({ file }) {
     return (
       <div className="parse-result">
         <p>页数：{schema.page_count}</p>
+        {schema.indexed && (
+          <p>
+            索引：{schema.indexed.chunk_count} 个片段，检索方式：{schema.indexed.type}
+          </p>
+        )}
         <p className="parse-summary">{file.summary}</p>
       </div>
     );
@@ -272,9 +281,11 @@ function FileList({
   parsingFileIds,
   analyzingFileIds,
   chartingFileIds,
+  indexingFileIds,
   onParse,
   onAnalyze,
   onGenerateCharts,
+  onIndexPdf,
   onRefresh,
 }) {
   if (isLoading) {
@@ -346,6 +357,15 @@ function FileList({
                       </>
                     ) : (
                       <span className="unsupported-action">不支持分析 / 图表</span>
+                    )}
+                    {isPdf(file) && (
+                      <button
+                        type="button"
+                        onClick={() => onIndexPdf(file.id)}
+                        disabled={indexingFileIds.includes(file.id)}
+                      >
+                        {indexingFileIds.includes(file.id) ? "索引中" : "索引 PDF"}
+                      </button>
                     )}
                   </div>
                 </td>

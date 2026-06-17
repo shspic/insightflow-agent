@@ -14,8 +14,10 @@ def write_result(state: AgentState) -> AgentState:
         state.final_answer = _write_chart_generation(state.tool_results.get("chart_generation_tool", {}))
     elif state.task_type == "file_summary":
         state.final_answer = _write_file_summary(state.tool_results.get("file_summary_tool", {}))
+    elif state.task_type == "document_qa":
+        state.final_answer = _write_document_qa(state.tool_results.get("pdf_retrieval_tool", {}))
     else:
-        state.final_answer = "暂不支持该任务类型。当前支持：数据分析、图表生成、文件总结。"
+        state.final_answer = "暂不支持该任务类型。当前支持：数据分析、图表生成、文件总结、PDF 文档问答。"
 
     return state
 
@@ -46,6 +48,23 @@ def _write_file_summary(result: dict[str, Any]) -> str:
         f"当前状态：{_to_text(result.get('status'))}\n"
         f"摘要：{_to_text(result.get('summary'))}"
     )
+
+
+def _write_document_qa(result: dict[str, Any]) -> str:
+    answer = result.get("answer") or "未在该 PDF 中找到与问题相关的内容。"
+    sources = result.get("sources") or []
+    if not sources:
+        return f"{answer}\n\n引用来源：无"
+
+    source_lines = ["引用来源："]
+    for index, source in enumerate(sources, start=1):
+        source_lines.append(
+            f"{index}. 文件：{_to_text(source.get('filename'))}；"
+            f"页码：第 {_to_text(source.get('page_number'))} 页；"
+            f"片段：{_to_text(source.get('chunk_text'))}"
+        )
+
+    return f"{answer}\n\n" + "\n".join(source_lines)
 
 
 def _join_or_empty(values: Any) -> str:
