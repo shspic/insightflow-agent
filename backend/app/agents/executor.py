@@ -105,17 +105,20 @@ def _run_image_ocr_tool(state: AgentState, db: Session) -> dict[str, Any]:
 
 
 def _run_report_writer_tool(state: AgentState, db: Session) -> dict[str, Any]:
+    llm_summary = state.tool_results.get("_llm_report_summary", {}).get("summary")
     report = generate_task_report(
         db=db,
         task_id=state.task_id,
         task_type=state.task_type,
         final_answer=state.final_answer,
+        conclusion_override=llm_summary,
     )
     return {
         "task_id": state.task_id,
         "title": report["title"],
         "report_path": report["report_path"],
         "download_url": report["download_url"],
+        "llm_summary_used": bool(llm_summary),
     }
 
 

@@ -23,6 +23,7 @@ def generate_task_report(
     task_id: int,
     task_type: str | None = None,
     final_answer: str | None = None,
+    conclusion_override: str | None = None,
 ) -> dict[str, Any]:
     task = db.get(Task, task_id)
     if task is None:
@@ -35,6 +36,7 @@ def generate_task_report(
         files=files,
         task_type=task_type or task.task_type,
         final_answer=final_answer or task.final_answer,
+        conclusion_override=conclusion_override,
     )
     report_path = _save_report_file(task_id=task.id, content=content)
     task.report_path = report_path
@@ -78,6 +80,7 @@ def _build_report_content(
     files: list[File],
     task_type: str | None,
     final_answer: str | None,
+    conclusion_override: str | None = None,
 ) -> str:
     sections = [
         "# 分析报告",
@@ -108,7 +111,7 @@ def _build_report_content(
         "- 当前报告不是最终专业判断，重要结论仍需人工复核。",
         "",
         "## 8. 结论与建议",
-        _text(final_answer) if final_answer else "本报告已整理当前任务和关联文件信息，建议结合原始文件继续核对关键结论。",
+        _build_conclusion(final_answer=final_answer, conclusion_override=conclusion_override),
         "",
     ]
     return "\n".join(sections)
@@ -347,3 +350,11 @@ def _text(value: Any) -> str:
     if value is None or value == "":
         return "无"
     return str(value)
+
+
+def _build_conclusion(final_answer: str | None, conclusion_override: str | None = None) -> str:
+    if conclusion_override:
+        return _text(conclusion_override)
+    if final_answer:
+        return _text(final_answer)
+    return "本报告已整理当前任务和关联文件信息，建议结合原始文件继续核对关键结论。"

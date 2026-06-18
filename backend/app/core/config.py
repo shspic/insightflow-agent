@@ -19,6 +19,10 @@ def _parse_cors_origins(value: str) -> list[str]:
     return [origin.strip() for origin in value.split(",") if origin.strip()]
 
 
+def _parse_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = _get_env("APP_NAME", "InsightFlow Agent")
@@ -27,6 +31,8 @@ class Settings:
     llm_provider: str = _get_env("LLM_PROVIDER", "deepseek")
     llm_api_key: str = _get_env("LLM_API_KEY", "")
     llm_model: str = _get_env("LLM_MODEL", "deepseek-chat")
+    llm_base_url: str = _get_env("LLM_BASE_URL", "")
+    llm_enabled: bool = _parse_bool(_get_env("LLM_ENABLED", "true"))
     embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")
     vector_store: str = _get_env("VECTOR_STORE", "chroma")
     upload_dir: str = _get_env("UPLOAD_DIR", "./storage/uploads")
