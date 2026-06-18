@@ -146,7 +146,7 @@ http://localhost:5173
 在项目根目录执行：
 
 ```powershell
-cd D:\spir\NO2_agent
+cd <项目根目录>
 docker compose up --build
 ```
 
@@ -177,10 +177,10 @@ Docker Compose 会把后端数据挂载到本地目录，便于重启后保留�
 - `TESSERACT_CMD` 用于配置本机 Tesseract 可执行文件路径。
 - `OCR_LANG` 用于配置 OCR 语言，例如 `chi_sim+eng`。
 
-Windows 本机示例：
+Windows 本机示例，请按实际安装位置填写：
 
 ```text
-TESSERACT_CMD=C:/Program Files/Tesseract-OCR/tesseract.exe
+TESSERACT_CMD=<Tesseract 安装目录>/tesseract.exe
 OCR_LANG=chi_sim+eng
 ```
 
@@ -207,6 +207,12 @@ Docker 演示版默认不内置 Tesseract OCR，目的是减少构建阶段对 D
 8. 创建 Agent 任务：在工作区选择文件，输入自然语言任务。
 9. 查看执行轨迹：观察 `classify_task`、`plan_task`、`route_tools`、`execute_tool`、`write_result`、`save_result`。
 10. 生成 Markdown 报告：输入“生成分析报告”，查看报告内容并下载 `.md` 文件。
+
+## 项目截图
+
+> 截图将在 `screenshots/` 目录中补充，包括首页、上传页、文件解析、数据分析、图表生成、Agent 任务执行、执行轨迹、PDF RAG、图片 OCR、Markdown 报告、Docker 启动、Swagger API 文档和 GitHub README 页面。
+
+当前仓库只保留 `screenshots/.gitkeep` 作为目录占位，没有插入不存在的图片链接。详细截图清单见 [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)。
 
 ## 项目亮点
 
