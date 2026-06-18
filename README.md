@@ -109,8 +109,15 @@ NO2_agent/
   docs/
     PRD.md
     DEMO_SCRIPT.md
+    DEPLOYMENT.md
+    EVALUATION.md
+    FINAL_CHECKLIST.md
+    INTERVIEW_QA.md
+    MCP_PLAN.md
+    PROJECT_REVIEW.md
     RESUME.md
     SCREENSHOTS.md
+    TESTING.md
   screenshots/
     .gitkeep
   docker-compose.yml
@@ -195,6 +202,24 @@ OCR_LANG=chi_sim+eng
 ```
 
 Docker 演示版默认不内置 Tesseract OCR，目的是减少构建阶段对 Debian 软件源的依赖，优先保证前端和后端可以一键启动。如果容器内未配置 OCR，引擎会返回明确中文提示，不影响文件上传、表格分析、图表、PDF RAG、LangGraph 任务流和 Markdown 报告等主要功能。
+
+## 测试命令
+
+后端轻量测试：
+
+```powershell
+cd backend
+pytest
+```
+
+前端构建测试：
+
+```powershell
+cd frontend
+npm run build
+```
+
+完整测试说明见 [docs/TESTING.md](docs/TESTING.md)，项目评估方法见 [docs/EVALUATION.md](docs/EVALUATION.md)，最终发布检查清单见 [docs/FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md)。
 
 ## 公网部署
 

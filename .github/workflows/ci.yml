@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    name: 后端测试
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装后端依赖
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: 运行后端测试
+        working-directory: backend
+        env:
+          APP_NAME: InsightFlow Agent
+          ENV: testing
+          DATABASE_URL: sqlite:///:memory:
+          LLM_ENABLED: "false"
+          LLM_API_KEY: ""
+          CORS_ORIGINS: http://localhost:5173
+        run: pytest
+
+  frontend:
+    name: 前端构建
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 安装前端依赖
+        working-directory: frontend
+        run: npm install
+
+      - name: 构建前端
+        working-directory: frontend
+        run: npm run build

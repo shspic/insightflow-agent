@@ -5,6 +5,7 @@ openpyxl
 pandas
 pillow
 PyMuPDF
+pytest
 pytesseract
 python-dotenv
 python-multipart
