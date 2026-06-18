@@ -16,6 +16,7 @@ InsightFlow Agent 是一个基于 FastAPI + React + LangGraph 的多模态文档
 - 图片 OCR：使用 pytesseract + Pillow 识别图片文字，并保存 OCR 结果。
 - LangGraph Agent 工作流：通过确定性节点完成任务分类、计划、路由、工具执行和结果整理。
 - 执行轨迹可视化：记录并展示每个 Agent 节点的输入、输出、状态、耗时和错误信息。
+- LLM 可选增强：配置 API Key 后可增强任务理解、RAG 回答、最终回答和报告总结；未配置时自动降级到本地规则。
 - Markdown 报告生成：基于任务、文件分析、图表、PDF 引用和 OCR 结果生成报告。
 - Docker Compose 一键启动：本地可通过 `docker compose up --build` 同时启动前端和后端。
 
@@ -53,7 +54,7 @@ flowchart TD
 
 ## Agent 工作流
 
-当前 Agent 使用 LangGraph 线性工作流，不接入大模型，不执行用户输入代码，只调用项目内预设安全工具。
+当前 Agent 使用 LangGraph 线性工作流。系统可以在配置 LLM API 后增强任务理解、回答整理和报告总结；没有 API Key 时会降级为本地规则和模板逻辑。无论是否启用 LLM，系统都不执行用户输入代码，只调用项目内预设安全工具。
 
 ```text
 START
@@ -185,6 +186,48 @@ OCR_LANG=chi_sim+eng
 ```
 
 Docker 演示版默认不内置 Tesseract OCR，目的是减少构建阶段对 Debian 软件源的依赖，优先保证前端和后端可以一键启动。如果容器内未配置 OCR，引擎会返回明确中文提示，不影响文件上传、表格分析、图表、PDF RAG、LangGraph 任务流和 Markdown 报告等主要功能。
+
+## 公网部署
+
+推荐使用前后端分离方式部署公网演示版：
+
+- 前端：Vercel。
+- 后端：Render。
+- 前端通过 `VITE_API_BASE_URL` 访问 Render 后端。
+- 后端通过 `CORS_ORIGINS` 允许 Vercel 前端访问。
+
+后端 Render 启动命令示例：
+
+```bash
+python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+前端 Vercel 环境变量示例：
+
+```text
+VITE_API_BASE_URL=https://你的-render-后端地址.onrender.com
+```
+
+后端 Render 环境变量中需要把 `CORS_ORIGINS` 设置为真实 Vercel 前端地址，例如：
+
+```text
+CORS_ORIGINS=https://你的-vercel-前端地址.vercel.app
+```
+
+部署完成后可验证：
+
+- 前端地址：`https://你的-vercel-前端地址.vercel.app`
+- 后端健康检查：`https://你的-render-后端地址.onrender.com/api/health`
+- Swagger 文档：`https://你的-render-后端地址.onrender.com/docs`
+
+免费部署版限制：
+
+- Render 免费服务可能冷启动。
+- SQLite 和本地 `storage` 只适合演示，不适合长期持久化。
+- OCR 依赖部署环境是否安装 Tesseract，公网演示版可能不可用。
+- 生产化建议升级为 Postgres + 对象存储，并增加认证、权限和配额控制。
+
+完整部署步骤见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。不要把真实 `LLM_API_KEY` 写入 README、代码或仓库文件。
 
 ## API 模块说明
 
