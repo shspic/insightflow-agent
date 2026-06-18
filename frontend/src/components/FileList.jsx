@@ -82,12 +82,16 @@ function ParseResult({ file }) {
   }
 
   if (schema.file_type === "pdf") {
+    const ragIndex = schema.rag_index ?? schema.indexed;
+
     return (
       <div className="parse-result">
         <p>页数：{schema.page_count}</p>
-        {schema.indexed && (
+        {ragIndex && (
           <p>
-            索引：{schema.indexed.chunk_count} 个片段，检索方式：{schema.indexed.type}
+            索引：{ragIndex.chunk_count} 个片段，检索方式：
+            {ragIndex.retrieval_mode ?? ragIndex.type ?? "keyword"}，chunk：
+            {ragIndex.chunk_size ?? "-"}，overlap：{ragIndex.chunk_overlap ?? "-"}
           </p>
         )}
         <p className="parse-summary">{file.summary}</p>

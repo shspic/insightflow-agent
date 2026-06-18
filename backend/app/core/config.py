@@ -23,6 +23,13 @@ def _parse_bool(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _parse_int(value: str, default: int) -> int:
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = _get_env("APP_NAME", "InsightFlow Agent")
@@ -35,6 +42,10 @@ class Settings:
     llm_enabled: bool = _parse_bool(_get_env("LLM_ENABLED", "true"))
     embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")
     vector_store: str = _get_env("VECTOR_STORE", "chroma")
+    rag_retrieval_mode: str = _get_env("RAG_RETRIEVAL_MODE", "auto")
+    rag_top_k: int = _parse_int(_get_env("RAG_TOP_K", "5"), 5)
+    rag_chunk_size: int = _parse_int(_get_env("RAG_CHUNK_SIZE", "800"), 800)
+    rag_chunk_overlap: int = _parse_int(_get_env("RAG_CHUNK_OVERLAP", "100"), 100)
     upload_dir: str = _get_env("UPLOAD_DIR", "./storage/uploads")
     chart_dir: str = _get_env("CHART_DIR", "./storage/charts")
     report_dir: str = _get_env("REPORT_DIR", "./storage/reports")

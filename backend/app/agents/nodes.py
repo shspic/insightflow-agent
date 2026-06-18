@@ -35,7 +35,11 @@ def build_node_map(db: Session) -> dict[str, Callable[[AgentStateDict], AgentSta
             raw_state=state,
             node_name="classify_task",
             tool_name="task_classifier",
-            input_builder=lambda current: {"user_input": current.user_input},
+            input_builder=lambda current: {
+                "user_input": current.user_input,
+                "file_ids": current.file_ids,
+                "file_type": _get_primary_file_type(current, db),
+            },
             step=lambda current: _classify_task(current, db),
             output_builder=lambda current: {"task_type": current.task_type},
         ),

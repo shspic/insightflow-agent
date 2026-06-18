@@ -1,17 +1,19 @@
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import fitz
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.file import File
 from app.models.file_chunk import FileChunk
+from app.services.vector_service import VectorSearchError, search_chunks_by_tfidf
 
-CHUNK_SIZE = 800
-CHUNK_OVERLAP = 100
 SUPPORTED_RAG_TYPES = {"pdf"}
+SUPPORTED_RETRIEVAL_MODES = {"auto", "vector", "keyword"}
 
 
 class RagServiceError(Exception):
@@ -26,13 +28,16 @@ def index_pdf_file(db: Session, file_record: File) -> dict[str, Any]:
     existing_chunks = _get_chunks(db, file_record.id)
     if existing_chunks:
         schema = _load_schema(file_record.schema_json)
-        indexed = schema.get("indexed", {})
+        indexed = _get_index_metadata(schema)
         return {
             "file_id": file_record.id,
             "filename": file_record.filename,
             "status": file_record.status,
             "page_count": int(indexed.get("page_count", 0)),
             "chunk_count": len(existing_chunks),
+            "retrieval_mode": indexed.get("retrieval_mode", settings.rag_retrieval_mode),
+            "chunk_size": int(indexed.get("chunk_size", settings.rag_chunk_size)),
+            "chunk_overlap": int(indexed.get("chunk_overlap", settings.rag_chunk_overlap)),
             "message": "PDF 已索引，无需重复处理。",
         }
 
@@ -56,11 +61,18 @@ def index_pdf_file(db: Session, file_record: File) -> dict[str, Any]:
 
     db.add_all(chunks)
     schema = _load_schema(file_record.schema_json)
-    schema["indexed"] = {
-        "type": "keyword",
+    indexed_metadata = {
+        "indexed": True,
+        "type": settings.rag_retrieval_mode,
+        "retrieval_mode": settings.rag_retrieval_mode,
         "page_count": len(pages),
         "chunk_count": len(chunks),
+        "chunk_size": settings.rag_chunk_size,
+        "chunk_overlap": settings.rag_chunk_overlap,
+        "indexed_at": datetime.utcnow().isoformat(),
     }
+    schema["indexed"] = indexed_metadata
+    schema["rag_index"] = indexed_metadata
     file_record.status = "indexed"
     file_record.schema_json = json.dumps(schema, ensure_ascii=False)
     db.commit()
@@ -72,49 +84,109 @@ def index_pdf_file(db: Session, file_record: File) -> dict[str, Any]:
         "status": file_record.status,
         "page_count": len(pages),
         "chunk_count": len(chunks),
+        "retrieval_mode": settings.rag_retrieval_mode,
+        "chunk_size": settings.rag_chunk_size,
+        "chunk_overlap": settings.rag_chunk_overlap,
         "message": "PDF 索引完成。",
     }
 
 
-def search_pdf_chunks(db: Session, file_record: File, query: str, top_k: int = 5) -> dict[str, Any]:
+def search_pdf_chunks(
+    db: Session,
+    file_record: File,
+    query: str,
+    top_k: int | None = None,
+    retrieval_mode: str | None = None,
+) -> dict[str, Any]:
     _ensure_pdf_file(file_record)
 
     normalized_query = query.strip()
     if not normalized_query:
         raise RagServiceError("检索问题不能为空")
 
+    final_top_k = _normalize_top_k(top_k)
+    final_mode = _normalize_retrieval_mode(retrieval_mode)
     chunks = _get_chunks(db, file_record.id)
     if not chunks:
         index_pdf_file(db, file_record)
         chunks = _get_chunks(db, file_record.id)
 
-    scored_results = []
-    for chunk in chunks:
-        score = _score_chunk(normalized_query, chunk.chunk_text)
-        if score > 0:
-            scored_results.append(
-                {
-                    "chunk_id": chunk.id,
-                    "page_number": chunk.page_number,
-                    "chunk_index": chunk.chunk_index,
-                    "chunk_text": chunk.chunk_text,
-                    "score": score,
-                    "filename": file_record.filename,
-                }
+    if final_mode == "keyword":
+        results = _search_keyword_chunks(chunks, file_record.filename, normalized_query, final_top_k)
+        return _build_search_response(
+            file_record=file_record,
+            query=normalized_query,
+            top_k=final_top_k,
+            retrieval_mode="keyword",
+            fallback_used=False,
+            results=results,
+        )
+
+    if final_mode == "vector":
+        try:
+            results = search_chunks_by_tfidf(
+                query=normalized_query,
+                chunks=chunks,
+                filename=file_record.filename,
+                top_k=final_top_k,
             )
+        except VectorSearchError as exc:
+            raise RagServiceError(f"向量检索失败：{exc.message}") from exc
+        except Exception as exc:
+            raise RagServiceError(f"向量检索失败：{exc}") from exc
 
-    scored_results.sort(key=lambda item: item["score"], reverse=True)
-    results = scored_results[:top_k]
-    return {
-        "file_id": file_record.id,
-        "query": normalized_query,
-        "results": results,
-        "message": None if results else "未找到相关内容。",
-    }
+        return _build_search_response(
+            file_record=file_record,
+            query=normalized_query,
+            top_k=final_top_k,
+            retrieval_mode="vector",
+            fallback_used=False,
+            results=results,
+        )
+
+    try:
+        results = search_chunks_by_tfidf(
+            query=normalized_query,
+            chunks=chunks,
+            filename=file_record.filename,
+            top_k=final_top_k,
+        )
+        return _build_search_response(
+            file_record=file_record,
+            query=normalized_query,
+            top_k=final_top_k,
+            retrieval_mode="vector",
+            fallback_used=False,
+            results=results,
+        )
+    except Exception as exc:
+        results = _search_keyword_chunks(chunks, file_record.filename, normalized_query, final_top_k)
+        response = _build_search_response(
+            file_record=file_record,
+            query=normalized_query,
+            top_k=final_top_k,
+            retrieval_mode="keyword",
+            fallback_used=True,
+            results=results,
+        )
+        response["message"] = f"向量检索失败，已回退关键词检索：{exc}"
+        return response
 
 
-def answer_pdf_question(db: Session, file_record: File, question: str, top_k: int = 5) -> dict[str, Any]:
-    search_result = search_pdf_chunks(db=db, file_record=file_record, query=question, top_k=top_k)
+def answer_pdf_question(
+    db: Session,
+    file_record: File,
+    question: str,
+    top_k: int | None = None,
+    retrieval_mode: str | None = None,
+) -> dict[str, Any]:
+    search_result = search_pdf_chunks(
+        db=db,
+        file_record=file_record,
+        query=question,
+        top_k=top_k,
+        retrieval_mode=retrieval_mode,
+    )
     results = search_result["results"]
 
     if not results:
@@ -139,6 +211,7 @@ def answer_pdf_question(db: Session, file_record: File, question: str, top_k: in
                 "chunk_index": result["chunk_index"],
                 "chunk_text": snippet,
                 "score": result["score"],
+                "retrieval_mode": result["retrieval_mode"],
             }
         )
 
@@ -147,6 +220,32 @@ def answer_pdf_question(db: Session, file_record: File, question: str, top_k: in
         "answer": "\n".join(summary_lines),
         "sources": sources,
     }
+
+
+def _search_keyword_chunks(
+    chunks: list[FileChunk],
+    filename: str,
+    query: str,
+    top_k: int,
+) -> list[dict[str, Any]]:
+    scored_results = []
+    for chunk in chunks:
+        score = _score_chunk(query, chunk.chunk_text)
+        if score > 0:
+            scored_results.append(
+                {
+                    "chunk_id": chunk.id,
+                    "page_number": chunk.page_number,
+                    "chunk_index": chunk.chunk_index,
+                    "chunk_text": chunk.chunk_text,
+                    "score": score,
+                    "retrieval_mode": "keyword",
+                    "filename": filename,
+                }
+            )
+
+    scored_results.sort(key=lambda item: item["score"], reverse=True)
+    return scored_results[:top_k]
 
 
 def _ensure_pdf_file(file_record: File) -> None:
@@ -177,14 +276,16 @@ def _split_text(text: str) -> list[str]:
     if not clean_text:
         return []
 
+    chunk_size = max(settings.rag_chunk_size, 100)
+    chunk_overlap = max(min(settings.rag_chunk_overlap, chunk_size - 1), 0)
     chunks = []
     start = 0
     while start < len(clean_text):
-        end = min(start + CHUNK_SIZE, len(clean_text))
+        end = min(start + chunk_size, len(clean_text))
         chunks.append(clean_text[start:end])
         if end == len(clean_text):
             break
-        start = max(end - CHUNK_OVERLAP, start + 1)
+        start = max(end - chunk_overlap, start + 1)
     return chunks
 
 
@@ -232,6 +333,47 @@ def _load_schema(schema_json: str | None) -> dict[str, Any]:
         return {}
 
     return data if isinstance(data, dict) else {}
+
+
+def _get_index_metadata(schema: dict[str, Any]) -> dict[str, Any]:
+    rag_index = schema.get("rag_index")
+    if isinstance(rag_index, dict):
+        return rag_index
+
+    indexed = schema.get("indexed")
+    return indexed if isinstance(indexed, dict) else {}
+
+
+def _normalize_top_k(top_k: int | None) -> int:
+    value = top_k if top_k is not None else settings.rag_top_k
+    return max(1, min(int(value), 20))
+
+
+def _normalize_retrieval_mode(retrieval_mode: str | None) -> str:
+    mode = (retrieval_mode or settings.rag_retrieval_mode or "auto").strip().lower()
+    if mode not in SUPPORTED_RETRIEVAL_MODES:
+        raise RagServiceError("检索模式不支持，请使用 auto、vector 或 keyword")
+    return mode
+
+
+def _build_search_response(
+    file_record: File,
+    query: str,
+    top_k: int,
+    retrieval_mode: str,
+    fallback_used: bool,
+    results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "file_id": file_record.id,
+        "query": query,
+        "top_k": top_k,
+        "retrieval_mode": retrieval_mode,
+        "fallback_used": fallback_used,
+        "result_count": len(results),
+        "results": results,
+        "message": None if results else "未找到相关内容。",
+    }
 
 
 def _compact_text(text: str) -> str:

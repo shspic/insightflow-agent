@@ -60,13 +60,13 @@ export async function indexPdf(fileId) {
   return parseResponse(response);
 }
 
-export async function searchPdf(fileId, query, topK = 5) {
+export async function searchPdf(fileId, query, topK = 5, retrievalMode = "auto") {
   const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/search`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query, top_k: topK }),
+    body: JSON.stringify({ query, top_k: topK, retrieval_mode: retrievalMode }),
   });
 
   return parseResponse(response);

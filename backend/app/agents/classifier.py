@@ -11,7 +11,7 @@ def classify_task(user_input: str, file_type: str | None = None) -> str:
     if any(keyword in text for keyword in REPORT_GENERATION_KEYWORDS):
         return "report_generation"
 
-    if normalized_file_type == "pdf" and any(keyword in text for keyword in DOCUMENT_QA_KEYWORDS):
+    if _can_route_document_qa(normalized_file_type) and any(keyword in text for keyword in DOCUMENT_QA_KEYWORDS):
         return "document_qa"
 
     if normalized_file_type in IMAGE_FILE_TYPES and any(keyword in text for keyword in IMAGE_EXTRACT_KEYWORDS):
@@ -27,3 +27,11 @@ def classify_task(user_input: str, file_type: str | None = None) -> str:
         return "file_summary"
 
     return "unsupported"
+
+
+def _can_route_document_qa(file_type: str) -> bool:
+    if file_type == "pdf":
+        return True
+    if file_type in IMAGE_FILE_TYPES or file_type in {"csv", "xlsx"}:
+        return False
+    return True

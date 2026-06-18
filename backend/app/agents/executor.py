@@ -89,6 +89,10 @@ def _run_pdf_retrieval_tool(state: AgentState, db: Session) -> dict[str, Any]:
         "answer": result["answer"],
         "sources": result["sources"],
         "results": result["results"],
+        "retrieval_mode": result.get("retrieval_mode"),
+        "fallback_used": result.get("fallback_used", False),
+        "result_count": result.get("result_count", len(result.get("results", []))),
+        "top_k": result.get("top_k"),
         "message": result.get("message"),
     }
 

@@ -90,7 +90,13 @@ def search_pdf(file_id: int, payload: FileSearchRequest, db: Session = Depends(g
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
 
     try:
-        return search_pdf_chunks(db, file_record, query=payload.query, top_k=payload.top_k)
+        return search_pdf_chunks(
+            db,
+            file_record,
+            query=payload.query,
+            top_k=payload.top_k,
+            retrieval_mode=payload.retrieval_mode,
+        )
     except RagServiceError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
 
