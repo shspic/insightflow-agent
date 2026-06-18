@@ -6,6 +6,15 @@ InsightFlow Agent 是一个基于 FastAPI + React + LangGraph 的多模态文档
 
 这个项目的定位不是普通聊天机器人，而是一个围绕“文件输入、任务判断、工具调用、结果生成、过程可观测”构建的任务执行型 AI 应用。
 
+## 在线演示
+
+- 前端：[https://insightflow-agent.vercel.app](https://insightflow-agent.vercel.app/)
+- 后端：[https://insightflow-agent-spi.onrender.com](https://insightflow-agent-spi.onrender.com/)
+- 健康检查：[https://insightflow-agent-spi.onrender.com/api/health](https://insightflow-agent-spi.onrender.com/api/health)
+- Swagger：[https://insightflow-agent-spi.onrender.com/docs](https://insightflow-agent-spi.onrender.com/docs)
+
+说明：公网演示版部署在 Vercel + Render 免费服务上，可能存在冷启动和临时存储限制。
+
 ## 核心功能
 
 - 文件上传与管理：支持 `.csv`、`.xlsx`、`.pdf`、`.png`、`.jpg`、`.jpeg`。
@@ -220,6 +229,12 @@ CORS_ORIGINS=https://你的-vercel-前端地址.vercel.app
 - 后端健康检查：`https://你的-render-后端地址.onrender.com/api/health`
 - Swagger 文档：`https://你的-render-后端地址.onrender.com/docs`
 
+当前项目演示地址：
+
+- 前端：[https://insightflow-agent.vercel.app](https://insightflow-agent.vercel.app/)
+- 后端健康检查：[https://insightflow-agent-spi.onrender.com/api/health](https://insightflow-agent-spi.onrender.com/api/health)
+- Swagger：[https://insightflow-agent-spi.onrender.com/docs](https://insightflow-agent-spi.onrender.com/docs)
+
 免费部署版限制：
 
 - Render 免费服务可能冷启动。
@@ -264,13 +279,23 @@ CORS_ORIGINS=https://你的-vercel-前端地址.vercel.app
 - 前后端完整闭环，包含 FastAPI API、React 页面、SQLite 任务历史和本地文件存储。
 - Agent 执行过程可观测，便于调试、展示和解释每一步工具调用。
 - 支持 Docker Compose 一键启动，适合本地演示和面试讲解。
+- 已整理 Vercel + Render 免费公网部署方案，适合快速给面试官打开演示。
 - 适合 AI 应用开发、AI Agent 开发、后端工程和数据分析工具方向展示。
+
+## 适合岗位
+
+- AI 应用开发实习。
+- AI Agent 应用开发实习。
+- Python 后端开发实习。
+- RAG 应用开发实习。
+- 全栈 AI 应用开发实习。
 
 ## 当前限制
 
-- 当前是单用户本地演示版。
-- RAG 初版使用关键词或轻量检索，不是生产级向量检索。
+- 当前是单用户演示版，不是生产级 SaaS。
+- RAG 使用关键词和轻量 TF-IDF 检索，不是生产级向量数据库方案。
 - OCR 依赖本机或容器环境中的 Tesseract 配置。
+- Render 免费部署存在冷启动和临时存储限制。
 - 暂不支持用户登录。
 - 暂不支持生产级权限管理。
 - 暂不支持复杂多轮记忆。
@@ -280,8 +305,8 @@ CORS_ORIGINS=https://你的-vercel-前端地址.vercel.app
 
 - MCP 工具封装。
 - 向量数据库增强，例如 Chroma、FAISS 或其他检索后端。
-- 多文件综合分析和跨文件问答。
+- 多文件跨文档问答增强。
 - DOCX / PDF 报告导出。
 - 用户登录和权限管理。
-- 云端部署和公网演示。
+- 生产级云端部署，例如 Postgres、对象存储和后台任务队列。
 - 测试、评估和任务回归体系。
