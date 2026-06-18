@@ -209,6 +209,55 @@ button:disabled {
   resize: vertical;
 }
 
+.task-file-picker {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #d6dee2;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.task-file-picker legend {
+  padding: 0 6px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.task-file-options {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.task-form .task-file-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.task-form .task-file-option input {
+  margin-top: 3px;
+}
+
+.selected-task-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.selected-task-files span {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #eef9f8;
+  color: #005f73;
+}
+
 .file-input-label {
   display: inline-grid;
   place-items: center;

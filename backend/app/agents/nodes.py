@@ -22,6 +22,7 @@ from app.services.llm_service import (
     write_final_answer_with_llm,
     write_report_summary_with_llm,
 )
+from app.services.multi_file_service import summarize_multi_file_result
 
 AgentStep = Callable[[AgentState], AgentState]
 PayloadBuilder = Callable[[AgentState], dict[str, Any] | None]
@@ -68,7 +69,7 @@ def build_node_map(db: Session) -> dict[str, Callable[[AgentStateDict], AgentSta
             tool_name=_format_execute_tool_name,
             input_builder=lambda current: {"file_ids": current.file_ids, "selected_tools": current.selected_tools},
             step=lambda current: _execute_tools(current, db),
-            output_builder=lambda current: {"tool_results": current.tool_results},
+            output_builder=_build_execute_output,
         ),
         "write_result": lambda state: _run_traced_node(
             db=db,
@@ -101,7 +102,7 @@ def build_node_map(db: Session) -> dict[str, Callable[[AgentStateDict], AgentSta
 
 def _classify_task(state: AgentState, db: Session) -> AgentState:
     file_type = _get_primary_file_type(state, db)
-    rule_result = classify_user_task(state.user_input, file_type=file_type)
+    rule_result = classify_user_task(state.user_input, file_type=file_type, file_count=len(state.file_ids))
     state.task_type = rule_result
 
     if rule_result != "unsupported" or not is_llm_ready():
@@ -114,7 +115,7 @@ def _classify_task(state: AgentState, db: Session) -> AgentState:
         task_id=state.task_id,
         node_name="classify_task",
         tool_name="llm_task_classifier",
-        input_payload={"user_input": state.user_input, "file_type": file_type},
+        input_payload={"user_input": state.user_input, "file_type": file_type, "file_count": len(state.file_ids)},
         result=llm_result,
         started_at=started_at,
     )
@@ -341,6 +342,24 @@ def _format_llm_writer_tool_name(state: AgentState) -> str:
     if state.task_type == "document_qa":
         return "llm_rag_answer"
     return "llm_result_writer"
+
+
+def _build_execute_output(state: AgentState) -> dict[str, Any]:
+    if "multi_file_analysis_tool" in state.tool_results:
+        return {
+            "tool_results": {
+                "multi_file_analysis_tool": summarize_multi_file_result(
+                    state.tool_results["multi_file_analysis_tool"]
+                )
+            }
+        }
+    if "_multi_file_report_context" in state.tool_results:
+        output = dict(state.tool_results)
+        output["_multi_file_report_context"] = summarize_multi_file_result(
+            state.tool_results["_multi_file_report_context"]
+        )
+        return {"tool_results": output}
+    return {"tool_results": state.tool_results}
 
 
 def _format_llm_status(result) -> str:

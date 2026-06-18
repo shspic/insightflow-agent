@@ -78,6 +78,7 @@ function Workspace() {
           <h3>任务结果</h3>
           <p>状态：{formatStatus(currentTask.status)}</p>
           <p>类型：{currentTask.task_type}</p>
+          <p>关联文件：{currentTask.file_ids?.join("，") || "-"}</p>
           {currentTask.status === "failed" && (
             <p className="form-message form-message--error">任务执行失败，请查看下方失败节点。</p>
           )}

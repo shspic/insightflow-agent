@@ -7,6 +7,7 @@ from app.agents.state import AgentState
 from app.models.file import File
 from app.services.analysis_service import analyze_file
 from app.services.chart_service import generate_charts
+from app.services.multi_file_service import analyze_multiple_files
 from app.services.ocr_service import get_or_run_image_ocr
 from app.services.rag_service import answer_pdf_question
 from app.services.report_service import generate_task_report
@@ -42,6 +43,9 @@ def execute_tool(tool_name: str, state: AgentState, db: Session) -> dict[str, An
 
     if tool_name == "report_writer_tool":
         return _run_report_writer_tool(state, db)
+
+    if tool_name == "multi_file_analysis_tool":
+        return _run_multi_file_analysis_tool(state, db)
 
     raise ValueError(f"未知工具：{tool_name}")
 
@@ -109,6 +113,11 @@ def _run_image_ocr_tool(state: AgentState, db: Session) -> dict[str, Any]:
 
 
 def _run_report_writer_tool(state: AgentState, db: Session) -> dict[str, Any]:
+    multi_file_context = None
+    if len(state.file_ids) > 1:
+        multi_file_context = analyze_multiple_files(db=db, file_ids=state.file_ids, user_input=state.user_input)
+        state.tool_results["_multi_file_report_context"] = multi_file_context
+
     llm_summary = state.tool_results.get("_llm_report_summary", {}).get("summary")
     report = generate_task_report(
         db=db,
@@ -123,7 +132,12 @@ def _run_report_writer_tool(state: AgentState, db: Session) -> dict[str, Any]:
         "report_path": report["report_path"],
         "download_url": report["download_url"],
         "llm_summary_used": bool(llm_summary),
+        "multi_file_context_used": bool(multi_file_context),
     }
+
+
+def _run_multi_file_analysis_tool(state: AgentState, db: Session) -> dict[str, Any]:
+    return analyze_multiple_files(db=db, file_ids=state.file_ids, user_input=state.user_input)
 
 
 def _get_primary_file(state: AgentState, db: Session) -> File:

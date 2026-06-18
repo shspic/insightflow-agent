@@ -1,15 +1,19 @@
 DOCUMENT_QA_KEYWORDS = ["PDF", "文档", "依据", "来源", "引用", "这份文件里", "文件中", "资料中", "说明", "规定", "内容有哪些"]
 IMAGE_EXTRACT_KEYWORDS = ["识别", "图片", "截图", "这张图", "图片里", "图中", "OCR", "文字", "提取文字"]
 REPORT_GENERATION_KEYWORDS = ["报告", "生成报告", "分析报告", "总结成报告", "整理成报告", "输出报告"]
+MULTI_FILE_ANALYSIS_KEYWORDS = ["综合分析", "综合报告", "这些文件", "这些资料", "多个文件", "结合", "汇总", "统一分析", "整理这些资料"]
 IMAGE_FILE_TYPES = {"png", "jpg", "jpeg"}
 
 
-def classify_task(user_input: str, file_type: str | None = None) -> str:
+def classify_task(user_input: str, file_type: str | None = None, file_count: int = 1) -> str:
     text = user_input.strip()
     normalized_file_type = (file_type or "").lower()
 
     if any(keyword in text for keyword in REPORT_GENERATION_KEYWORDS):
         return "report_generation"
+
+    if file_count > 1 and any(keyword in text for keyword in MULTI_FILE_ANALYSIS_KEYWORDS):
+        return "multi_file_analysis"
 
     if _can_route_document_qa(normalized_file_type) and any(keyword in text for keyword in DOCUMENT_QA_KEYWORDS):
         return "document_qa"

@@ -82,35 +82,51 @@ def _build_report_content(
     final_answer: str | None,
     conclusion_override: str | None = None,
 ) -> str:
+    is_multi_report = len(files) > 1 or task_type == "multi_file_analysis"
+    title = "# 综合分析报告" if is_multi_report else "# 分析报告"
+    file_section_title = "## 2. 文件清单" if is_multi_report else "## 2. 文件概况"
+    data_section_title = "## 3. 表格数据分析" if is_multi_report else "## 3. 数据概况"
+    pdf_section_title = "## 5. PDF 文档依据" if is_multi_report else "## 5. 文档依据"
+    conclusion_title = "## 9. 结论与建议" if is_multi_report else "## 8. 结论与建议"
+    middle_sections = (
+        [
+            "## 7. 综合发现",
+            _build_comprehensive_findings(files),
+            "",
+            "## 8. 风险与限制",
+        ]
+        if is_multi_report
+        else ["## 7. 风险与限制"]
+    )
     sections = [
-        "# 分析报告",
+        title,
         "",
         "## 1. 任务说明",
         f"- 用户输入：{_text(task.user_input)}",
         f"- 任务类型：{_text(task_type)}",
         f"- 关联文件：{_format_file_names(files)}",
         "",
-        "## 2. 文件概况",
+        file_section_title,
         _build_file_overview(files),
         "",
-        "## 3. 数据概况",
+        data_section_title,
         _build_data_section(files),
         "",
         "## 4. 图表展示",
         _build_chart_section(files),
         "",
-        "## 5. 文档依据",
-        _build_pdf_sources_section(db, task.id),
+        pdf_section_title,
+        _build_pdf_sources_section(db, task.id, files),
         "",
         "## 6. 图片识别结果",
         _build_ocr_section(files),
         "",
-        "## 7. 风险与限制",
+        *middle_sections,
         "- 当前结果基于上传文件和系统已有工具自动生成。",
         "- OCR、PDF 文本提取、关键词检索和表格统计都可能存在误差。",
         "- 当前报告不是最终专业判断，重要结论仍需人工复核。",
         "",
-        "## 8. 结论与建议",
+        conclusion_title,
         _build_conclusion(final_answer=final_answer, conclusion_override=conclusion_override),
         "",
     ]
@@ -184,10 +200,10 @@ def _build_chart_section(files: list[File]) -> str:
     return "\n".join(lines)
 
 
-def _build_pdf_sources_section(db: Session, task_id: int) -> str:
+def _build_pdf_sources_section(db: Session, task_id: int, files: list[File]) -> str:
     sources = _load_pdf_sources_from_trace(db, task_id)
     if not sources:
-        return "本次任务未包含 PDF 引用来源。"
+        return _build_pdf_file_fallback(files)
 
     lines = []
     for index, source in enumerate(sources, start=1):
@@ -196,6 +212,25 @@ def _build_pdf_sources_section(db: Session, task_id: int) -> str:
             f"页码：第 {_text(source.get('page_number'))} 页；"
             f"引用片段：{_text(source.get('chunk_text'))}"
         )
+    return "\n".join(lines)
+
+
+def _build_pdf_file_fallback(files: list[File]) -> str:
+    pdf_files = [file_record for file_record in files if (file_record.file_type or "").lower() == "pdf"]
+    if not pdf_files:
+        return "本次任务未包含 PDF 引用来源。"
+
+    lines = []
+    for file_record in pdf_files:
+        schema = _load_schema(file_record.schema_json)
+        indexed = schema.get("rag_index") or schema.get("indexed") or {}
+        if isinstance(indexed, dict) and indexed.get("chunk_count"):
+            lines.append(
+                f"- {_text(file_record.filename)}：已建立 PDF 索引，"
+                f"片段数 {_text(indexed.get('chunk_count'))}，检索模式 {_text(indexed.get('retrieval_mode') or indexed.get('type'))}。"
+            )
+        else:
+            lines.append(f"- {_text(file_record.filename)}：{_text(file_record.summary)}")
     return "\n".join(lines)
 
 
@@ -212,6 +247,33 @@ def _build_ocr_section(files: list[File]) -> str:
         return "本次任务未包含图片识别结果。"
 
     return "\n\n".join(lines)
+
+
+def _build_comprehensive_findings(files: list[File]) -> str:
+    if not files:
+        return "未找到关联文件，无法生成综合发现。"
+
+    table_count = sum(1 for file_record in files if (file_record.file_type or "").lower() in {"csv", "xlsx"})
+    pdf_count = sum(1 for file_record in files if (file_record.file_type or "").lower() == "pdf")
+    image_count = sum(1 for file_record in files if (file_record.file_type or "").lower() in {"png", "jpg", "jpeg"})
+    analyzed_count = 0
+    chart_count = 0
+    ocr_count = 0
+    for file_record in files:
+        schema = _load_schema(file_record.schema_json)
+        if isinstance(schema.get("analysis_result"), dict):
+            analyzed_count += 1
+        chart_count += len(schema.get("charts") or [])
+        if isinstance(schema.get("ocr_result"), dict):
+            ocr_count += 1
+
+    return "\n".join(
+        [
+            f"- 本次关联文件共 {len(files)} 个，其中表格文件 {table_count} 个、PDF 文件 {pdf_count} 个、图片文件 {image_count} 个。",
+            f"- 已包含表格分析结果 {analyzed_count} 份，图表结果 {chart_count} 个，OCR 结果 {ocr_count} 份。",
+            "- 综合结论应结合原始文件、分析结果和引用来源共同判断。",
+        ]
+    )
 
 
 def _load_pdf_sources_from_trace(db: Session, task_id: int) -> list[dict[str, Any]]:
@@ -234,7 +296,9 @@ def _load_task_files(db: Session, task: Task) -> list[File]:
     file_ids = _load_file_ids(task.file_ids_json)
     if not file_ids:
         return []
-    return db.query(File).filter(File.id.in_(file_ids)).all()
+    files = db.query(File).filter(File.id.in_(file_ids)).all()
+    file_map = {file_record.id: file_record for file_record in files}
+    return [file_map[file_id] for file_id in file_ids if file_id in file_map]
 
 
 def _load_file_ids(file_ids_json: str | None) -> list[int]:

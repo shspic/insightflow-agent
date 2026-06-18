@@ -16,25 +16,27 @@ class TaskServiceError(Exception):
 
 
 def create_task(db: Session, user_input: str, file_ids: list[int]) -> Task:
-    if not file_ids:
+    normalized_file_ids = _normalize_file_ids(file_ids)
+    if not normalized_file_ids:
         raise TaskServiceError("请至少选择一个文件")
 
-    file_id = file_ids[0]
-    file_record = db.get(File, file_id)
-    if file_record is None:
-        raise TaskServiceError("文件不存在")
+    existing_files = db.query(File).filter(File.id.in_(normalized_file_ids)).all()
+    existing_file_ids = {file_record.id for file_record in existing_files}
+    missing_file_ids = [file_id for file_id in normalized_file_ids if file_id not in existing_file_ids]
+    if missing_file_ids:
+        raise TaskServiceError(f"文件不存在：{missing_file_ids}")
 
     task = Task(
         user_input=user_input,
         status="running",
-        file_ids_json=json.dumps([file_id], ensure_ascii=False),
+        file_ids_json=json.dumps(normalized_file_ids, ensure_ascii=False),
     )
     db.add(task)
     db.commit()
     db.refresh(task)
 
     try:
-        state = run_langgraph_agent(task_id=task.id, user_input=user_input, file_ids=[file_id], db=db)
+        state = run_langgraph_agent(task_id=task.id, user_input=user_input, file_ids=normalized_file_ids, db=db)
         db.refresh(task)
         if task.status == "running":
             task.task_type = state.task_type
@@ -88,3 +90,15 @@ def _load_file_ids(file_ids_json: str | None) -> list[int]:
         return []
 
     return [int(item) for item in data]
+
+
+def _normalize_file_ids(file_ids: list[int]) -> list[int]:
+    normalized = []
+    seen = set()
+    for file_id in file_ids:
+        parsed_id = int(file_id)
+        if parsed_id in seen:
+            continue
+        seen.add(parsed_id)
+        normalized.append(parsed_id)
+    return normalized

@@ -14,6 +14,7 @@ SUPPORTED_TASK_TYPES = {
     "document_qa",
     "image_extract",
     "report_generation",
+    "multi_file_analysis",
     "unsupported",
 }
 
@@ -85,7 +86,7 @@ def classify_task_with_llm(user_input: str, file_type: str | None) -> LLMResult:
                 "content": (
                     "你是任务分类器。只能从以下任务类型中选择一个返回："
                     "data_analysis、chart_generation、file_summary、document_qa、"
-                    "image_extract、report_generation、unsupported。"
+                    "image_extract、report_generation、multi_file_analysis、unsupported。"
                     "只返回任务类型字符串，不要解释。"
                 ),
             },
@@ -277,7 +278,7 @@ def _extract_content(response_data: dict[str, Any]) -> str | None:
 def _normalize_task_type(value: str) -> str:
     text = value.strip().strip("`").strip()
     match = re.search(
-        r"(data_analysis|chart_generation|file_summary|document_qa|image_extract|report_generation|unsupported)",
+        r"(data_analysis|chart_generation|file_summary|document_qa|image_extract|report_generation|multi_file_analysis|unsupported)",
         text,
     )
     return match.group(1) if match else text
