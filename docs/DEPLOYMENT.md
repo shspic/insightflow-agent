@@ -1,4 +1,70 @@
-# 免费公网部署准备
+# 部署与本地三进程启动
+
+> V2-04：可靠任务执行必须同时运行 FastAPI API 和独立 Worker。数据库队列使用 SQLite 租约，不要求 Redis。当前只适合单机低并发；Vercel + Render 旧演示没有持久 Worker 和共享持久磁盘，不能宣称支持 V2-04 可靠任务恢复。
+
+## V2-04 本地启动
+
+首次升级前先停止写入并备份 `backend/data/app.db`，然后人工执行：
+
+```powershell
+cd D:\spir\NO2_agent\backend
+.\.venv\Scripts\alembic.exe -c alembic.ini current
+.\.venv\Scripts\alembic.exe -c alembic.ini heads
+.\.venv\Scripts\alembic.exe -c alembic.ini upgrade head
+```
+
+终端一，API：
+
+```powershell
+cd D:\spir\NO2_agent\backend
+.\.venv\Scripts\activate
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+终端二，Worker：
+
+```powershell
+cd D:\spir\NO2_agent\backend
+.\.venv\Scripts\activate
+python -m app.workers.task_worker
+```
+
+终端三，前端：
+
+```powershell
+cd D:\spir\NO2_agent\frontend
+npm run dev
+```
+
+Worker 必须和 API 共享同一 `DATABASE_URL`、`UPLOAD_DIR`、`CHART_DIR` 和 `REPORT_DIR`。反向代理需关闭 SSE 缓冲并设置足够的空闲超时。
+
+## V2-04 Docker Compose
+
+根目录的 Compose 包含 `backend`、`worker`、`frontend`：
+
+```powershell
+docker compose config --quiet
+docker compose up --build
+```
+
+Compose 不自动替代生产数据库备份流程。真实数据库迁移仍应由负责人在停写、备份和检查 revision 后人工执行。
+
+关键环境变量：
+
+```text
+WORKER_POLL_INTERVAL_SECONDS=2
+WORKER_LEASE_SECONDS=120
+WORKER_HEARTBEAT_SECONDS=15
+TASK_MAX_RETRIES=1
+AGENT_MAX_REPLAN_COUNT=1
+AGENT_MAX_REVIEW_RETRIES=1
+TASK_MAX_CLARIFICATION_ROUNDS=2
+TASK_EVENT_HEARTBEAT_SECONDS=15
+```
+
+## 旧版免费公网部署准备
+
+> V2-03 提示：本文主体记录的是旧版 Vercel + Render 演示方案，不是 V2 最终生产推荐。V2 使用 Cookie Session，推荐同一域名提供前端并将 `/api` 反向代理到 FastAPI；生产环境必须配置高熵 `AUTH_SECRET_KEY`、`AUTH_COOKIE_SECURE=true`、`ENABLE_LEGACY_V1_API=false`，并使用持久数据库和持久文件存储。跨站部署还需逐项验证 SameSite、CORS 和第三方 Cookie 限制。V2-03 还必须按 [V2-03 文件理解文档](V2_03_FILE_UNDERSTANDING.md)配置上传安全、配额、关系阈值和上下文上限。
 
 本文档说明如何把 InsightFlow Agent 按前后端分离方式部署到免费公网环境：
 
@@ -60,7 +126,7 @@ pip install -r requirements.txt
 5. Start Command 填写：
 
 ```bash
-python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 6. Health Check Path 填写：
@@ -122,6 +188,15 @@ RAG_CHUNK_SIZE=800
 RAG_CHUNK_OVERLAP=100
 TESSERACT_CMD=
 OCR_LANG=chi_sim+eng
+UPLOAD_MAX_FILE_SIZE_BYTES=20971520
+UPLOAD_MAX_BATCH_FILES=10
+WORKSPACE_MAX_FILES=50
+USER_STORAGE_QUOTA_BYTES=209715200
+RELATION_MIN_CONFIDENCE=0.60
+RELATION_HIGH_CONFIDENCE=0.80
+RELATION_MAX_PAIRS=100
+WORKSPACE_CONTEXT_MAX_FILES=20
+WORKSPACE_CONTEXT_MAX_CHARS=30000
 ```
 
 说明：
@@ -129,6 +204,8 @@ OCR_LANG=chi_sim+eng
 - 不要把真实 `LLM_API_KEY` 写入 README、`render.yaml` 或代码。
 - `TESSERACT_CMD` 在 Render 上通常留空。
 - 如果没有配置 LLM Key，系统会回退到本地规则和模板逻辑。
+- 管理员只绕过普通用户总存储配额，仍受单文件、批量、格式、页数和像素安全上限约束。
+- 免费临时磁盘不适合保存用户上传文件、Profile、关系和审计记录；正式环境必须采用持久存储并建立备份。
 
 ### Vercel 前端环境变量
 

@@ -17,6 +17,24 @@ services:
       - ./backend/data:/app/data
       - ./backend/storage:/app/storage
 
+  worker:
+    build: ./backend
+    command: python -m app.workers.task_worker
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: sqlite:///./data/app.db
+      UPLOAD_DIR: ./storage/uploads
+      CHART_DIR: ./storage/charts
+      REPORT_DIR: ./storage/reports
+      TESSERACT_CMD: ""
+      OCR_LANG: chi_sim+eng
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/storage:/app/storage
+    depends_on:
+      - backend
+
   frontend:
     build: ./frontend
     ports:

@@ -47,6 +47,7 @@ class Settings:
     llm_model: str = _get_env("LLM_MODEL", "deepseek-chat")
     llm_base_url: str = _get_env("LLM_BASE_URL", "")
     llm_enabled: bool = _parse_bool(_get_env("LLM_ENABLED", "true"))
+    llm_max_retries: int = _parse_int(_get_env("LLM_MAX_RETRIES", "1"), 1)
     embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")
     vector_store: str = _get_env("VECTOR_STORE", "chroma")
     rag_retrieval_mode: str = _get_env("RAG_RETRIEVAL_MODE", "auto")
@@ -125,6 +126,40 @@ class Settings:
     workspace_context_max_chars: int = _parse_int(
         _get_env("WORKSPACE_CONTEXT_MAX_CHARS", "30000"),
         30000,
+    )
+    worker_poll_interval_seconds: float = _parse_float(
+        _get_env("WORKER_POLL_INTERVAL_SECONDS", "2"),
+        2,
+    )
+    worker_lease_seconds: int = _parse_int(_get_env("WORKER_LEASE_SECONDS", "120"), 120)
+    worker_heartbeat_seconds: int = _parse_int(
+        _get_env("WORKER_HEARTBEAT_SECONDS", "15"),
+        15,
+    )
+    task_max_retries: int = _parse_int(_get_env("TASK_MAX_RETRIES", "1"), 1)
+    agent_max_replan_count: int = _parse_int(
+        _get_env("AGENT_MAX_REPLAN_COUNT", "1"),
+        1,
+    )
+    agent_max_review_retries: int = _parse_int(
+        _get_env("AGENT_MAX_REVIEW_RETRIES", "1"),
+        1,
+    )
+    task_max_clarification_rounds: int = _parse_int(
+        _get_env("TASK_MAX_CLARIFICATION_ROUNDS", "2"),
+        2,
+    )
+    task_event_heartbeat_seconds: int = _parse_int(
+        _get_env("TASK_EVENT_HEARTBEAT_SECONDS", "15"),
+        15,
+    )
+    task_model_call_budget: int = _parse_int(
+        _get_env("TASK_MODEL_CALL_BUDGET", "12"),
+        12,
+    )
+    task_tool_call_budget: int = _parse_int(
+        _get_env("TASK_TOOL_CALL_BUDGET", "20"),
+        20,
     )
 
     @property

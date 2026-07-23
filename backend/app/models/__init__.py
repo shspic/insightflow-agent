@@ -1,4 +1,5 @@
 from app.models.audit_log import AuditLog
+from app.models.agent_run import AgentRun
 from app.models.auth_session import AuthSession
 from app.models.auth_rate_limit import AuthRateLimit
 from app.models.file import File
@@ -9,6 +10,10 @@ from app.models.file_relation import FileRelation
 from app.models.invite_code import InviteCode
 from app.models.password_reset_request import PasswordResetRequest
 from app.models.task import Task
+from app.models.task_clarification import TaskClarification
+from app.models.task_event import TaskEvent
+from app.models.task_plan import TaskPlan
+from app.models.task_step import TaskStep
 from app.models.tool_call import ToolCall
 from app.models.user import User
 from app.models.workspace import Workspace
@@ -16,6 +21,7 @@ from app.models.workspace_file import WorkspaceFile
 
 __all__ = [
     "AuditLog",
+    "AgentRun",
     "AuthSession",
     "AuthRateLimit",
     "File",
@@ -26,6 +32,10 @@ __all__ = [
     "InviteCode",
     "PasswordResetRequest",
     "Task",
+    "TaskClarification",
+    "TaskEvent",
+    "TaskPlan",
+    "TaskStep",
     "ToolCall",
     "User",
     "Workspace",

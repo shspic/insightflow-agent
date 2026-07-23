@@ -1,5 +1,6 @@
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -27,6 +28,8 @@ class LLMResult:
     content: str | None = None
     message: str | None = None
     skipped: bool = False
+    token_usage: dict[str, Any] | None = None
+    duration_ms: int | None = None
 
 
 def is_llm_ready() -> bool:
@@ -39,6 +42,7 @@ def call_llm(
     max_tokens: int = 800,
     timeout_seconds: int = 30,
 ) -> LLMResult:
+    started = time.monotonic()
     if not settings.llm_enabled:
         return LLMResult(success=False, skipped=True, message="LLM 已关闭，使用本地规则降级。")
 
@@ -61,21 +65,38 @@ def call_llm(
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            response_data = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        return LLMResult(success=False, message=f"LLM 调用失败：HTTP {exc.code}")
-    except urllib.error.URLError as exc:
-        return LLMResult(success=False, message=f"LLM 调用失败：{exc.reason}")
-    except Exception as exc:
-        return LLMResult(success=False, message=f"LLM 调用失败：{exc}")
+    response_data = None
+    last_message = "LLM 调用失败。"
+    for attempt in range(max(0, settings.llm_max_retries) + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                response_data = json.loads(response.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as exc:
+            last_message = f"LLM 调用失败：HTTP {exc.code}"
+            retryable = exc.code == 429 or exc.code >= 500
+            if not retryable or attempt >= max(0, settings.llm_max_retries):
+                return LLMResult(success=False, message=last_message)
+        except urllib.error.URLError as exc:
+            last_message = f"LLM 调用失败：{exc.reason}"
+            if attempt >= max(0, settings.llm_max_retries):
+                return LLMResult(success=False, message=last_message)
+        except Exception as exc:
+            return LLMResult(success=False, message=f"LLM 调用失败：{exc}")
+    if response_data is None:
+        return LLMResult(success=False, message=last_message)
 
     content = _extract_content(response_data)
     if not content:
         return LLMResult(success=False, message="LLM 返回内容为空。")
 
-    return LLMResult(success=True, content=content.strip())
+    usage = response_data.get("usage")
+    return LLMResult(
+        success=True,
+        content=content.strip(),
+        token_usage=usage if isinstance(usage, dict) else None,
+        duration_ms=int((time.monotonic() - started) * 1000),
+    )
 
 
 def classify_task_with_llm(user_input: str, file_type: str | None) -> LLMResult:

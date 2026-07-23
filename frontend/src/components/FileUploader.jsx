@@ -3,7 +3,7 @@ import { uploadFile } from "../api/files";
 
 const ACCEPTED_FILE_TYPES = ".xlsx,.csv,.pdf,.png,.jpg,.jpeg";
 
-function FileUploader({ onUploaded }) {
+function FileUploader({ onUploaded, uploadAction = uploadFile }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -23,7 +23,7 @@ function FileUploader({ onUploaded }) {
     setMessage("正在上传文件");
 
     try {
-      await uploadFile(selectedFile);
+      await uploadAction(selectedFile);
       setSelectedFile(null);
       event.target.reset();
       setMessageType("success");

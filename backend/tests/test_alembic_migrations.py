@@ -13,7 +13,8 @@ ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
 BASELINE_REVISION = "20260723_0001"
 V2_02_REVISION = "20260723_0003"
 PREVIOUS_REVISION = V2_02_REVISION
-HEAD_REVISION = "20260723_0004"
+V2_03_REVISION = "20260723_0004"
+HEAD_REVISION = "20260724_0005"
 V2_TABLES = {
     "users",
     "auth_sessions",
@@ -26,6 +27,11 @@ V2_TABLES = {
     "file_profiles",
     "file_relations",
     "file_processing_runs",
+    "task_clarifications",
+    "task_plans",
+    "task_steps",
+    "task_events",
+    "agent_runs",
 }
 
 
@@ -49,7 +55,14 @@ def test_alembic_upgrade_head_creates_v2_schema(tmp_path: Path, monkeypatch) -> 
         "chunk_hash",
         "parser_version",
     }.issubset(_column_names(inspector, "file_chunks"))
-    assert {"owner_user_id", "workspace_id"}.issubset(_column_names(inspector, "tasks"))
+    assert {
+        "owner_user_id",
+        "workspace_id",
+        "progress_percent",
+        "worker_id",
+        "lease_expires_at",
+        "agent_state_json",
+    }.issubset(_column_names(inspector, "tasks"))
     with engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     assert revision == HEAD_REVISION
@@ -174,6 +187,42 @@ def test_v2_03_migration_can_downgrade_to_v2_02_and_upgrade_again(
         "file_processing_runs",
     }.issubset(upgraded_inspector.get_table_names())
     assert "source_type" in _column_names(upgraded_inspector, "file_chunks")
+    with upgraded_engine.connect() as connection:
+        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+    assert revision == HEAD_REVISION
+    upgraded_engine.dispose()
+
+
+def test_v2_04_migration_can_downgrade_to_v2_03_and_upgrade_again(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "v2-04-roundtrip.db"
+    alembic_config = _build_alembic_config(database_path, monkeypatch)
+    command.upgrade(alembic_config, "head")
+
+    command.downgrade(alembic_config, V2_03_REVISION)
+    engine = create_engine(_sqlite_url(database_path))
+    inspector = inspect(engine)
+    assert "task_plans" not in inspector.get_table_names()
+    assert "task_events" not in inspector.get_table_names()
+    assert "worker_id" not in _column_names(inspector, "tasks")
+    with engine.connect() as connection:
+        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+    assert revision == V2_03_REVISION
+    engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    upgraded_engine = create_engine(_sqlite_url(database_path))
+    upgraded_inspector = inspect(upgraded_engine)
+    assert {
+        "task_clarifications",
+        "task_plans",
+        "task_steps",
+        "task_events",
+        "agent_runs",
+    }.issubset(upgraded_inspector.get_table_names())
+    assert "worker_id" in _column_names(upgraded_inspector, "tasks")
     with upgraded_engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     assert revision == HEAD_REVISION

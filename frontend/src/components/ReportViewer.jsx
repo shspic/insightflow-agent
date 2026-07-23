@@ -1,4 +1,4 @@
-import { getReportDownloadUrl } from "../api/tasks";
+import { apiResourceUrl } from "../api/client";
 
 function ReportViewer({ report }) {
   if (!report) {
@@ -9,11 +9,10 @@ function ReportViewer({ report }) {
     <div className="report-viewer">
       <div className="section-heading">
         <h3>{report.title}</h3>
-        <a className="download-link" href={getReportDownloadUrl(report.download_url)} download>
+        <a className="download-link" href={apiResourceUrl(report.download_url)} download>
           下载报告
         </a>
       </div>
-      <p>路径：{report.report_path}</p>
       <pre>{report.content}</pre>
     </div>
   );

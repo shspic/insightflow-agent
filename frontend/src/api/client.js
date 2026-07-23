@@ -1,0 +1,106 @@
+import { API_BASE_URL, V2_API_BASE_URL } from "./config";
+
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const CSRF_COOKIE_NAME = "insightflow_csrf";
+let csrfToken = null;
+
+export class ApiError extends Error {
+  constructor(message, status, code = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function readCookie(name) {
+  const prefix = `${encodeURIComponent(name)}=`;
+  const item = document.cookie.split("; ").find((value) => value.startsWith(prefix));
+  return item ? decodeURIComponent(item.slice(prefix.length)) : null;
+}
+
+async function ensureCsrfToken() {
+  let token = csrfToken || readCookie(CSRF_COOKIE_NAME);
+  if (token) {
+    return token;
+  }
+  const response = await fetch(`${V2_API_BASE_URL}/auth/csrf`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new ApiError("无法建立安全请求上下文", response.status);
+  }
+  const data = await response.json().catch(() => null);
+  token = data?.csrf_token || readCookie(CSRF_COOKIE_NAME);
+  if (!token) {
+    throw new ApiError("未收到 CSRF Token，请确认使用同源访问或 Vite Proxy", 403);
+  }
+  csrfToken = token;
+  return csrfToken;
+}
+
+function getErrorMessage(data, status) {
+  const detail = data?.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (detail?.message) {
+    return detail.message;
+  }
+  const defaults = {
+    401: "登录状态已失效，请重新登录",
+    403: "没有权限执行此操作",
+    404: "请求的资源不存在",
+    409: "当前状态不允许此操作",
+    413: "文件过大或单次文件数量超过限制",
+    415: "文件类型、MIME 或内容特征不受支持",
+    422: "文件内容或提交格式未通过服务端校验",
+    429: "配额不足或操作过于频繁，请稍后重试",
+    500: "服务器暂时无法处理请求",
+  };
+  return defaults[status] || "请求失败，请稍后重试";
+}
+
+export async function apiRequest(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers || {});
+  if (MUTATING_METHODS.has(method)) {
+    headers.set("X-CSRF-Token", await ensureCsrfToken());
+  }
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(`${V2_API_BASE_URL}${path}`, {
+    ...options,
+    method,
+    headers,
+    credentials: "include",
+  });
+  const data = await response.json().catch(() => null);
+  if (data?.csrf_token) {
+    csrfToken = data.csrf_token;
+  }
+  if (!response.ok) {
+    const code = typeof data?.detail === "object" ? data.detail.code : null;
+    const error = new ApiError(getErrorMessage(data, response.status), response.status, code);
+    if (response.status === 401) {
+      csrfToken = null;
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
+    if (code === "PASSWORD_CHANGE_REQUIRED") {
+      window.dispatchEvent(new CustomEvent("auth:password-change-required"));
+    }
+    if (import.meta.env.DEV) {
+      console.error("API 请求失败", { path, status: response.status, data });
+    }
+    throw error;
+  }
+  if (path === "/auth/logout" || path === "/auth/revoke-sessions") {
+    csrfToken = null;
+  }
+  return data;
+}
+
+export function apiResourceUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}

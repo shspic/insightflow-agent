@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: APP_NAME
@@ -22,6 +22,14 @@ services:
         value: ./storage/reports
       - key: CORS_ORIGINS
         value: https://your-vercel-app.vercel.app,http://localhost:5173
+      - key: AUTH_SECRET_KEY
+        sync: false
+      - key: AUTH_COOKIE_SECURE
+        value: "true"
+      - key: AUTH_COOKIE_SAMESITE
+        value: none
+      - key: ENABLE_LEGACY_V1_API
+        value: "false"
       - key: LLM_ENABLED
         value: "true"
       - key: LLM_PROVIDER

@@ -19,6 +19,131 @@ body {
   min-height: 100vh;
 }
 
+button,
+.button-link {
+  cursor: pointer;
+}
+
+a {
+  color: #005f73;
+}
+
+.app-header,
+.user-actions,
+.section-heading,
+.inline-form,
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-header h1,
+.auth-card h1 {
+  font-size: clamp(32px, 5vw, 56px);
+}
+
+.app-tabs a {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.app-tabs a.active {
+  color: #fff;
+  background: #005f73;
+}
+
+.page-section,
+.panel {
+  display: grid;
+  gap: 18px;
+}
+
+.panel,
+.workspace-card,
+.task-card,
+.one-time-secret {
+  padding: 20px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.auth-shell {
+  align-items: center;
+}
+
+.auth-card {
+  width: min(100%, 560px);
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-form label,
+.inline-form label {
+  display: grid;
+  gap: 6px;
+}
+
+input,
+textarea,
+select {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #b9c5ca;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.button-link {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #fff;
+  background: #005f73;
+  text-decoration: none;
+}
+
+.one-time-secret {
+  border-color: #ee9b00;
+  background: #fff8e8;
+}
+
+.one-time-secret code {
+  display: block;
+  margin: 12px 0;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  background: #fff;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 12px;
+  }
+
+  .dashboard {
+    padding: 22px;
+  }
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -628,6 +753,245 @@ button:disabled {
   color: #5a6675;
 }
 
+.workspace-understanding,
+.file-profile-list,
+.relation-list,
+.quality-list,
+.context-preview,
+.context-grid > div {
+  display: grid;
+  gap: 12px;
+}
+
+.batch-upload {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed #7f9da6;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.batch-upload__dropzone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.batch-upload__dropzone p {
+  flex: 1 1 260px;
+  margin: 0;
+  color: #5a6675;
+}
+
+.upload-result-list {
+  display: grid;
+  gap: 8px;
+}
+
+.upload-result-item {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto minmax(180px, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.understanding-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.file-selection-list {
+  display: flex;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid #d6dee2;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.file-selection-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.file-profile-card,
+.relation-card,
+.understanding-section,
+.context-preview {
+  padding: 16px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.file-profile-card h4,
+.file-profile-card p,
+.relation-card h4,
+.relation-card p,
+.understanding-section h4,
+.context-preview p {
+  margin: 0;
+}
+
+.profile-meta-grid,
+.profile-structure,
+.profile-editor,
+.relation-editor,
+.context-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-meta-grid,
+.profile-structure,
+.context-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-meta-grid span,
+.profile-structure span,
+.quality-list span,
+.relation-evidence span,
+.context-grid span {
+  color: #334155;
+  font-size: 14px;
+}
+
+.profile-structure > div,
+.context-grid > div {
+  padding: 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.profile-structure > div {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-left: 4px solid #005f73;
+  background: #f4fbfb;
+}
+
+.profile-summary p {
+  color: #334155;
+  white-space: pre-wrap;
+}
+
+.profile-editor,
+.relation-editor {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: end;
+}
+
+.profile-editor label,
+.relation-editor label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.profile-editor .row-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+}
+
+.relation-evidence {
+  display: flex;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.context-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.task-flow,
+.task-stage,
+.plan-steps,
+.event-timeline {
+  display: grid;
+  gap: 14px;
+}
+
+.task-flow__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.task-flow progress {
+  width: 100%;
+  height: 14px;
+}
+
+.task-stage {
+  padding: 16px;
+  border: 1px solid #d6dee2;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.task-stage h4,
+.task-stage p {
+  margin: 0;
+}
+
+.task-stage label {
+  display: grid;
+  gap: 6px;
+}
+
+.task-stage small {
+  color: #5a6675;
+}
+
+.plan-step,
+.execution-step {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d6dee2;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.event-timeline {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.event-timeline li {
+  display: grid;
+  grid-template-columns: auto minmax(140px, auto) 1fr;
+  gap: 8px 12px;
+  align-items: baseline;
+}
+
+.event-timeline time {
+  color: #64748b;
+  font-size: 13px;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding: 20px;
@@ -659,6 +1023,16 @@ button:disabled {
   }
 
   .task-history-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-meta-grid,
+  .profile-structure,
+  .upload-result-item {
+    grid-template-columns: 1fr;
+  }
+
+  .event-timeline li {
     grid-template-columns: 1fr;
   }
 }
