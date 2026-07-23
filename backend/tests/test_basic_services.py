@@ -6,9 +6,14 @@ SERVICE_MODULES = [
     "app.services.parser_service",
     "app.services.analysis_service",
     "app.services.chart_service",
+    "app.services.ocr_service",
     "app.services.rag_service",
     "app.services.report_service",
     "app.services.llm_service",
+    "app.services.multi_file_service",
+    "app.services.file_understanding_service",
+    "app.services.file_relation_service",
+    "app.services.workspace_context_service",
 ]
 
 

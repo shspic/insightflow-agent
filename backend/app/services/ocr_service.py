@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.file import File
 
-SUPPORTED_OCR_TYPES = {"png", "jpg", "jpeg"}
+SUPPORTED_OCR_TYPES = {"png", "jpg", "jpeg", "webp"}
 OCR_ENGINE_NOT_CONFIGURED_MESSAGE = "OCR 引擎未配置，请安装 Tesseract 或后续接入 VLM API。"
 OCR_LANGUAGE_NOT_FOUND_MESSAGE = "OCR 语言包未配置或缺失，请确认 Tesseract 已安装对应语言包。"
 
@@ -114,7 +114,7 @@ def _is_language_error(message: str) -> bool:
 def _ensure_image_file(file_record: File) -> None:
     file_type = (file_record.file_type or "").lower()
     if file_type not in SUPPORTED_OCR_TYPES:
-        raise FileOcrError("当前文件类型不支持 OCR，仅支持 PNG、JPG、JPEG 图片")
+        raise FileOcrError("当前文件类型不支持 OCR，仅支持 PNG、JPG、JPEG、WEBP 图片")
 
     file_path = Path(file_record.file_path)
     if not file_path.exists():

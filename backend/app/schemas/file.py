@@ -9,7 +9,6 @@ class FileResponse(BaseModel):
     id: int
     filename: str
     file_type: str | None
-    file_path: str
     status: str
     summary: str | None
     schema_json_: str | None = Field(default=None, alias="schema_json")

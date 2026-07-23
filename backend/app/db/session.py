@@ -2,9 +2,10 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from app.core.config import BACKEND_DIR, settings
+from app.db.base import Base
 
 
 def ensure_sqlite_parent_dir(database_url: str) -> None:
@@ -32,7 +33,6 @@ engine = create_engine(
     connect_args=connect_args,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 
 def get_db():

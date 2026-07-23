@@ -15,7 +15,14 @@ class TaskServiceError(Exception):
         super().__init__(message)
 
 
-def create_task(db: Session, user_input: str, file_ids: list[int]) -> Task:
+def create_task(
+    db: Session,
+    user_input: str,
+    file_ids: list[int],
+    *,
+    owner_user_id: int | None = None,
+    workspace_id: int | None = None,
+) -> Task:
     normalized_file_ids = _normalize_file_ids(file_ids)
     if not normalized_file_ids:
         raise TaskServiceError("请至少选择一个文件")
@@ -27,6 +34,8 @@ def create_task(db: Session, user_input: str, file_ids: list[int]) -> Task:
         raise TaskServiceError(f"文件不存在：{missing_file_ids}")
 
     task = Task(
+        owner_user_id=owner_user_id,
+        workspace_id=workspace_id,
         user_input=user_input,
         status="running",
         file_ids_json=json.dumps(normalized_file_ids, ensure_ascii=False),
@@ -72,6 +81,23 @@ def task_to_response(task: Task) -> dict[str, Any]:
         "file_ids": _load_file_ids(task.file_ids_json),
         "final_answer": task.final_answer,
         "report_path": task.report_path,
+        "created_at": task.created_at,
+        "updated_at": task.updated_at,
+    }
+
+
+def task_to_v2_response(task: Task) -> dict[str, Any]:
+    from app.services.workspace_service import safe_public_text
+
+    return {
+        "id": task.id,
+        "workspace_id": task.workspace_id,
+        "user_input": task.user_input,
+        "task_type": task.task_type,
+        "status": task.status,
+        "file_ids": _load_file_ids(task.file_ids_json),
+        "final_answer": safe_public_text(task.final_answer),
+        "has_report": bool(task.report_path),
         "created_at": task.created_at,
         "updated_at": task.updated_at,
     }
