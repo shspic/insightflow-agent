@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    refreshUser();
+    refreshUser().catch(() => setUser(null));
     const clear = () => setUser(null);
     const forceChange = () => setUser((current) => (
       current ? { ...current, must_change_password: true } : current

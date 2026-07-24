@@ -7,6 +7,7 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .pytest-v205-*/
+.pytest-tmp-*/
 .venv/
 backend/.venv/
 venv/
@@ -34,6 +35,10 @@ node_modules/
 frontend/node_modules/
 dist/
 frontend/dist/
+
+# Local browser verification
+.playwright-cli/
+output/playwright/
 
 # System
 .DS_Store

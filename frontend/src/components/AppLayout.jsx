@@ -1,9 +1,23 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Button, Dropdown, IconButton, Select, Tooltip } from "./common";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+
+const NAV_ITEMS = [
+  { to: "/workspaces", short: "工", label: "工作区", end: false },
+  { to: "/usage", short: "量", label: "使用量", end: true },
+];
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => setMobileOpen(false), [location.pathname]);
 
   async function handleLogout() {
     await logout();
@@ -11,25 +25,68 @@ export default function AppLayout() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="dashboard">
-        <header className="app-header">
-          <div>
-            <p className="eyebrow">多模态资料分析与报告生成 Agent</p>
-            <h1>InsightFlow Agent</h1>
-          </div>
-          <div className="user-actions">
-            <span>{user.username}（{user.role}）</span>
-            <button type="button" onClick={handleLogout}>退出登录</button>
-          </div>
-        </header>
-        <nav className="app-tabs">
-          <NavLink to="/workspaces">工作区</NavLink>
-          <NavLink to="/usage">使用量</NavLink>
-          {user.role === "admin" && <NavLink to="/admin">管理员后台</NavLink>}
+    <div className={`product-shell ${collapsed ? "is-collapsed" : ""}`}>
+      <a className="skip-link" href="#main-content">跳到主要内容</a>
+      <aside className={`app-sidebar ${mobileOpen ? "is-open" : ""}`} aria-label="主导航">
+        <div className="app-brand">
+          <span className="app-brand__mark" aria-hidden="true">IF</span>
+          {!collapsed && <div><strong>InsightFlow</strong><small>资料分析工作台</small></div>}
+        </div>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map((item) => (
+            <Tooltip label={collapsed ? item.label : ""} key={item.to}>
+              <NavLink to={item.to} end={item.end} aria-label={collapsed ? item.label : undefined}>
+                <span aria-hidden="true">{item.short}</span>
+                {!collapsed && item.label}
+              </NavLink>
+            </Tooltip>
+          ))}
+          {user.role === "admin" && (
+            <Tooltip label={collapsed ? "管理后台" : ""}>
+              <NavLink to="/admin" aria-label={collapsed ? "管理后台" : undefined}>
+                <span aria-hidden="true">管</span>
+                {!collapsed && "管理后台"}
+              </NavLink>
+            </Tooltip>
+          )}
         </nav>
-        <Outlet />
-      </section>
-    </main>
+        <div className="sidebar-footer">
+          <IconButton
+            label={collapsed ? "展开侧栏" : "收起侧栏"}
+            variant="ghost"
+            onClick={() => setCollapsed((value) => !value)}
+          >
+            {collapsed ? "展开" : "收起导航"}
+          </IconButton>
+          {!collapsed && <small>服务端状态始终是任务真相来源</small>}
+        </div>
+      </aside>
+      {mobileOpen && <button className="sidebar-scrim" aria-label="关闭导航" onClick={() => setMobileOpen(false)} />}
+      <div className="app-workspace">
+        <header className="topbar">
+          <IconButton label="打开导航" variant="ghost" className="mobile-menu" onClick={() => setMobileOpen(true)}>
+            菜单
+          </IconButton>
+          <div className="topbar__context">
+            <strong>{location.pathname.startsWith("/admin") ? "系统管理" : "InsightFlow Agent"}</strong>
+            <small>多模态资料分析与报告生成</small>
+          </div>
+          <Dropdown label={`${user.username} · ${user.role === "admin" ? "管理员" : "用户"}`}>
+            <label className="theme-control">
+              <span>界面主题</span>
+              <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
+                <option value="system">跟随系统</option>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+              </Select>
+            </label>
+            <Button variant="ghost" onClick={handleLogout}>退出登录</Button>
+          </Dropdown>
+        </header>
+        <main id="main-content" className="app-content" tabIndex="-1">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   );
 }

@@ -13,17 +13,30 @@ import {
   retryWorkspaceTaskStep,
 } from "../api/workspaceTasks";
 import ReportCenter from "./ReportCenter";
+import {
+  Alert,
+  Badge,
+  Button,
+  Checkbox,
+  EmptyState,
+  FormField,
+  Progress,
+  StatusBadge,
+  Stepper,
+  Textarea,
+} from "./common";
+import { useFeedback } from "../context/FeedbackContext";
+import {
+  AGENT_LABELS,
+  FILE_STATUS,
+  TASK_STATUS,
+  mergeEvents,
+  statusMeta,
+  validatePlanSteps,
+} from "../utils/ui";
 
 const TERMINAL = new Set(["completed", "completed_with_warnings", "failed", "cancelled"]);
 const LIVE = new Set(["queued", "running", "reviewing", "retrying"]);
-
-const AGENT_LABELS = {
-  file_understanding_agent: "File Understanding Agent",
-  data_analysis_agent: "Data Analysis Agent",
-  document_research_agent: "Document Research Agent",
-  report_agent: "Report Agent",
-  quality_review_agent: "Quality Review Agent",
-};
 
 function normalizeDependencies(steps) {
   const keys = steps.map((step) => step.step_key);
@@ -48,7 +61,7 @@ function statusText(status) {
     awaiting_clarification: "需要追问",
     planning: "生成计划中",
     awaiting_confirmation: "等待确认",
-    queued: "排队中（请确认 Worker 已启动）",
+    queued: "排队中",
     running: "执行中",
     reviewing: "质量审核中",
     retrying: "局部重试中",
@@ -56,10 +69,11 @@ function statusText(status) {
     completed_with_warnings: "已完成（有警告）",
     failed: "执行失败",
     cancelled: "已取消",
+    pending: "等待执行",
   }[status] || status;
 }
 
-export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged }) {
+export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged, initialTaskId = null }) {
   const [task, setTask] = useState(null);
   const [request, setRequest] = useState("");
   const [selectedFileIds, setSelectedFileIds] = useState([]);
@@ -73,10 +87,33 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
   const [error, setError] = useState("");
   const [transport, setTransport] = useState("idle");
   const streamFailures = useRef(0);
+  const lastEventIdRef = useRef(0);
+  const { confirm, toast } = useFeedback();
   const lastEventId = useMemo(
     () => events.reduce((maximum, item) => Math.max(maximum, item.id || 0), 0),
     [events],
   );
+  useEffect(() => { lastEventIdRef.current = lastEventId; }, [lastEventId]);
+
+  useEffect(() => {
+    if (!initialTaskId) return;
+    let active = true;
+    setBusy(true);
+    Promise.all([
+      fetchWorkspaceTask(workspaceId, initialTaskId),
+      fetchWorkspaceTaskEvents(workspaceId, initialTaskId, 0),
+    ]).then(([detail, taskEvents]) => {
+      if (!active) return;
+      setTask(detail);
+      setEvents(mergeEvents(detail.latest_events || [], taskEvents));
+      setError("");
+    }).catch((requestError) => {
+      if (active) setError(requestError.message);
+    }).finally(() => {
+      if (active) setBusy(false);
+    });
+    return () => { active = false; };
+  }, [workspaceId, initialTaskId]);
 
   useEffect(() => {
     if (!task?.current_plan) {
@@ -97,19 +134,20 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
       return undefined;
     }
     let pollingTimer;
+    let closeStream = () => {};
     let closed = false;
     const refresh = async () => {
       const latest = await fetchWorkspaceTask(workspaceId, task.id);
       if (!closed) {
         setTask(latest);
-        onTaskChanged?.();
+        if (TERMINAL.has(latest.status)) onTaskChanged?.();
       }
     };
     const poll = async () => {
       try {
-        const additions = await fetchWorkspaceTaskEvents(workspaceId, task.id, lastEventId);
+        const additions = await fetchWorkspaceTaskEvents(workspaceId, task.id, lastEventIdRef.current);
         if (!closed && additions.length) {
-          setEvents((current) => [...current, ...additions]);
+          setEvents((current) => mergeEvents(current, additions));
           await refresh();
         }
       } catch (pollError) {
@@ -118,24 +156,24 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
     };
     const startPolling = () => {
       if (pollingTimer || closed) return;
+      closeStream();
       setTransport("polling");
       pollingTimer = window.setInterval(poll, 2500);
       poll();
     };
-    setTransport("sse");
-    const closeStream = openWorkspaceTaskEventStream(workspaceId, task.id, {
+    setTransport("connecting");
+    closeStream = openWorkspaceTaskEventStream(workspaceId, task.id, {
       onOpen: () => {
         streamFailures.current = 0;
         setTransport("sse");
       },
       onEvent: async (event) => {
-        setEvents((current) =>
-          current.some((item) => item.id === event.id) ? current : [...current, event],
-        );
+        setEvents((current) => mergeEvents(current, [event]));
         await refresh();
       },
       onError: () => {
         streamFailures.current += 1;
+        setTransport("reconnecting");
         if (streamFailures.current >= 2) startPolling();
       },
     });
@@ -157,7 +195,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
         report_preferences: { format: "markdown", template_key: templateKey },
       });
       setTask(created);
-      setEvents(created.latest_events || []);
+      setEvents(mergeEvents([], created.latest_events || []));
       setError("");
       onTaskChanged?.();
     } catch (requestError) {
@@ -175,7 +213,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
         continue_with_recommendation: continueWithRecommendation,
       });
       setTask(updated);
-      setEvents(updated.latest_events || []);
+      setEvents(mergeEvents(events, updated.latest_events || []));
       setAnswers({});
       setError("");
     } catch (requestError) {
@@ -186,6 +224,11 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
   }
 
   async function savePlan() {
+    const validation = validatePlanSteps(planDraft.steps);
+    if (!validation.valid) {
+      setError(validation.message);
+      return;
+    }
     setBusy(true);
     try {
       const updatedPlan = await patchTaskPlan(
@@ -214,7 +257,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
     try {
       const updated = await confirmTaskPlan(workspaceId, task.id, task.current_plan.id);
       setTask(updated);
-      setEvents(updated.latest_events || []);
+      setEvents(mergeEvents(events, updated.latest_events || []));
       setError("");
       onTaskChanged?.();
     } catch (requestError) {
@@ -229,7 +272,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
     try {
       const updated = await action();
       setTask(updated);
-      setEvents(updated.latest_events || []);
+      setEvents(mergeEvents(events, updated.latest_events || []));
       setError("");
       onTaskChanged?.();
     } catch (requestError) {
@@ -276,16 +319,28 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
     setPlanDraft({ ...planDraft, steps: normalizeDependencies(steps) });
   }
 
+  async function requestCancellation() {
+    const accepted = await confirm({
+      title: "请求取消当前任务？",
+      description: "排队任务会立即取消；运行中的任务会在安全检查点停止，当前不可中断的库调用可能仍会完成。",
+      confirmLabel: "请求取消",
+    });
+    if (accepted) {
+      await runAction(() => cancelWorkspaceTask(workspaceId, task.id));
+      toast("取消请求已提交");
+    }
+  }
+
   if (!task) {
     return (
       <form className="task-form" onSubmit={createDraft}>
+        <Stepper steps={["选择文件", "输入目标", "输出偏好", "Agent 追问", "计划确认", "开始执行"]} current={0} />
         <fieldset className="task-file-picker">
           <legend>选择参与分析的文件</legend>
           <div className="task-file-options">
             {files.map((file) => (
-              <label key={file.file_id} className="task-file-option">
-                <input
-                  type="checkbox"
+              <label key={file.file_id} className="ui-choice task-file-option">
+                <input type="checkbox"
                   checked={selectedFileIds.includes(file.file_id)}
                   onChange={() =>
                     setSelectedFileIds((current) =>
@@ -295,67 +350,80 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
                     )
                   }
                 />
-                <span>#{file.file_id} {file.display_name}（{file.file_type}，{file.status}）</span>
+                <span>
+                  <strong>{file.display_name}</strong>
+                  <small>{file.file_type} · {statusMeta(file.status, FILE_STATUS).label}
+                    {file.status !== "ready" ? " · 建议先完成理解" : ""}</small>
+                </span>
               </label>
             ))}
           </div>
         </fieldset>
-        <label>
-          自然语言需求
-          <textarea
-            rows="5"
+        {!files.length && <EmptyState title="还没有可选文件" description="请先在“文件”模块上传并理解资料。" />}
+        <FormField label="分析目标" hint="说明要比较什么、需要回答什么，以及报告的使用场景。" required>
+          <Textarea rows="5"
             value={request}
             onChange={(event) => setRequest(event.target.value)}
             placeholder="例如：结合成绩表和课程要求，找出风险并生成带引用的行动建议报告"
           />
-        </label>
-        <label className="task-file-option">
-          <input
-            type="checkbox"
-            checked={useDeepseek}
-            onChange={(event) => setUseDeepseek(event.target.checked)}
-          />
-          允许 DeepSeek 参与计划和质量审核（不可用时自动降级）
-        </label>
-        <label>
-          报告模板
-          <select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}>
+        </FormField>
+        <Checkbox label="允许 DeepSeek 参与计划和质量审核"
+          hint="不可用或输出不符合 Schema 时自动降级为确定性流程。"
+          checked={useDeepseek} onChange={(event) => setUseDeepseek(event.target.checked)} />
+        <FormField label="报告模板">
+          <Select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}>
             <option value="comprehensive_analysis">综合分析报告</option>
             <option value="student_research">学生调研报告</option>
             <option value="job_application_analysis">求职资料分析</option>
-          </select>
-        </label>
-        {error && <p className="form-message form-message--error">{error}</p>}
-        <button type="submit" disabled={busy || !request.trim()}>
-          {busy ? "创建中…" : "创建任务草稿"}
-        </button>
+          </Select>
+        </FormField>
+        {error && <Alert title="无法创建任务草稿" tone="danger">{error}</Alert>}
+        <Button type="submit" loading={busy} disabled={!request.trim() || !selectedFileIds.length}>
+          继续：创建任务草稿
+        </Button>
       </form>
     );
   }
 
   const clarification = task.clarifications?.find((item) => item.status === "pending");
+  const flowStep = task.status === "awaiting_clarification" ? 3
+    : task.status === "awaiting_confirmation" ? 4
+      : LIVE.has(task.status) || TERMINAL.has(task.status) ? 5 : 2;
+  const createdAt = new Date(task.created_at).getTime();
+  const updatedAt = new Date(task.updated_at).getTime();
+  const elapsedSeconds = Number.isNaN(createdAt) || Number.isNaN(updatedAt)
+    ? null : Math.max(0, Math.round((updatedAt - createdAt) / 1000));
   return (
     <div className="task-flow">
+      <Stepper steps={["选择文件", "输入目标", "输出偏好", "Agent 追问", "计划确认", "开始执行"]} current={flowStep} />
       <div className="task-flow__status">
         <strong>任务 #{task.id}</strong>
-        <span>{statusText(task.status)}</span>
-        <span>进度 {task.progress_percent}%</span>
-        {LIVE.has(task.status) && <span>实时通道：{transport === "sse" ? "SSE" : "轮询降级"}</span>}
+        <StatusBadge status={task.status} dictionary={TASK_STATUS} />
+        {elapsedSeconds !== null && <span>已用 {elapsedSeconds < 60 ? `${elapsedSeconds} 秒` : `${Math.floor(elapsedSeconds / 60)} 分钟`}</span>}
+        {LIVE.has(task.status) && <Badge tone={transport === "sse" ? "success" : transport === "polling" ? "warning" : "info"}>
+          {transport === "sse" ? "SSE 已连接" : transport === "polling" ? "轮询模式" : transport === "reconnecting" ? "SSE 重连中" : "正在连接"}
+        </Badge>}
       </div>
-      <progress max="100" value={task.progress_percent} />
+      <Progress value={task.progress_percent} label={`总进度 · ${statusText(task.status)}`} />
       <p>{task.user_request}</p>
       {!task.model_available && useDeepseek && (
         <p className="form-message form-message--info">DeepSeek 当前不可用，系统正在使用确定性降级能力。</p>
       )}
-      {error && <p className="form-message form-message--error">{error}</p>}
+      {transport === "polling" && <Alert title="实时连接已降级" tone="warning">
+        页面正在每 2.5 秒增量获取事件；服务端任务不会受影响。
+      </Alert>}
+      {task.status === "queued" && <Alert title="任务正在排队" tone="info">
+        如果长时间没有进展，请管理员在 Worker 页面检查心跳状态。
+      </Alert>}
+      {error && <Alert title="任务操作未完成" tone="danger">{error}</Alert>}
 
       {task.status === "awaiting_clarification" && clarification && (
         <section className="task-stage">
           <h4>Agent 需要补充信息</h4>
           {clarification.questions.map((question) => (
-            <label key={question.id}>
-              {question.question}
-              <small>{question.reason}</small>
+            <label key={question.id} className="ui-field">
+              <strong>{question.question}</strong>
+              <small>为什么需要：{question.reason}</small>
               {question.id === "selected_file_ids" ? (
                 <div className="task-file-options">
                   {files.map((file) => (
@@ -377,7 +445,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
                   ))}
                 </div>
               ) : (
-                <textarea
+                <Textarea
                   rows="2"
                   value={answers[question.id] || ""}
                   placeholder={question.recommended_answer}
@@ -389,8 +457,8 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             </label>
           ))}
           <div className="row-actions">
-            <button type="button" disabled={busy} onClick={() => submitClarification(false)}>提交回答</button>
-            <button type="button" disabled={busy} onClick={() => submitClarification(true)}>按系统推荐继续</button>
+            <Button type="button" loading={busy} onClick={() => submitClarification(false)}>提交回答</Button>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => submitClarification(true)}>按系统建议继续</Button>
           </div>
         </section>
       )}
@@ -398,9 +466,12 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
       {task.status === "awaiting_confirmation" && planDraft && (
         <section className="task-stage plan-editor">
           <h4>确认执行计划 v{task.current_plan.version}</h4>
+          <Alert title="确认后才会占用执行配额" tone="info">
+            预计模型调用 {task.current_plan.estimated_model_calls} 次，工具调用 {task.current_plan.estimated_tool_calls} 次。
+          </Alert>
           <label>
             任务目标
-            <textarea
+            <Textarea
               rows="3"
               value={planDraft.goal}
               onChange={(event) => setPlanDraft({ ...planDraft, goal: event.target.value })}
@@ -428,12 +499,12 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
           </fieldset>
           <p>假设：{planDraft.assumptions.join("；") || "无"}</p>
           <p>
-            预计模型调用 {task.current_plan.estimated_model_calls} 次，工具调用 {task.current_plan.estimated_tool_calls} 次
+            配额预估：模型 {task.current_plan.estimated_model_calls} 次，工具 {task.current_plan.estimated_tool_calls} 次
           </p>
           <div className="plan-steps">
             {planDraft.steps.map((step, index) => (
               <article key={step.step_key} className="plan-step">
-                <strong>{index + 1}. {AGENT_LABELS[step.agent_type]}</strong>
+                <strong>{index + 1}. {AGENT_LABELS[step.agent_type] || step.agent_type}</strong>
                 <input
                   value={step.title}
                   onChange={(event) => {
@@ -472,7 +543,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             <button type="button" onClick={() => addOptionalStep("document_research_agent")}>增加文档检索</button>
           </div>
           <div className="row-actions">
-            <button type="button" disabled={busy} onClick={savePlan}>保存为新版本</button>
+            <Button type="button" disabled={busy} onClick={savePlan}>保存为新版本</Button>
             <button
               type="button"
               disabled={busy}
@@ -485,14 +556,15 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             >
               重新生成计划
             </button>
-            <button type="button" disabled={busy} onClick={confirmPlan}>确认并入队</button>
-            <button
+            <Button type="button" loading={busy} onClick={confirmPlan}>确认并入队</Button>
+            <Button
               type="button"
+              variant="ghost"
               disabled={busy}
-              onClick={() => runAction(() => cancelWorkspaceTask(workspaceId, task.id))}
+              onClick={requestCancellation}
             >
               取消任务
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -503,8 +575,9 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
           {task.steps.map((step) => (
             <article key={step.id} className="execution-step">
               <strong>{step.step_order}. {step.title}</strong>
-              <span>{AGENT_LABELS[step.agent_type]} · {step.tool_name}</span>
-              <span>{statusText(step.status)} · {step.progress_percent}%</span>
+              <span>{AGENT_LABELS[step.agent_type] || step.agent_type} · {step.tool_name}</span>
+              <span>{statusText(step.status)} · {step.progress_percent}% · 已重试 {step.retry_count} 次</span>
+              {step.output && <details><summary>结果摘要</summary><pre>{JSON.stringify(step.output, null, 2)}</pre></details>}
               {step.error_message && <span className="form-message--error">{step.error_message}</span>}
               {step.status === "failed" && (
                 <button
@@ -520,13 +593,14 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             </article>
           ))}
           {LIVE.has(task.status) && (
-            <button
+            <Button
               type="button"
+              variant="warning"
               disabled={busy}
-              onClick={() => runAction(() => cancelWorkspaceTask(workspaceId, task.id))}
+              onClick={requestCancellation}
             >
               请求取消
-            </button>
+            </Button>
           )}
         </section>
       )}
@@ -538,7 +612,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             {(events.length ? events : task.latest_events).map((event) => (
               <li key={event.id}>
                 <time>{new Date(event.created_at).toLocaleTimeString()}</time>
-                <strong>{event.agent_type || event.event_type}</strong>
+                <strong>{AGENT_LABELS[event.agent_type] || event.event_type}</strong>
                 <span>{event.message}</span>
               </li>
             ))}
@@ -550,6 +624,11 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
         <section className="task-stage">
           <h4>最终结果</h4>
           <p>{task.final_result?.summary || task.result_summary?.summary || statusText(task.status)}</p>
+          {task.current_plan && <details><summary>查看已确认计划 v{task.current_plan.version}</summary>
+            <ol>{task.current_plan.steps.map((step) => <li key={step.step_key}>
+              {AGENT_LABELS[step.agent_type] || step.agent_type}：{step.title}
+            </li>)}</ol>
+          </details>}
           {task.final_result?.warnings?.length > 0 && (
             <ul>{task.final_result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
           )}

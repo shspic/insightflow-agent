@@ -6,14 +6,16 @@ InsightFlow Agent 是一个基于 FastAPI + React + LangGraph 的多模态文档
 
 这个项目的定位不是普通聊天机器人，而是一个围绕“文件输入、任务判断、工具调用、结果生成、过程可观测”构建的任务执行型 AI 应用。
 
-## V2-05 当前状态
+## V2-06 当前状态
 
-V2-05 已在 V2-04 可靠任务执行上增加正式 `reports/report_assets` 版本模型、三种受控模板、Markdown/DOCX/PDF 导出、扫描 PDF 分页 OCR、用户反馈与重新生成、Prompt 版本、数据库配额、Worker/Agent/工具/模型监控、85 条合成 deterministic 评估集、保留期清理、SQLite 备份恢复及生产启动门禁。
+V2-06 已在 V2-02 至 V2-05 的真实业务能力上完成全站前端重设计：统一设计 Token、浅色/深色/跟随系统主题、公共组件、响应式工作台布局、工作区子路由、批量上传、文件理解、计划确认、SSE 执行、报告阅读、使用量与管理员治理体验。
 
-报告 Markdown 是规范源，新版本不会覆盖旧版本；所有导出和下载经过用户、工作区、任务、报告与资产校验。管理员默认只能查看运行和反馈元数据，不能旁路读取普通用户报告正文和原始文件。
+本阶段没有增加后台业务接口，没有改变 Cookie Session、CSRF、工作区隔离、队列和下载规则，也没有引入新的前端依赖。前端仍以服务端状态为真相来源，默认使用同域相对 `/api/v2`。
 
 详细说明：
 
+- [V2-06 UI/UX 系统](docs/V2_06_UI_UX_SYSTEM.md)
+- [V2-06 手动验收](docs/V2_06_MANUAL_ACCEPTANCE.md)
 - [V2-05 报告与治理](docs/V2_05_REPORTS_GOVERNANCE_EVALUATION.md)
 - [V2-05 手动验收](docs/V2_05_MANUAL_ACCEPTANCE.md)
 - [V2-05 评估指南](docs/V2_05_EVALUATION_GUIDE.md)
@@ -36,7 +38,7 @@ V2-04 当前状态说明保留如下，作为兼容基础。
 
 旧 `/api/files`、`/api/tasks`、`/api/reports` 仅为本地兼容保留，由 `ENABLE_LEGACY_V1_API` 控制。旧接口没有完整多用户隔离，正式公网环境必须设置为 `false`。
 
-V2-03 的文件理解接口本身仍为同步调用；V2-04 新任务执行已进入独立 Worker。当前不支持任意节点暂停后原地恢复、Word/PDF 新导出、Redis/Celery、PostgreSQL、对象存储或生产部署。
+V2-03 的文件理解接口本身仍为同步调用；V2-04 新任务执行已进入独立 Worker。当前不支持任意节点暂停后原地恢复、Redis/Celery、PostgreSQL、对象存储或正式国内生产部署。Markdown/DOCX/PDF 版本化导出已在 V2-05 实现。
 
 ## 在线演示
 
@@ -126,8 +128,11 @@ NO2_agent/
   frontend/
     src/
       api/          # 前端 API 请求封装
-      components/   # 文件、任务、轨迹、报告组件
-      pages/        # 上传、工作区、任务历史页面
+      components/   # 公共控件、布局、文件、任务、报告和管理组件
+      context/      # 认证、主题和全局反馈
+      pages/        # 认证、工作区、使用量和管理页面
+      styles/       # 设计 Token
+      utils/        # 状态、错误、SSE 和报告等纯逻辑
     Dockerfile
     package.json
   docs/
@@ -257,42 +262,27 @@ cd backend
 pytest
 ```
 
-前端构建测试：
+前端纯逻辑测试与构建：
 
 ```powershell
 cd frontend
+npm test
 npm run build
 ```
 
 完整测试说明见 [docs/TESTING.md](docs/TESTING.md)，项目评估方法见 [docs/EVALUATION.md](docs/EVALUATION.md)，最终发布检查清单见 [docs/FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md)。
 
-## 公网部署
+## 国内同域部署入口
 
 V2 的低并发正式部署目标是同域名提供前端，反向代理将 `/api` 转发到 FastAPI。前端默认使用相对 `/api/v2`；`VITE_API_BASE_URL` 只作为兼容覆盖项。当前 Vercel + Render 组合仅用于旧版演示，不作为 V2 最终生产目标。
 
-后端 Render 启动命令示例：
+同域反向代理需要：
 
-```bash
-alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-前端 Vercel 环境变量示例：
-
-```text
-VITE_API_BASE_URL=https://你的-render-后端地址.onrender.com
-```
-
-后端 Render 环境变量中需要把 `CORS_ORIGINS` 设置为真实 Vercel 前端地址，例如：
-
-```text
-CORS_ORIGINS=https://你的-vercel-前端地址.vercel.app
-```
-
-部署完成后可验证：
-
-- 前端地址：`https://你的-vercel-前端地址.vercel.app`
-- 后端健康检查：`https://你的-render-后端地址.onrender.com/api/health`
-- Swagger 文档：`https://你的-render-后端地址.onrender.com/docs`
+- 前端静态资源和 API 使用同一站点；
+- `/api` 转发到 FastAPI，SSE 路径关闭代理缓冲并配置足够读超时；
+- Cookie、CSRF、可信代理头和 HTTPS 安全选项按同域配置；
+- 报告下载保留 `Content-Disposition` 和鉴权 Cookie；
+- 不在业务组件写死 localhost、Vercel、Render 或外部 CDN。
 
 当前项目演示地址：
 

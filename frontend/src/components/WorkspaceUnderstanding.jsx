@@ -13,6 +13,19 @@ import {
 } from "../api/fileUnderstanding";
 import { removeWorkspaceFile } from "../api/workspaceFiles";
 import BatchFileUploader from "./BatchFileUploader";
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  FormField,
+  Input,
+  Select,
+  SectionHeader,
+  StatusBadge,
+} from "./common";
+import { useFeedback } from "../context/FeedbackContext";
+import { FILE_STATUS, RELATION_STATUS, fileTypeMeta } from "../utils/ui";
 
 const FILE_ROLES = [
   ["primary_dataset", "主要数据集"],
@@ -57,7 +70,7 @@ function friendlyError(error) {
 
 function formatConfidence(value) {
   if (value === null || value === undefined) return "-";
-  return `${Math.round(value * 100)}%`;
+  return `${Number(value).toFixed(2)} 匹配分`;
 }
 
 function formatBytes(value) {
@@ -202,29 +215,36 @@ function ProfileEditor({ profile, onSave, isSaving }) {
 }
 
 function ProfileCard({ file, profile, busy, onUnderstand, onSave, onRemove }) {
+  const typeMeta = fileTypeMeta(file.file_type);
   return (
     <article className="file-profile-card">
       <div className="section-heading">
         <div>
-          <h4>#{file.file_id} {file.display_name}</h4>
-          <p>{file.file_type || "未知类型"} · {formatBytes(file.size_bytes)} · {file.status}</p>
+          <h4 title={file.display_name}><span className="file-type-glyph" aria-hidden="true">{typeMeta.glyph}</span> {file.display_name}</h4>
+          <p>{typeMeta.label} · {formatBytes(file.size_bytes)} · <StatusBadge status={file.status} dictionary={FILE_STATUS} /></p>
         </div>
         <div className="row-actions">
-          <button type="button" disabled={busy} onClick={onUnderstand}>
+          <Button type="button" disabled={busy} loading={busy} onClick={onUnderstand}>
             {busy ? "理解中" : profile ? "重新理解" : "理解文件"}
-          </button>
-          <button type="button" disabled={busy} onClick={onRemove}>移除</button>
+          </Button>
+          <Button type="button" variant="ghost" disabled={busy} onClick={onRemove}>移除</Button>
         </div>
       </div>
       {!profile && <p className="parse-empty">尚未生成文件 Profile。</p>}
       {profile && (
-        <>
+        <details className="profile-details">
+          <summary>
+            <span>{profile.summary || "查看结构化 Profile"}</span>
+            <Badge tone={profile.fallback_used ? "warning" : "success"}>
+              v{profile.profile_version} · {profile.fallback_used ? "已降级" : profile.status}
+            </Badge>
+          </summary>
           <div className="profile-meta-grid">
             <span>Profile：v{profile.profile_version} · {profile.status}</span>
             <span>类型：{profile.file_category || "-"}</span>
             <span>推荐角色：{roleLabel(profile.suggested_role)}</span>
             <span>确认角色：{roleLabel(profile.confirmed_role)}</span>
-            <span>置信度：{formatConfidence(profile.confidence)}</span>
+            <span>角色匹配信号：{formatConfidence(profile.confidence)}</span>
             <span>解析器：{profile.parser_name || "-"} / {profile.parser_version || "-"}</span>
             <span>
               DeepSeek：{profile.model_provider
@@ -253,7 +273,7 @@ function ProfileCard({ file, profile, busy, onUnderstand, onSave, onRemove }) {
             ))}
           </div>
           <ProfileEditor profile={profile} onSave={onSave} isSaving={busy} />
-        </>
+        </details>
       )}
     </article>
   );
@@ -276,7 +296,7 @@ function RelationCard({ relation, busy, onMutate }) {
           <h4>{relation.source_filename} → {relation.target_filename}</h4>
           <p>
             {relationLabel(relation.relation_type)} · {formatConfidence(relation.confidence)}
-            · {relation.confidence_level} · {relation.status}
+            · 规则等级 {relation.confidence_level} · <StatusBadge status={relation.status} dictionary={RELATION_STATUS} />
           </p>
         </div>
       </div>
@@ -400,7 +420,7 @@ function ContextPreview({ context }) {
   );
 }
 
-export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChanged }) {
+export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChanged, mode = "files" }) {
   const [profiles, setProfiles] = useState({});
   const [selectedIds, setSelectedIds] = useState([]);
   const [relations, setRelations] = useState([]);
@@ -408,7 +428,25 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
   const [busy, setBusy] = useState({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [relationFilter, setRelationFilter] = useState("all");
+  const { confirm, toast } = useFeedback();
   const fileKey = useMemo(() => files.map((file) => file.file_id).join(","), [files]);
+  const visibleFiles = useMemo(() => files.filter((file) => {
+    const profile = profiles[file.file_id];
+    const query = search.trim().toLocaleLowerCase("zh-CN");
+    return (!query || file.display_name.toLocaleLowerCase("zh-CN").includes(query))
+      && (typeFilter === "all" || file.file_type === typeFilter)
+      && (statusFilter === "all" || file.status === statusFilter)
+      && (roleFilter === "all" || profile?.effective_role === roleFilter);
+  }), [files, profiles, search, typeFilter, statusFilter, roleFilter]);
+  const visibleRelations = useMemo(
+    () => relationFilter === "all" ? relations : relations.filter((item) => item.status === relationFilter),
+    [relations, relationFilter],
+  );
 
   async function loadProfiles() {
     const entries = await Promise.all(
@@ -430,21 +468,27 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
 
   useEffect(() => {
     let active = true;
-    Promise.all([loadProfiles(), loadRelations()]).catch((requestError) => {
+    const requests = [];
+    if (mode === "files") requests.push(loadProfiles());
+    if (mode === "relations") requests.push(loadRelations());
+    Promise.all(requests).catch((requestError) => {
       if (active) setError(friendlyError(requestError));
     });
     setSelectedIds((current) => current.filter((id) => files.some((file) => file.file_id === id)));
     return () => {
       active = false;
     };
-  }, [workspaceId, fileKey]);
+  }, [workspaceId, fileKey, mode]);
 
   async function runBusy(key, action, successMessage) {
     setBusy((current) => ({ ...current, [key]: true }));
     setError("");
     try {
       await action();
-      if (successMessage) setMessage(successMessage);
+      if (successMessage) {
+        setMessage(successMessage);
+        toast(successMessage);
+      }
     } catch (requestError) {
       setError(friendlyError(requestError));
     } finally {
@@ -490,6 +534,13 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
   }
 
   async function removeFile(fileId) {
+    const file = files.find((item) => item.file_id === fileId);
+    const accepted = await confirm({
+      title: `从工作区移除“${file?.display_name || "此文件"}”？`,
+      description: "文件关联关系会被清理，依赖它的已有任务和报告可能无法再次完整复现。原始文件会等待服务端清理策略处理。",
+      confirmLabel: "确认移除",
+    });
+    if (!accepted) return;
     await runBusy(`file-${fileId}`, async () => {
       await removeWorkspaceFile(workspaceId, fileId);
       setProfiles((current) => {
@@ -532,78 +583,98 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
 
   return (
     <div className="workspace-understanding">
-      {error && <p className="form-message form-message--error">{error}</p>}
-      {message && <p className="form-message form-message--success">{message}</p>}
-      <BatchFileUploader
-        uploadAction={(selectedFiles) => uploadWorkspaceFilesBatch(workspaceId, selectedFiles)}
-        onUploaded={onFilesChanged}
-      />
-      <div className="understanding-toolbar">
-        <strong>选择文件用于批量理解、关系识别和上下文预览</strong>
-        <div className="row-actions">
-          <button
-            type="button"
-            disabled={busy["batch-understand"]}
-            onClick={understandSelected}
-          >
-            {busy["batch-understand"] ? "批量理解中" : "批量理解"}
-          </button>
-          <button type="button" disabled={busy.relations} onClick={discoverRelations}>
-            {busy.relations ? "识别中" : "生成关系候选"}
-          </button>
-          <button type="button" disabled={busy.context} onClick={previewContext}>
-            {busy.context ? "生成中" : "预览工作区上下文"}
-          </button>
-        </div>
-      </div>
-      <div className="file-selection-list">
-        {files.map((file) => (
-          <label key={file.file_id}>
-            <input
-              type="checkbox"
-              checked={selectedIds.includes(file.file_id)}
-              onChange={() => setSelectedIds((current) =>
-                current.includes(file.file_id)
-                  ? current.filter((id) => id !== file.file_id)
-                  : [...current, file.file_id]
-              )}
-            />
-            #{file.file_id} {file.display_name}
-          </label>
-        ))}
-      </div>
-      <div className="file-profile-list">
-        {files.map((file) => (
-          <ProfileCard
-            key={`${file.file_id}-${profiles[file.file_id]?.id || "none"}`}
-            file={file}
-            profile={profiles[file.file_id]}
-            busy={Boolean(busy[`file-${file.file_id}`])}
-            onUnderstand={() => understandOne(file.file_id)}
-            onSave={(payload) => saveProfile(file.file_id, payload)}
-            onRemove={() => removeFile(file.file_id)}
+      {error && <Alert title="操作未完成" tone="danger">{error}</Alert>}
+      {message && <span className="sr-only" aria-live="polite">{message}</span>}
+      {mode === "files" && (
+        <>
+          <BatchFileUploader
+            uploadAction={(selectedFiles) => uploadWorkspaceFilesBatch(workspaceId, selectedFiles)}
+            onUploaded={onFilesChanged}
+            storageHint="上传后还需要执行“理解文件”，才会生成结构、质量问题和角色建议。"
           />
-        ))}
-        {files.length === 0 && <p className="table-state">还没有上传文件。</p>}
-      </div>
-      <section className="understanding-section">
-        <h4>文件关系候选</h4>
-        <div className="relation-list">
-          {relations.map((relation) => (
-            <RelationCard
-              key={relation.id}
-              relation={relation}
+          <div className="filter-bar" role="search">
+            <FormField label="搜索文件"><Input type="search" value={search}
+              placeholder="按文件名搜索" onChange={(event) => setSearch(event.target.value)} /></FormField>
+            <FormField label="类型"><Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+              <option value="all">全部类型</option>
+              {[...new Set(files.map((file) => file.file_type).filter(Boolean))].map((value) =>
+                <option key={value} value={value}>{fileTypeMeta(value).label}</option>)}
+            </Select></FormField>
+            <FormField label="状态"><Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">全部状态</option>
+              {Object.entries(FILE_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta[0]}</option>)}
+            </Select></FormField>
+            <FormField label="角色"><Select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+              <option value="all">全部角色</option>
+              {FILE_ROLES.filter(([value]) => value !== "custom").map(([value, label]) =>
+                <option key={value} value={value}>{label}</option>)}
+            </Select></FormField>
+          </div>
+          <SectionHeader title="文件与 Profile" description="选择文件执行批量理解；展开单个文件查看结构、质量与角色。"
+            actions={<Button loading={busy["batch-understand"]} disabled={!selectedIds.length}
+              onClick={understandSelected}>批量理解 {selectedIds.length || ""}</Button>} />
+          <div className="file-selection-list">
+            {visibleFiles.map((file) => (
+              <label key={file.file_id}>
+                <input type="checkbox" checked={selectedIds.includes(file.file_id)}
+                  onChange={() => setSelectedIds((current) => current.includes(file.file_id)
+                    ? current.filter((id) => id !== file.file_id) : [...current, file.file_id])} />
+                <span title={file.display_name}>{file.display_name}</span>
+              </label>
+            ))}
+          </div>
+          <div className="file-profile-list">
+            {visibleFiles.map((file) => (
+              <ProfileCard key={`${file.file_id}-${profiles[file.file_id]?.id || "none"}`}
+                file={file} profile={profiles[file.file_id]} busy={Boolean(busy[`file-${file.file_id}`])}
+                onUnderstand={() => understandOne(file.file_id)}
+                onSave={(payload) => saveProfile(file.file_id, payload)}
+                onRemove={() => removeFile(file.file_id)} />
+            ))}
+            {visibleFiles.length === 0 && <EmptyState title={files.length ? "没有匹配文件" : "还没有文件"}
+              description={files.length ? "调整筛选条件。" : "先上传资料，再执行批量理解。"} />}
+          </div>
+        </>
+      )}
+      {mode === "relations" && (
+        <section className="understanding-section">
+          <SectionHeader title="文件关系" description="候选来自规则或可选模型增强，匹配分不是准确率；确认后才进入 Workspace Context。"
+            actions={<Button loading={busy.relations} disabled={files.length < 2} onClick={discoverRelations}>生成候选</Button>} />
+          <div className="filter-bar">
+            <FormField label="候选范围"><Select value={relationFilter} onChange={(event) => setRelationFilter(event.target.value)}>
+              <option value="all">全部状态</option>
+              {Object.entries(RELATION_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta[0]}</option>)}
+            </Select></FormField>
+            <span className="muted">选择两个以上文件可缩小发现范围</span>
+          </div>
+          <div className="file-selection-list">
+            {files.map((file) => <label key={file.file_id}><input type="checkbox"
+              checked={selectedIds.includes(file.file_id)}
+              onChange={() => setSelectedIds((current) => current.includes(file.file_id)
+                ? current.filter((id) => id !== file.file_id) : [...current, file.file_id])} />{file.display_name}</label>)}
+          </div>
+          <div className="relation-list">
+            {visibleRelations.map((relation) => <RelationCard key={relation.id} relation={relation}
               busy={Boolean(busy[`relation-${relation.id}`])}
-              onMutate={(payload) => mutateRelation(relation.id, payload)}
-            />
-          ))}
-          {relations.length === 0 && <p className="parse-empty">暂无关系候选。</p>}
-        </div>
-      </section>
-      <section className="understanding-section">
-        <h4>Workspace Context 预览</h4>
-        <ContextPreview context={context} />
-      </section>
+              onMutate={(payload) => mutateRelation(relation.id, payload)} />)}
+            {visibleRelations.length === 0 && <EmptyState title="暂无关系候选"
+              description="至少需要两个已理解文件。生成后请逐条确认、拒绝或修改。" />}
+          </div>
+        </section>
+      )}
+      {mode === "context" && (
+        <section className="understanding-section">
+          <SectionHeader title="Workspace Context" description="预览 Supervisor 可读取的安全结构化上下文，不包含完整原文或服务器路径。"
+            actions={<Button loading={busy.context} onClick={previewContext}>生成预览</Button>} />
+          <div className="file-selection-list">
+            {files.map((file) => <label key={file.file_id}><input type="checkbox"
+              checked={selectedIds.includes(file.file_id)}
+              onChange={() => setSelectedIds((current) => current.includes(file.file_id)
+                ? current.filter((id) => id !== file.file_id) : [...current, file.file_id])} />{file.display_name}</label>)}
+          </div>
+          <ContextPreview context={context} />
+        </section>
+      )}
     </div>
   );
 }

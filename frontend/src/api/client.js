@@ -104,3 +104,24 @@ export async function apiRequest(path, options = {}) {
 export function apiResourceUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
+
+export async function downloadResource(path, fallbackName = "download") {
+  const response = await fetch(apiResourceUrl(path), { credentials: "include" });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new ApiError(getErrorMessage(data, response.status), response.status, data?.detail?.code);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") || "";
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  const plain = /filename="?([^";]+)"?/i.exec(disposition)?.[1];
+  const filename = encoded ? decodeURIComponent(encoded) : plain || fallbackName;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
