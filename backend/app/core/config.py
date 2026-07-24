@@ -158,9 +158,59 @@ class Settings:
         12,
     )
     task_tool_call_budget: int = _parse_int(
-        _get_env("TASK_TOOL_CALL_BUDGET", "20"),
-        20,
+        _get_env("TASK_TOOL_CALL_BUDGET", "30"),
+        30,
     )
+    user_concurrent_tasks: int = _parse_int(_get_env("USER_CONCURRENT_TASKS", "1"), 1)
+    user_daily_tasks: int = _parse_int(_get_env("USER_DAILY_TASKS", "20"), 20)
+    user_daily_deepseek_calls: int = _parse_int(
+        _get_env("USER_DAILY_DEEPSEEK_CALLS", "50"), 50
+    )
+    user_max_workspaces: int = _parse_int(_get_env("USER_MAX_WORKSPACES", "20"), 20)
+    report_history_max_versions: int = _parse_int(
+        _get_env("REPORT_HISTORY_MAX_VERSIONS", "10"), 10
+    )
+    report_export_daily_limit: int = _parse_int(
+        _get_env("REPORT_EXPORT_DAILY_LIMIT", "50"), 50
+    )
+    system_max_running_tasks: int = _parse_int(
+        _get_env("SYSTEM_MAX_RUNNING_TASKS", "2"), 2
+    )
+    pdf_ocr_max_pages: int = _parse_int(_get_env("PDF_OCR_MAX_PAGES", "50"), 50)
+    pdf_ocr_dpi: int = _parse_int(_get_env("PDF_OCR_DPI", "150"), 150)
+    pdf_ocr_max_pixels_per_page: int = _parse_int(
+        _get_env("PDF_OCR_MAX_PIXELS_PER_PAGE", "12000000"), 12_000_000
+    )
+    pdf_ocr_timeout_seconds: int = _parse_int(
+        _get_env("PDF_OCR_TIMEOUT_SECONDS", "120"), 120
+    )
+    pdf_ocr_min_text_chars: int = _parse_int(
+        _get_env("PDF_OCR_MIN_TEXT_CHARS", "20"), 20
+    )
+    worker_stale_seconds: int = _parse_int(_get_env("WORKER_STALE_SECONDS", "60"), 60)
+    session_retention_days: int = _parse_int(_get_env("SESSION_RETENTION_DAYS", "7"), 7)
+    revoked_session_retention_days: int = _parse_int(
+        _get_env("REVOKED_SESSION_RETENTION_DAYS", "7"), 7
+    )
+    password_reset_retention_days: int = _parse_int(
+        _get_env("PASSWORD_RESET_RETENTION_DAYS", "90"), 90
+    )
+    task_event_retention_days: int = _parse_int(
+        _get_env("TASK_EVENT_RETENTION_DAYS", "180"), 180
+    )
+    agent_run_retention_days: int = _parse_int(
+        _get_env("AGENT_RUN_RETENTION_DAYS", "180"), 180
+    )
+    workspace_delete_grace_days: int = _parse_int(
+        _get_env("WORKSPACE_DELETE_GRACE_DAYS", "30"), 30
+    )
+    superseded_asset_retention_days: int = _parse_int(
+        _get_env("SUPERSEDED_ASSET_RETENTION_DAYS", "30"), 30
+    )
+    backup_dir: str = _get_env("BACKUP_DIR", "./backups")
+    debug: bool = _parse_bool(_get_env("DEBUG", "false"))
+    trust_proxy_headers: bool = _parse_bool(_get_env("TRUST_PROXY_HEADERS", "false"))
+    enable_hsts: bool = _parse_bool(_get_env("ENABLE_HSTS", "false"))
 
     @property
     def cors_origins(self) -> list[str]:
@@ -175,7 +225,34 @@ def validate_production_security(current_settings: Settings = settings) -> None:
         return
     if len(current_settings.auth_secret_key) < 32:
         raise RuntimeError("生产环境必须配置至少 32 个字符的 AUTH_SECRET_KEY")
+    if len(set(current_settings.auth_secret_key)) < 12:
+        raise RuntimeError("生产环境 AUTH_SECRET_KEY 必须具有足够随机性")
     if not current_settings.auth_cookie_secure:
         raise RuntimeError("生产环境必须启用 AUTH_COOKIE_SECURE")
     if current_settings.enable_legacy_v1_api:
         raise RuntimeError("生产环境必须关闭 ENABLE_LEGACY_V1_API")
+    if current_settings.debug:
+        raise RuntimeError("生产环境必须关闭 DEBUG")
+    if not current_settings.trust_proxy_headers:
+        raise RuntimeError("生产环境必须配置可信 HTTPS 反向代理头策略")
+    if not current_settings.enable_hsts:
+        raise RuntimeError("生产环境 HTTPS 必须启用 ENABLE_HSTS")
+    if "*" in current_settings.cors_origins:
+        raise RuntimeError("生产环境携带 Cookie 时 CORS_ORIGINS 不能包含 *")
+    lowered_database = current_settings.database_url.lower()
+    if any(marker in lowered_database for marker in (":memory:", "test.db", "pytest", "temporary")):
+        raise RuntimeError("生产环境不能使用明显的测试数据库地址")
+    if min(
+        current_settings.upload_max_file_size_bytes,
+        current_settings.user_storage_quota_bytes,
+        current_settings.user_daily_tasks,
+        current_settings.task_model_call_budget,
+        current_settings.task_tool_call_budget,
+    ) <= 0:
+        raise RuntimeError("生产环境文件上限与配额必须配置为正数")
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    if admin_password and (
+        len(admin_password) < 14
+        or admin_password.lower() in {"admin", "password", "changeme", "admin123456"}
+    ):
+        raise RuntimeError("生产环境不能使用默认或弱管理员密码")

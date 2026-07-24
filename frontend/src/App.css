@@ -1036,3 +1036,34 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+.report-version-list,
+.usage-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.report-version-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.report-version-list button.is-active {
+  outline: 2px solid #2563eb;
+}
+
+.report-content pre,
+.panel details pre {
+  max-height: 32rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.report-feedback {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}

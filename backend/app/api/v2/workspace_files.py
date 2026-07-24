@@ -24,6 +24,7 @@ from app.services.audit_service import add_audit_log
 from app.services.chart_service import FileChartError, generate_charts
 from app.services.file_service import FileUploadError, save_uploaded_file
 from app.services.ocr_service import FileOcrError, run_image_ocr
+from app.services.quota_service import QuotaExceeded, check_file_upload, increment_usage
 from app.services.parser_service import FileParseError, parse_file
 from app.services.rag_service import RagServiceError, index_pdf_file, search_pdf_chunks
 from app.services.workspace_service import (
@@ -96,19 +97,19 @@ def _check_upload_quota(
     user: User,
     incoming_size: int = 0,
 ) -> None:
-    if user.role == "admin":
-        return
-    workspace_count, user_bytes = _current_upload_usage(db, workspace_id, user.id)
-    if workspace_count >= max(1, settings.workspace_max_files):
-        raise FileUploadError(
-            f"工作区文件数量已达到上限 {settings.workspace_max_files}",
-            status.HTTP_429_TOO_MANY_REQUESTS,
+    try:
+        check_file_upload(
+            db,
+            user,
+            workspace_id=workspace_id,
+            incoming_size=incoming_size,
+            configured_storage_limit=settings.user_storage_quota_bytes,
         )
-    if user_bytes + incoming_size > max(1, settings.user_storage_quota_bytes):
+    except QuotaExceeded as exc:
         raise FileUploadError(
-            f"用户存储配额不足，上限为 {settings.user_storage_quota_bytes} 字节",
+            str(exc),
             status.HTTP_429_TOO_MANY_REQUESTS,
-        )
+        ) from exc
 
 
 @router.post("", response_model=WorkspaceFileResponse, status_code=status.HTTP_201_CREATED)
@@ -124,25 +125,21 @@ async def upload_workspace_file(
         raise HTTPException(status_code=404, detail="工作区不存在")
     file_record = None
     try:
-        _check_upload_quota(db, workspace_id=workspace.id, user=user)
-        _, usage_before = _current_upload_usage(db, workspace.id, user.id)
+        _check_upload_quota(
+            db,
+            workspace_id=workspace.id,
+            user=user,
+            incoming_size=int(file.size or 0),
+        )
         file_record = await save_uploaded_file(
             db,
             file,
             owner_user_id=user.id,
             commit=False,
         )
-        if (
-            user.role != "admin"
-            and usage_before + int(file_record.size_bytes or 0)
-            > max(1, settings.user_storage_quota_bytes)
-        ):
-            raise FileUploadError(
-                f"用户存储配额不足，上限为 {settings.user_storage_quota_bytes} 字节",
-                status.HTTP_429_TOO_MANY_REQUESTS,
-            )
         db.add(WorkspaceFile(workspace_id=workspace.id, file_id=file_record.id))
         db.flush()
+        increment_usage(db, user.id, file_storage_bytes=int(file_record.size_bytes or 0))
         add_audit_log(
             db,
             user_id=user.id,
@@ -189,25 +186,21 @@ async def upload_workspace_files_batch(
         original_name = Path(upload_file.filename or "unnamed").name
         file_record = None
         try:
-            _check_upload_quota(db, workspace_id=workspace.id, user=user)
-            _, usage_before = _current_upload_usage(db, workspace.id, user.id)
+            _check_upload_quota(
+                db,
+                workspace_id=workspace.id,
+                user=user,
+                incoming_size=int(upload_file.size or 0),
+            )
             file_record = await save_uploaded_file(
                 db,
                 upload_file,
                 owner_user_id=user.id,
                 commit=False,
             )
-            if (
-                user.role != "admin"
-                and usage_before + int(file_record.size_bytes or 0)
-                > max(1, settings.user_storage_quota_bytes)
-            ):
-                raise FileUploadError(
-                    f"用户存储配额不足，上限为 {settings.user_storage_quota_bytes} 字节",
-                    status.HTTP_429_TOO_MANY_REQUESTS,
-                )
             db.add(WorkspaceFile(workspace_id=workspace.id, file_id=file_record.id))
             db.flush()
+            increment_usage(db, user.id, file_storage_bytes=int(file_record.size_bytes or 0))
             add_audit_log(
                 db,
                 user_id=user.id,

@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AgentTrace from "../components/AgentTrace";
-import ReportViewer from "../components/ReportViewer";
+import ReportCenter from "../components/ReportCenter";
 import TaskExecutionFlow from "../components/TaskExecutionFlow";
 import WorkspaceUnderstanding from "../components/WorkspaceUnderstanding";
 import { fetchWorkspace } from "../api/workspaces";
 import { fetchWorkspaceFiles } from "../api/workspaceFiles";
 import {
-  fetchWorkspaceReport,
   fetchWorkspaceTasks,
   fetchWorkspaceTaskTrace,
-  generateWorkspaceReport,
 } from "../api/workspaceTasks";
 
 export default function WorkspaceDetail() {
@@ -19,7 +17,7 @@ export default function WorkspaceDetail() {
   const [files, setFiles] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [trace, setTrace] = useState([]);
-  const [report, setReport] = useState(null);
+  const [reportTaskId, setReportTaskId] = useState(null);
   const [error, setError] = useState("");
 
   async function loadAll() {
@@ -50,16 +48,9 @@ export default function WorkspaceDetail() {
     }
   }
 
-  async function showReport(task) {
-    try {
-      const value = task.has_report
-        ? await fetchWorkspaceReport(workspaceId, task.id)
-        : await generateWorkspaceReport(workspaceId, task.id);
-      setReport(value);
-      setTasks(await fetchWorkspaceTasks(workspaceId));
-    } catch (requestError) {
-      setError(requestError.message);
-    }
+  function showReport(task) {
+    setReportTaskId(task.id);
+    setError("");
   }
 
   return (
@@ -98,9 +89,9 @@ export default function WorkspaceDetail() {
             <p>{task.final_answer}</p>
             <div className="row-actions">
               <button type="button" onClick={() => showTrace(task.id)}>查看执行轨迹</button>
-              {(task.has_report || ["success", "completed", "completed_with_warnings"].includes(task.status)) && (
+              {task.has_report && (
                 <button type="button" onClick={() => showReport(task)}>
-                  {task.has_report ? "查看报告" : "生成报告"}
+                  查看报告
                 </button>
               )}
             </div>
@@ -110,7 +101,7 @@ export default function WorkspaceDetail() {
       </section>
 
       <section className="panel"><h3>Agent 执行轨迹</h3><AgentTrace trace={trace} /></section>
-      <ReportViewer report={report} />
+      <ReportCenter workspaceId={workspaceId} taskId={reportTaskId} />
     </section>
   );
 }

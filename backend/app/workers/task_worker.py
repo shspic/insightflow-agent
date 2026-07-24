@@ -10,16 +10,19 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agents.prompt_registry import get_prompt
 from app.agents.specialists import get_specialist_agent
 from app.agents.tool_registry import ToolContext, ToolExecutionError
 from app.agents.v2_state import AgentStateV2, load_agent_state
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.agent_run import AgentRun
+from app.models.operations import WorkerStatus
+from app.models.report import Report
 from app.models.task import Task
 from app.models.task_step import TaskStep
 from app.services.security_service import sanitize_details
+from app.services.prompt_version_service import get_active_prompt
+from app.services.quota_service import increment_usage
 from app.services.task_event_service import append_task_event
 from app.services.task_queue_service import (
     claim_next_task,
@@ -45,8 +48,10 @@ class TaskWorker:
     def run_forever(self) -> None:
         while not self._stop_event.is_set():
             with SessionLocal() as db:
+                _touch_worker(db, self.worker_id, status="idle")
                 task = claim_next_task(db, worker_id=self.worker_id)
                 if task is not None:
+                    _touch_worker(db, self.worker_id, status="busy", task=task)
                     self.execute_claimed_task(db, task)
                     continue
             self._stop_event.wait(max(0.05, settings.worker_poll_interval_seconds))
@@ -55,9 +60,11 @@ class TaskWorker:
         owns_session = db is None
         current_db = db or SessionLocal()
         try:
+            _touch_worker(current_db, self.worker_id, status="idle")
             task = claim_next_task(current_db, worker_id=self.worker_id)
             if task is None:
                 return False
+            _touch_worker(current_db, self.worker_id, status="busy", task=task)
             self.execute_claimed_task(current_db, task, background_heartbeat=owns_session)
             return True
         finally:
@@ -91,6 +98,8 @@ class TaskWorker:
                     event_type="task_failed",
                 )
                 release_task_lease(db, task)
+                increment_usage(db, task.owner_user_id, tasks_failed=1)
+                _touch_worker(db, self.worker_id, status="idle", failed_delta=1)
                 db.commit()
         finally:
             heartbeat.stop()
@@ -204,7 +213,7 @@ class TaskWorker:
             if step.agent_type == "quality_review_agent"
             else step.agent_type
         )
-        prompt = get_prompt(prompt_name)
+        prompt = get_active_prompt(db, prompt_name)
         run = AgentRun(
             task_id=task.id,
             step_id=step.id,
@@ -220,7 +229,9 @@ class TaskWorker:
                 if task.use_deepseek and step.agent_type == "quality_review_agent"
                 else None
             ),
+            prompt_name=prompt.prompt_name,
             prompt_version=prompt.version,
+            prompt_version_id=prompt.id,
             input_summary_json=json.dumps(
                 {
                     "selected_file_count": len(state.selected_file_ids),
@@ -237,13 +248,40 @@ class TaskWorker:
         try:
             agent = get_specialist_agent(step.agent_type)
             output = agent.execute(
-                ToolContext(db=db, task=task, step=step, state=state),
+                ToolContext(
+                    db=db,
+                    task=task,
+                    step=step,
+                    state=state,
+                    agent_run_id=run.id,
+                ),
                 step,
             )
             if task.cancellation_requested_at is not None:
                 self._cancel(db, task)
                 return None
             self._apply_output(state, step, output)
+            if step.agent_type == "quality_review_agent" and state.report_id is not None:
+                report = db.get(Report, state.report_id)
+                if report is not None and report.task_id == task.id:
+                    review_status = str(output.get("status") or "failed")
+                    report.quality_status = review_status
+                    report.quality_summary_json = json.dumps(
+                        _safe_output(output), ensure_ascii=False, default=str
+                    )
+                    report.warnings_json = json.dumps(
+                        state.warnings, ensure_ascii=False, default=str
+                    )
+                    report.status = (
+                        "failed"
+                        if review_status == "failed"
+                        else (
+                            "ready_with_warnings"
+                            if review_status in {"passed_with_warnings", "retry_required"}
+                            or state.warnings
+                            else "ready"
+                        )
+                    )
             step.output_json = json.dumps(
                 _safe_output(output),
                 ensure_ascii=False,
@@ -346,6 +384,8 @@ class TaskWorker:
                 event_type="task_failed",
             )
             release_task_lease(db, task)
+            increment_usage(db, task.owner_user_id, tasks_failed=1)
+            _touch_worker(db, self.worker_id, status="idle", failed_delta=1)
             db.commit()
             return None
 
@@ -455,6 +495,16 @@ class TaskWorker:
         )
         task.current_step_id = None
         release_task_lease(db, task)
+        duration_ms = 0
+        if task.started_at:
+            duration_ms = max(0, int((datetime.utcnow() - task.started_at).total_seconds() * 1000))
+        increment_usage(
+            db,
+            task.owner_user_id,
+            tasks_succeeded=1,
+            task_duration_ms=duration_ms,
+        )
+        _touch_worker(db, self.worker_id, status="idle", completed_delta=1)
         db.commit()
 
     def _cancel(self, db: Session, task: Task) -> None:
@@ -537,6 +587,40 @@ class TaskWorker:
             state.review_findings = output.get("issues") or []
 
 
+def _touch_worker(
+    db: Session,
+    worker_id: str,
+    *,
+    status: str,
+    task: Task | None = None,
+    completed_delta: int = 0,
+    failed_delta: int = 0,
+) -> WorkerStatus:
+    now = datetime.utcnow()
+    record = db.scalar(
+        select(WorkerStatus).where(WorkerStatus.worker_id == worker_id)
+    )
+    if record is None:
+        record = WorkerStatus(
+            worker_id=worker_id,
+            status=status,
+            last_heartbeat_at=now,
+            current_task_id=task.id if task else None,
+            lease_expires_at=task.lease_expires_at if task else None,
+            started_at=now,
+        )
+        db.add(record)
+    else:
+        record.status = status
+        record.last_heartbeat_at = now
+        record.current_task_id = task.id if task else None
+        record.lease_expires_at = task.lease_expires_at if task else None
+        record.completed_tasks += completed_delta
+        record.failed_tasks += failed_delta
+    db.commit()
+    return record
+
+
 class _LeaseHeartbeat:
     def __init__(self, task_id: int, worker_id: str) -> None:
         self.task_id = task_id
@@ -564,6 +648,7 @@ class _LeaseHeartbeat:
                         worker_id=self.worker_id,
                     ):
                         return
+                    _touch_worker(db, self.worker_id, status="busy", task=db.get(Task, self.task_id))
             except Exception:
                 continue
 

@@ -25,6 +25,7 @@ export default function AppLayout() {
         </header>
         <nav className="app-tabs">
           <NavLink to="/workspaces">工作区</NavLink>
+          <NavLink to="/usage">使用量</NavLink>
           {user.role === "admin" && <NavLink to="/admin">管理员后台</NavLink>}
         </nav>
         <Outlet />

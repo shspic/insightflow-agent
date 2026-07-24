@@ -245,6 +245,91 @@ def retry_task(db: Session, task: Task, *, step_id: int | None = None) -> Task:
     return task
 
 
+def requeue_task_for_reanalysis(db: Session, task: Task) -> Task:
+    """按用户明确请求重跑分析链路，保留文件理解结果并重新执行质量审核。"""
+    if task.status not in {"completed", "completed_with_warnings", "failed"}:
+        raise TaskQueueError("只有已结束任务可以重新运行分析", "INVALID_TASK_STATUS")
+    steps = list(
+        db.scalars(
+            select(TaskStep)
+            .where(TaskStep.task_id == task.id)
+            .order_by(TaskStep.step_order.asc())
+        ).all()
+    )
+    targets = [
+        item
+        for item in steps
+        if item.agent_type
+        in {
+            "data_analysis_agent",
+            "document_research_agent",
+            "report_agent",
+            "quality_review_agent",
+        }
+    ]
+    if not targets:
+        raise TaskQueueError("任务没有可重新分析的步骤", "NO_REANALYSIS_STEPS")
+
+    transition_task(
+        db,
+        task,
+        "retrying",
+        message="用户明确请求重新分析，正在重排受控分析链路。",
+        event_type="task_reanalysis_requested",
+        payload={"step_ids": [item.id for item in targets]},
+    )
+    target_keys = {item.step_key for item in targets}
+    for step in targets:
+        step.status = "queued"
+        step.progress_percent = 0
+        step.started_at = None
+        step.completed_at = None
+        step.failed_at = None
+        step.error_code = None
+        step.error_message = None
+        step.output_json = None
+    task.cancellation_requested_at = None
+    task.failed_at = None
+    task.completed_at = None
+    task.error_code = None
+    task.error_message = None
+    task.current_step_id = None
+    task.worker_id = None
+    task.lease_expires_at = None
+    task.started_at = None
+    task.queued_at = datetime.utcnow()
+    if task.agent_state_json:
+        try:
+            state = json.loads(task.agent_state_json)
+            state["completed_steps"] = [
+                key for key in state.get("completed_steps", []) if key not in target_keys
+            ]
+            state["failed_steps"] = [
+                key for key in state.get("failed_steps", []) if key not in target_keys
+            ]
+            state["analysis_findings"] = []
+            state["document_evidence"] = []
+            state["chart_assets"] = []
+            state["report_sections"] = []
+            state["review_findings"] = []
+            state["final_result"] = {}
+            state["report_id"] = None
+            task.agent_state_json = json.dumps(state, ensure_ascii=False)
+        except json.JSONDecodeError:
+            pass
+    transition_task(
+        db,
+        task,
+        "queued",
+        message="重新分析步骤已进入队列；文件理解结果将继续复用。",
+        progress_percent=_completed_progress(steps),
+        event_type="task_reanalysis_queued",
+    )
+    db.commit()
+    db.refresh(task)
+    return task
+
+
 def _downstream_steps(
     steps: list[TaskStep],
     initial_keys: set[str],

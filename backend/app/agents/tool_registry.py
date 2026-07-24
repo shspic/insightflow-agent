@@ -1,4 +1,5 @@
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -9,6 +10,8 @@ from app.agents.v2_state import AgentStateV2
 from app.models.task import Task
 from app.models.task_step import TaskStep
 from app.models.tool_call import ToolCall
+from app.models.user import User
+from app.services.quota_service import QuotaExceeded, check_tool_call, increment_usage
 from app.services.security_service import sanitize_details
 from app.services.task_event_service import append_task_event
 from app.services.workspace_service import safe_public_text
@@ -69,6 +72,7 @@ class ToolContext:
     task: Task
     step: TaskStep
     state: AgentStateV2
+    agent_run_id: int | None = None
 
 
 def _registry() -> dict[str, ToolDefinition]:
@@ -176,6 +180,13 @@ def execute_registered_tool(
         raise ToolExecutionError("任务已请求取消", "TASK_CANCELLED")
     if context.state.tool_budget <= 0:
         raise ToolExecutionError("任务工具调用预算已用尽", "TOOL_BUDGET_EXHAUSTED")
+    owner = context.db.get(User, context.task.owner_user_id)
+    if owner is None:
+        raise ToolExecutionError("任务所有者不存在", "USER_NOT_FOUND")
+    try:
+        check_tool_call(context.db, owner, context.task)
+    except QuotaExceeded as exc:
+        raise ToolExecutionError(str(exc), "QUOTA_EXCEEDED") from exc
     context.state.tool_budget -= 1
     try:
         validated_input = definition.input_schema.model_validate(payload)
@@ -184,6 +195,8 @@ def execute_registered_tool(
 
     trace = ToolCall(
         task_id=context.task.id,
+        step_id=context.step.id,
+        agent_run_id=context.agent_run_id,
         node_name=agent_type,
         tool_name=tool_name,
         input_json=json.dumps(
@@ -195,6 +208,8 @@ def execute_registered_tool(
     )
     context.db.add(trace)
     context.db.flush()
+    increment_usage(context.db, owner.id, tool_calls=1)
+    started = time.monotonic()
     append_task_event(
         context.db,
         task_id=context.task.id,
@@ -211,6 +226,7 @@ def execute_registered_tool(
         output = definition.output_schema.model_validate(raw_output).model_dump()
     except ToolExecutionError as exc:
         trace.status = "failed"
+        trace.latency_ms = int((time.monotonic() - started) * 1000)
         trace.error_message = safe_public_text(exc.message)
         append_task_event(
             context.db,
@@ -227,11 +243,13 @@ def execute_registered_tool(
         raise
     except Exception as exc:
         trace.status = "failed"
+        trace.latency_ms = int((time.monotonic() - started) * 1000)
         trace.error_message = safe_public_text(str(exc))
         context.db.flush()
         raise ToolExecutionError(str(exc)) from exc
 
     trace.status = "success"
+    trace.latency_ms = int((time.monotonic() - started) * 1000)
     trace.output_json = json.dumps(
         _summarize_output(output),
         ensure_ascii=False,

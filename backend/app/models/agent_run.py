@@ -24,7 +24,13 @@ class AgentRun(Base):
     run_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
     model_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    prompt_name: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     prompt_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    prompt_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prompt_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     input_summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     output_summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     tool_calls_json: Mapped[str | None] = mapped_column(Text, nullable=True)

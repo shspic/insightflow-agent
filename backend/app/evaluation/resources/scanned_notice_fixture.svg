@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#f7f3e8"/>
+  <rect x="70" y="60" width="1060" height="680" fill="#fffdf7" stroke="#7a7468" stroke-width="3"/>
+  <text x="600" y="160" text-anchor="middle" font-size="52" font-family="Noto Sans CJK SC, sans-serif">合成扫描通知</text>
+  <text x="130" y="260" font-size="32" font-family="Noto Sans CJK SC, sans-serif">提交截止日期：2026 年 8 月 31 日</text>
+  <text x="130" y="330" font-size="32" font-family="Noto Sans CJK SC, sans-serif">材料要求：报告正文、引用清单与数据附件</text>
+  <text x="130" y="400" font-size="32" font-family="Noto Sans CJK SC, sans-serif">注意：迟交材料需在报告中说明原因</text>
+  <text x="130" y="560" font-size="25" font-family="Noto Sans CJK SC, sans-serif">本文件仅用于 InsightFlow 公开合成评估，不含真实用户信息。</text>
+</svg>

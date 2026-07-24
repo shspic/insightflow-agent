@@ -6,7 +6,31 @@ InsightFlow Agent 是一个基于 FastAPI + React + LangGraph 的多模态文档
 
 这个项目的定位不是普通聊天机器人，而是一个围绕“文件输入、任务判断、工具调用、结果生成、过程可观测”构建的任务执行型 AI 应用。
 
-## V2-04 当前状态
+## V2-05 当前状态
+
+V2-05 已在 V2-04 可靠任务执行上增加正式 `reports/report_assets` 版本模型、三种受控模板、Markdown/DOCX/PDF 导出、扫描 PDF 分页 OCR、用户反馈与重新生成、Prompt 版本、数据库配额、Worker/Agent/工具/模型监控、85 条合成 deterministic 评估集、保留期清理、SQLite 备份恢复及生产启动门禁。
+
+报告 Markdown 是规范源，新版本不会覆盖旧版本；所有导出和下载经过用户、工作区、任务、报告与资产校验。管理员默认只能查看运行和反馈元数据，不能旁路读取普通用户报告正文和原始文件。
+
+详细说明：
+
+- [V2-05 报告与治理](docs/V2_05_REPORTS_GOVERNANCE_EVALUATION.md)
+- [V2-05 手动验收](docs/V2_05_MANUAL_ACCEPTANCE.md)
+- [V2-05 评估指南](docs/V2_05_EVALUATION_GUIDE.md)
+- [V2-05 备份恢复](docs/V2_05_BACKUP_AND_RECOVERY.md)
+
+真实数据库升级前必须停写并备份，再手工执行：
+
+```powershell
+cd D:\spir\NO2_agent\backend
+.\.venv\Scripts\alembic.exe current
+.\.venv\Scripts\alembic.exe heads
+.\.venv\Scripts\alembic.exe upgrade head
+```
+
+V2-04 当前状态说明保留如下，作为兼容基础。
+
+## V2-04 兼容基础
 
 当前代码已在 V2-03 文件理解基础上完成 V2-04 可靠任务执行层：自然语言任务草稿、最多两轮主动追问、版本化计划、可视化修改与确认、SQLite 持久化队列、独立单 Worker、租约与心跳、SSE/轮询恢复、协作式取消、受限局部重试，以及 Supervisor + File Understanding、Data Analysis、Document Research、Report、Quality Review 五个专业 Agent。计划确认前不会执行正式分析工具。
 

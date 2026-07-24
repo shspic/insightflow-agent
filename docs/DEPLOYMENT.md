@@ -1,5 +1,28 @@
 # 部署与本地三进程启动
 
+> V2-05 更新：生产探针应同时使用 `/api/health`（liveness）和 `/api/health/ready`（readiness）。容器安装 Tesseract 中英文语言包、Poppler 与 Noto CJK 字体，以支持扫描 PDF OCR 和 PDF 导出。
+
+## V2-05 生产门禁
+
+`ENV=production` 时以下危险配置会拒绝启动：
+
+- `AUTH_SECRET_KEY` 长度或随机性不足；
+- `AUTH_COOKIE_SECURE=false`；
+- `ENABLE_LEGACY_V1_API=true`；
+- `DEBUG=true`；
+- 未配置可信 HTTPS 反向代理头；
+- `ENABLE_HSTS=false`；
+- Cookie CORS 使用 `*`；
+- 明显测试数据库地址；
+- 文件或配额上限不是正数；
+- 明显弱管理员密码。
+
+生产环境还应在部署流水线执行 `alembic current` 与 `alembic heads`，确认 storage 可写并启动独立 Worker。`/api/health/ready` 会核对数据库、revision、storage 和 Worker 心跳；DeepSeek 或 OCR 缺失只返回 degraded。
+
+建议同域反向代理 `/api`，保留 SSE 无缓冲与足够空闲超时。FastAPI 增加 nosniff、Referrer-Policy、frame 限制、基础 CSP、Permissions-Policy，并仅在 production HTTPS 启用 HSTS。
+
+V2-05 的 SQLite 备份、恢复和演练见 [V2_05_BACKUP_AND_RECOVERY.md](V2_05_BACKUP_AND_RECOVERY.md)。正式国内部署后必须改为异地备份和持久对象存储；本阶段不宣称当前 Render/Vercel 演示满足生产要求。
+
 > V2-04：可靠任务执行必须同时运行 FastAPI API 和独立 Worker。数据库队列使用 SQLite 租约，不要求 Redis。当前只适合单机低并发；Vercel + Render 旧演示没有持久 Worker 和共享持久磁盘，不能宣称支持 V2-04 可靠任务恢复。
 
 ## V2-04 本地启动

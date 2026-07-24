@@ -18,11 +18,16 @@ from app.agents.tool_registry import (
 from app.core.config import BACKEND_DIR, settings
 from app.models.file import File
 from app.models.file_chunk import FileChunk
+from app.models.agent_run import AgentRun
+from app.models.report import Report
 from app.models.task_step import TaskStep
+from app.models.usage import ModelUsageRecord
+from app.models.user import User
 from app.schemas.task_execution import QualityReviewOutput
 from app.services.analysis_service import _build_analysis_result
 from app.services.chart_service import generate_charts
 from app.services.llm_service import call_llm, is_llm_ready, safe_json_dumps
+from app.services.quota_service import QuotaExceeded, check_model_call, increment_usage
 from app.services.rag_service import answer_pdf_question
 from app.services.v2_report_service import REQUIRED_REPORT_SECTIONS, generate_structured_report
 from app.services.workspace_context_service import build_workspace_context
@@ -211,8 +216,58 @@ def run_quality_review(
         and is_llm_ready()
         and context.state.model_budget > 0
     ):
+        owner = context.db.get(User, context.task.owner_user_id)
+        if owner is None:
+            raise ToolExecutionError("任务所有者不存在", "USER_NOT_FOUND")
+        try:
+            check_model_call(context.db, owner, context.task)
+        except QuotaExceeded as exc:
+            raise ToolExecutionError(str(exc), "QUOTA_EXCEEDED") from exc
         context.state.model_budget -= 1
         model_review, model_result = _model_review(context)
+        token_usage = model_result.token_usage or {}
+        input_tokens = int(
+            token_usage.get("prompt_tokens")
+            or token_usage.get("input_tokens")
+            or 0
+        )
+        output_tokens = int(
+            token_usage.get("completion_tokens")
+            or token_usage.get("output_tokens")
+            or 0
+        )
+        agent_run = (
+            context.db.get(AgentRun, context.agent_run_id)
+            if context.agent_run_id is not None
+            else None
+        )
+        context.db.add(
+            ModelUsageRecord(
+                user_id=owner.id,
+                task_id=context.task.id,
+                agent_run_id=context.agent_run_id,
+                provider=settings.llm_provider,
+                model_name=settings.llm_model,
+                prompt_name=agent_run.prompt_name if agent_run else "quality_review",
+                prompt_version=agent_run.prompt_version if agent_run else None,
+                status="success" if model_result.success else "failed",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                duration_ms=int(model_result.duration_ms or 0),
+                error_code=None if model_result.success else "MODEL_CALL_FAILED",
+                metadata_json=json.dumps(
+                    {"skipped": model_result.skipped},
+                    ensure_ascii=False,
+                ),
+            )
+        )
+        increment_usage(
+            context.db,
+            owner.id,
+            deepseek_calls=1,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
         model_metadata["token_usage"] = model_result.token_usage
         model_metadata["duration_ms"] = model_result.duration_ms
         if model_review is not None:
@@ -347,12 +402,22 @@ def _deterministic_review(context: ToolContext) -> QualityReviewOutput:
         ):
             issues.append({"code": "INVALID_CITATION", "message": "引用定位无法在 file_chunks 中验证"})
 
+    report_record = (
+        context.db.get(Report, context.task.report_id)
+        if context.task.report_id is not None
+        else None
+    )
     report_file = _resolve_report(context.task.report_path)
-    if report_file is None or not report_file.exists():
+    if report_record is not None:
+        content = report_record.markdown_content
+    elif report_file is not None and report_file.exists():
+        content = report_file.read_text(encoding="utf-8")
+    else:
+        content = None
+    if content is None:
         issues.append({"code": "REPORT_NOT_FOUND", "message": "Markdown 报告资源不存在"})
         retry_ids.extend(item.id for item in steps if item.agent_type == "report_agent")
     else:
-        content = report_file.read_text(encoding="utf-8")
         for section in REQUIRED_REPORT_SECTIONS:
             if f"## {section}" not in content:
                 issues.append({"code": "MISSING_REPORT_SECTION", "message": f"报告缺少章节：{section}"})

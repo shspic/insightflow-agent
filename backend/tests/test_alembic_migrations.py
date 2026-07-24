@@ -14,7 +14,8 @@ BASELINE_REVISION = "20260723_0001"
 V2_02_REVISION = "20260723_0003"
 PREVIOUS_REVISION = V2_02_REVISION
 V2_03_REVISION = "20260723_0004"
-HEAD_REVISION = "20260724_0005"
+V2_04_REVISION = "20260724_0005"
+HEAD_REVISION = "20260724_0006"
 V2_TABLES = {
     "users",
     "auth_sessions",
@@ -32,6 +33,19 @@ V2_TABLES = {
     "task_steps",
     "task_events",
     "agent_runs",
+    "reports",
+    "report_assets",
+    "user_feedback",
+    "prompt_versions",
+    "usage_counters",
+    "quota_overrides",
+    "model_usage_records",
+    "evaluation_datasets",
+    "evaluation_cases",
+    "evaluation_runs",
+    "evaluation_results",
+    "cleanup_runs",
+    "worker_statuses",
 }
 
 
@@ -226,6 +240,56 @@ def test_v2_04_migration_can_downgrade_to_v2_03_and_upgrade_again(
     with upgraded_engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     assert revision == HEAD_REVISION
+    upgraded_engine.dispose()
+
+
+def test_v2_05_migration_can_downgrade_to_v2_04_and_upgrade_again(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "v2-05-roundtrip.db"
+    alembic_config = _build_alembic_config(database_path, monkeypatch)
+    command.upgrade(alembic_config, "head")
+
+    command.downgrade(alembic_config, V2_04_REVISION)
+    engine = create_engine(_sqlite_url(database_path))
+    inspector = inspect(engine)
+    assert "reports" not in inspector.get_table_names()
+    assert "prompt_versions" not in inspector.get_table_names()
+    assert "prompt_name" not in _column_names(inspector, "agent_runs")
+    with engine.connect() as connection:
+        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+    assert revision == V2_04_REVISION
+    engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    upgraded_engine = create_engine(_sqlite_url(database_path))
+    upgraded_inspector = inspect(upgraded_engine)
+    assert {
+        "reports",
+        "report_assets",
+        "user_feedback",
+        "prompt_versions",
+        "usage_counters",
+        "quota_overrides",
+        "model_usage_records",
+        "evaluation_datasets",
+        "evaluation_cases",
+        "evaluation_runs",
+        "evaluation_results",
+        "cleanup_runs",
+        "worker_statuses",
+    }.issubset(upgraded_inspector.get_table_names())
+    assert {"prompt_name", "prompt_version_id"}.issubset(
+        _column_names(upgraded_inspector, "agent_runs")
+    )
+    with upgraded_engine.connect() as connection:
+        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        active_count = connection.execute(
+            text("SELECT COUNT(*) FROM prompt_versions WHERE status = 'active'")
+        ).scalar_one()
+    assert revision == HEAD_REVISION
+    assert active_count == 7
     upgraded_engine.dispose()
 
 

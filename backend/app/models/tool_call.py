@@ -11,6 +11,12 @@ class ToolCall(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("task_steps.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    agent_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     node_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     tool_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     input_json: Mapped[str | None] = mapped_column(Text, nullable=True)

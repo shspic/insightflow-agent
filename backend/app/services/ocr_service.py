@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +85,113 @@ def extract_text_from_image(file_record: File) -> dict[str, Any]:
         "text_length": len(text),
         "message": "OCR 识别完成。" if text else "未识别到明显文字。",
     }
+
+
+def extract_scanned_pdf_pages(
+    pdf_path: Path,
+    page_numbers: list[int],
+) -> list[dict[str, Any]]:
+    """只处理调用方判定为缺少有效文本的页面。
+
+    page_numbers 使用从 1 开始的页码；返回值不写日志，也不会调用模型。
+    """
+    try:
+        import fitz
+        from PIL import Image
+        import pytesseract
+        from pytesseract import Output, TesseractNotFoundError
+    except ImportError as exc:
+        raise FileOcrError("扫描 PDF OCR 依赖未安装，请安装 PyMuPDF、pillow 和 pytesseract。") from exc
+
+    _configure_tesseract(pytesseract)
+    requested = list(dict.fromkeys(page_numbers))[: max(1, settings.pdf_ocr_max_pages)]
+    started = time.monotonic()
+    results: list[dict[str, Any]] = []
+    try:
+        with fitz.open(pdf_path) as document:
+            for page_number in requested:
+                if time.monotonic() - started > max(1, settings.pdf_ocr_timeout_seconds):
+                    results.append(
+                        {
+                            "page_number": page_number,
+                            "status": "timeout",
+                            "text": "",
+                            "confidence": None,
+                            "source_type": "scanned_pdf_ocr",
+                        }
+                    )
+                    continue
+                if page_number < 1 or page_number > len(document):
+                    continue
+                page = document[page_number - 1]
+                scale = max(1.0, settings.pdf_ocr_dpi / 72)
+                width = int(page.rect.width * scale)
+                height = int(page.rect.height * scale)
+                pixels = width * height
+                if pixels > max(1, settings.pdf_ocr_max_pixels_per_page):
+                    scale *= (
+                        settings.pdf_ocr_max_pixels_per_page / max(1, pixels)
+                    ) ** 0.5
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+                image = Image.frombytes("RGB", [pixmap.width, pixmap.height], pixmap.samples)
+                try:
+                    data = pytesseract.image_to_data(
+                        image,
+                        lang=settings.ocr_lang,
+                        output_type=Output.DICT,
+                        timeout=max(1, settings.pdf_ocr_timeout_seconds),
+                    )
+                    words = [
+                        str(word).strip()
+                        for word in data.get("text", [])
+                        if str(word).strip()
+                    ]
+                    confidences = []
+                    for value in data.get("conf", []):
+                        try:
+                            confidence = float(value)
+                        except (TypeError, ValueError):
+                            continue
+                        if confidence >= 0:
+                            confidences.append(confidence)
+                    results.append(
+                        {
+                            "page_number": page_number,
+                            "status": "success",
+                            "text": " ".join(words).strip(),
+                            "confidence": (
+                                round(sum(confidences) / len(confidences) / 100, 4)
+                                if confidences
+                                else None
+                            ),
+                            "source_type": "scanned_pdf_ocr",
+                        }
+                    )
+                except RuntimeError as exc:
+                    results.append(
+                        {
+                            "page_number": page_number,
+                            "status": "failed",
+                            "text": "",
+                            "confidence": None,
+                            "source_type": "scanned_pdf_ocr",
+                            "message": str(exc)[:300],
+                        }
+                    )
+    except TesseractNotFoundError as exc:
+        raise FileOcrError(OCR_ENGINE_NOT_CONFIGURED_MESSAGE) from exc
+    except FileOcrError:
+        raise
+    except Exception as exc:
+        normalized = str(exc).lower()
+        if _is_language_error(normalized):
+            raise FileOcrError(
+                f"{OCR_LANGUAGE_NOT_FOUND_MESSAGE} 当前 OCR_LANG={settings.ocr_lang}"
+            ) from exc
+        if "tesseract" in normalized:
+            raise FileOcrError(OCR_ENGINE_NOT_CONFIGURED_MESSAGE) from exc
+        raise FileOcrError(f"扫描 PDF OCR 失败：{str(exc)[:300]}") from exc
+    return results
 
 
 def _configure_tesseract(pytesseract_module: Any) -> None:

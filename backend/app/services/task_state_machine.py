@@ -30,7 +30,7 @@ ALLOWED_TASK_TRANSITIONS = {
         "cancelled",
     },
     "retrying": {"queued", "running", "reviewing", "failed", "cancelled"},
-    "completed": set(),
+    "completed": {"retrying"},
     "completed_with_warnings": {"retrying"},
     "failed": {"retrying"},
     "cancelled": set(),

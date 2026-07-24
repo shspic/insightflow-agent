@@ -6,10 +6,12 @@ matplotlib
 openpyxl
 pandas
 pillow
+python-docx
 PyMuPDF
 pytest
 pytesseract
 python-dotenv
 python-multipart
+reportlab
 sqlalchemy
 uvicorn[standard]

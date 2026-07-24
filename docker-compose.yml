@@ -13,9 +13,22 @@ services:
       CORS_ORIGINS: http://localhost:5173
       TESSERACT_CMD: ""
       OCR_LANG: chi_sim+eng
+      USER_CONCURRENT_TASKS: "1"
+      USER_DAILY_TASKS: "20"
+      USER_DAILY_DEEPSEEK_CALLS: "50"
+      TASK_MODEL_CALL_BUDGET: "12"
+      TASK_TOOL_CALL_BUDGET: "30"
+      REPORT_HISTORY_MAX_VERSIONS: "10"
+      WORKER_STALE_SECONDS: "60"
     volumes:
       - ./backend/data:/app/data
       - ./backend/storage:/app/storage
+      - ./backend/backups:/app/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   worker:
     build: ./backend
@@ -29,11 +42,15 @@ services:
       REPORT_DIR: ./storage/reports
       TESSERACT_CMD: ""
       OCR_LANG: chi_sim+eng
+      TASK_MODEL_CALL_BUDGET: "12"
+      TASK_TOOL_CALL_BUDGET: "30"
     volumes:
       - ./backend/data:/app/data
       - ./backend/storage:/app/storage
+      - ./backend/backups:/app/backups
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   frontend:
     build: ./frontend

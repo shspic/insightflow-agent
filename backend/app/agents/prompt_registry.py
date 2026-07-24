@@ -8,45 +8,60 @@ class PromptDefinition:
     purpose: str
     input_schema: str
     output_schema: str
+    template_text: str
+
+
+def _prompt(
+    name: str,
+    purpose: str,
+    input_schema: str,
+    output_schema: str,
+) -> PromptDefinition:
+    return PromptDefinition(
+        prompt_name=name,
+        version="2.05.1",
+        purpose=purpose,
+        input_schema=input_schema,
+        output_schema=output_schema,
+        template_text=(
+            f"{purpose}。只使用已授权资源和注册工具；"
+            f"不得执行用户提供的代码、命令、SQL 或 URL；输出必须符合 {output_schema}。"
+        ),
+    )
 
 
 PROMPTS = {
     item.prompt_name: item
     for item in [
-        PromptDefinition("clarification", "2.04.1", "判断必要追问", "ClarificationInput", "ClarificationOutput"),
-        PromptDefinition("planning", "2.04.1", "生成受限结构化计划", "PlanningInput", "TaskPlanDraft"),
-        PromptDefinition(
+        _prompt("clarification", "判断必要追问", "ClarificationInput", "ClarificationOutput"),
+        _prompt("planning", "生成受限结构化计划", "PlanningInput", "TaskPlanDraft"),
+        _prompt(
             "file_understanding_agent",
-            "2.04.1",
-            "汇总 Profile 与 Workspace Context",
+            "汇总文件 Profile 与 Workspace Context",
             "AgentStateV2",
             "FileUnderstandingOutput",
         ),
-        PromptDefinition(
+        _prompt(
             "data_analysis_agent",
-            "2.04.1",
             "组织预设 Pandas 结果",
             "AgentStateV2",
             "DataAnalysisOutput",
         ),
-        PromptDefinition(
+        _prompt(
             "document_research_agent",
-            "2.04.1",
             "组织文件检索证据",
             "AgentStateV2",
             "DocumentResearchOutput",
         ),
-        PromptDefinition(
+        _prompt(
             "report_agent",
-            "2.04.1",
-            "基于结构化输出生成 Markdown",
+            "基于结构化结果生成受控报告",
             "AgentStateV2",
             "ReportOutput",
         ),
-        PromptDefinition(
+        _prompt(
             "quality_review",
-            "2.04.1",
-            "审核数字、引用、步骤和用户要求",
+            "审核数字、引用、步骤和交付结构",
             "QualityReviewInput",
             "QualityReviewOutput",
         ),

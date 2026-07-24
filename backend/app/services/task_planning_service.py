@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.agents.prompt_registry import get_prompt
 from app.agents.supervisor import SupervisorAgent, validate_plan_steps
 from app.agents.v2_state import AgentStateV2, load_agent_state
 from app.core.config import settings
@@ -15,12 +14,22 @@ from app.models.task_clarification import TaskClarification
 from app.models.task_event import TaskEvent
 from app.models.task_plan import TaskPlan
 from app.models.task_step import TaskStep
+from app.models.user import User
+from app.models.usage import ModelUsageRecord
 from app.schemas.task_execution import (
     PlanPatchRequest,
     PlanStepInput,
     TaskDraftCreate,
 )
 from app.services.llm_service import is_llm_ready
+from app.services.quota_service import (
+    QuotaExceeded,
+    check_plan_confirmation,
+    check_model_call,
+    check_task_creation,
+    increment_usage,
+)
+from app.services.prompt_version_service import get_active_prompt
 from app.services.task_event_service import append_task_event, task_event_response
 from app.services.task_state_machine import transition_task
 from app.services.workspace_context_service import (
@@ -44,6 +53,13 @@ def create_task_draft(
     owner_user_id: int,
     payload: TaskDraftCreate,
 ) -> Task:
+    owner = db.get(User, owner_user_id)
+    if owner is None:
+        raise TaskPlanningError("任务所有者不存在", "USER_NOT_FOUND")
+    try:
+        check_task_creation(db, owner)
+    except QuotaExceeded as exc:
+        raise TaskPlanningError(str(exc), "QUOTA_EXCEEDED") from exc
     context = _context(db, workspace_id, owner_user_id, payload.selected_file_ids)
     task = Task(
         owner_user_id=owner_user_id,
@@ -60,6 +76,7 @@ def create_task_draft(
     )
     db.add(task)
     db.flush()
+    increment_usage(db, owner_user_id, tasks_created=1)
     append_task_event(
         db,
         task_id=task.id,
@@ -250,6 +267,13 @@ def patch_plan(
 
 
 def confirm_plan(db: Session, *, task: Task, plan: TaskPlan) -> Task:
+    owner = db.get(User, task.owner_user_id)
+    if owner is None:
+        raise TaskPlanningError("任务所有者不存在", "USER_NOT_FOUND")
+    try:
+        check_plan_confirmation(db, owner, task)
+    except QuotaExceeded as exc:
+        raise TaskPlanningError(str(exc), "QUOTA_EXCEEDED") from exc
     if task.status != "awaiting_confirmation":
         raise TaskPlanningError("当前任务不等待计划确认", "INVALID_TASK_STATUS")
     if plan.id != task.current_plan_id or plan.status != "draft":
@@ -416,6 +440,14 @@ def _generate_plan(
     if current is not None and current.status == "draft":
         current.status = "superseded"
         current.superseded_at = datetime.utcnow()
+    owner = db.get(User, task.owner_user_id)
+    if owner is None:
+        raise TaskPlanningError("任务所有者不存在", "USER_NOT_FOUND")
+    if task.use_deepseek and is_llm_ready():
+        try:
+            check_model_call(db, owner, task)
+        except QuotaExceeded as exc:
+            raise TaskPlanningError(str(exc), "QUOTA_EXCEEDED") from exc
     result = SupervisorAgent().generate_plan(
         user_request=clarified_request,
         workspace_context=context,
@@ -455,16 +487,17 @@ def _generate_plan(
         tool_budget=max(0, settings.task_tool_call_budget),
     )
     task.agent_state_json = state.model_dump_json()
-    prompt = get_prompt("planning")
-    db.add(
-        AgentRun(
+    prompt_record = get_active_prompt(db, "planning")
+    agent_run = AgentRun(
             task_id=task.id,
             step_id=None,
             agent_type="supervisor",
             run_number=plan.version,
             provider=settings.llm_provider if result.model_attempted else "deterministic",
             model_name=settings.llm_model if result.model_attempted else None,
-            prompt_version=prompt.version,
+            prompt_name=prompt_record.prompt_name,
+            prompt_version=prompt_record.version,
+            prompt_version_id=prompt_record.id,
             input_summary_json=_json(
                 {
                     "selected_file_count": len(state.selected_file_ids),
@@ -485,7 +518,38 @@ def _generate_plan(
             fallback_used=int(result.fallback_used),
             completed_at=datetime.utcnow(),
         )
-    )
+    db.add(agent_run)
+    db.flush()
+    if result.model_attempted:
+        token_usage = result.token_usage or {}
+        input_tokens = int(token_usage.get("prompt_tokens") or token_usage.get("input_tokens") or 0)
+        output_tokens = int(
+            token_usage.get("completion_tokens") or token_usage.get("output_tokens") or 0
+        )
+        db.add(
+            ModelUsageRecord(
+                user_id=owner.id,
+                task_id=task.id,
+                agent_run_id=agent_run.id,
+                provider=settings.llm_provider,
+                model_name=settings.llm_model,
+                prompt_name=prompt_record.prompt_name,
+                prompt_version=prompt_record.version,
+                status="failed" if result.fallback_used else "success",
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                duration_ms=int(result.duration_ms or 0),
+                error_code="MODEL_FALLBACK" if result.fallback_used else None,
+                metadata_json=_json({"fallback_used": result.fallback_used}),
+            )
+        )
+        increment_usage(
+            db,
+            owner.id,
+            deepseek_calls=1,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
     transition_task(
         db,
         task,

@@ -4,7 +4,6 @@ import {
   cancelWorkspaceTask,
   confirmTaskPlan,
   createWorkspaceTaskDraft,
-  fetchWorkspaceReport,
   fetchWorkspaceTask,
   fetchWorkspaceTaskEvents,
   openWorkspaceTaskEventStream,
@@ -13,7 +12,7 @@ import {
   retryWorkspaceTask,
   retryWorkspaceTaskStep,
 } from "../api/workspaceTasks";
-import ReportViewer from "./ReportViewer";
+import ReportCenter from "./ReportCenter";
 
 const TERMINAL = new Set(["completed", "completed_with_warnings", "failed", "cancelled"]);
 const LIVE = new Set(["queued", "running", "reviewing", "retrying"]);
@@ -65,10 +64,11 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
   const [request, setRequest] = useState("");
   const [selectedFileIds, setSelectedFileIds] = useState([]);
   const [useDeepseek, setUseDeepseek] = useState(false);
+  const [templateKey, setTemplateKey] = useState("comprehensive_analysis");
   const [answers, setAnswers] = useState({});
   const [planDraft, setPlanDraft] = useState(null);
   const [events, setEvents] = useState([]);
-  const [report, setReport] = useState(null);
+  const [reportVisible, setReportVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [transport, setTransport] = useState("idle");
@@ -154,7 +154,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
         user_request: request.trim(),
         selected_file_ids: selectedFileIds,
         use_deepseek: useDeepseek,
-        report_preferences: { format: "markdown" },
+        report_preferences: { format: "markdown", template_key: templateKey },
       });
       setTask(created);
       setEvents(created.latest_events || []);
@@ -239,14 +239,6 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
     }
   }
 
-  async function loadReport() {
-    try {
-      setReport(await fetchWorkspaceReport(workspaceId, task.id));
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-  }
-
   function moveStep(index, direction) {
     const nextIndex = index + direction;
     if (nextIndex <= 0 || nextIndex >= planDraft.steps.length - 2) return;
@@ -324,6 +316,14 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             onChange={(event) => setUseDeepseek(event.target.checked)}
           />
           允许 DeepSeek 参与计划和质量审核（不可用时自动降级）
+        </label>
+        <label>
+          报告模板
+          <select value={templateKey} onChange={(event) => setTemplateKey(event.target.value)}>
+            <option value="comprehensive_analysis">综合分析报告</option>
+            <option value="student_research">学生调研报告</option>
+            <option value="job_application_analysis">求职资料分析</option>
+          </select>
         </label>
         {error && <p className="form-message form-message--error">{error}</p>}
         <button type="submit" disabled={busy || !request.trim()}>
@@ -554,7 +554,9 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
             <ul>{task.final_result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
           )}
           <div className="row-actions">
-            {task.has_report && <button type="button" onClick={loadReport}>查看 Markdown 报告</button>}
+            {task.has_report && (
+              <button type="button" onClick={() => setReportVisible(true)}>查看报告中心</button>
+            )}
             {["failed", "completed_with_warnings"].includes(task.status) && (
               <button
                 type="button"
@@ -569,7 +571,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
               onClick={() => {
                 setTask(null);
                 setEvents([]);
-                setReport(null);
+                setReportVisible(false);
               }}
             >
               新建任务
@@ -577,7 +579,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged })
           </div>
         </section>
       )}
-      <ReportViewer report={report} />
+      {reportVisible && <ReportCenter workspaceId={workspaceId} taskId={task.id} />}
     </div>
   );
 }

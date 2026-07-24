@@ -238,3 +238,47 @@
 ### 下一阶段入口
 
 建议 V2-05 实施报告/资产版本、任务与模型配额、Worker 指标、管理端可观测、评估集和生产安全门禁。
+
+## V2-05：报告交付、治理、评估、监控与生产安全
+
+### 阶段编号
+
+`V2-05`
+
+### 已实施
+
+- 新增 `20260724_0006` 增量迁移，不修改既有迁移；
+- 新增报告、报告资产、反馈、Prompt 版本、配额/用量、模型调用、评估、清理和 Worker 状态模型；
+- 任务完成生成初始报告，新模板或纠正生成递增版本，旧版本保留；
+- 新增 Markdown、DOCX、PDF 幂等导出和鉴权下载；
+- 新增扫描 PDF 低文本页 OCR 和页码级 `scanned_pdf_ocr` 分块；
+- 新增反馈、报告重新生成、个人使用量和管理员治理 API；
+- 新增 Prompt 激活安全校验和 `agent_runs` 版本关联；
+- 新增服务端配额检查、Worker/Agent/工具/模型指标及三层健康检查；
+- 新增 85 条公开合成评估集、deterministic CLI 和失败案例导出；
+- 新增清理 CLI/管理员 dry-run、SQLite 备份/校验/保护性恢复；
+- 新增 production 配置门禁、安全响应头、Docker OCR/PDF 字体依赖；
+- 新增报告中心、反馈、使用量和管理员运行治理前端。
+
+### 数据和隐私边界
+
+- 管理员接口默认不返回普通用户报告正文、原始文件或未脱敏模型输入；
+- storage key 不以 API 暴露，下载逐级校验所有权；
+- 评估资源全部是项目内合成样例，deterministic 不调用 DeepSeek；
+- 清理默认 dry-run，不按时间静默删除活跃用户文件和当前报告；
+- 真实 `app.db` 未由实施过程自动升级。
+
+### 验证记录
+
+- 后端全量：`73 passed, 1708 warnings in 64.53s`。测试环境关闭真实 LLM/OCR，不读取真实用户内容。
+- Alembic head：`20260724_0006`。独立临时 SQLite 完成从零 `upgrade head → downgrade 20260724_0005 → upgrade head`，最终为 `20260724_0006`。
+- 真实开发数据库最终 revision：`20260724_0005`，仍需要由负责人备份后手动升级。验证期间曾误用 `DATABASE_URL`（Alembic 实际只接受 `ALEMBIC_DATABASE_URL`），导致真实库短暂升到 `0006`；发现后立即按已确认的原 revision 降回 `0005`，随后重新用独立临时库完成验证。
+- deterministic 评估：85 条，`task_success_rate=1.0`、平均响应 1ms、P95 1ms、平均模型调用 0、平均工具调用 1.65。这里的 1.0 是确定性规则与预期路由自检结果，不代表真实模型准确率。
+- 前端：`npm run build` 成功，Vite `68 modules transformed`。
+- `docker compose config --quiet` 返回 0；仅出现当前用户 Docker 客户端配置不可读警告，不影响 Compose 配置解析。
+- `git diff --check` 返回 0；仅有 Git 的 LF/CRLF 工作区提示。
+- DOCX 使用 `python-docx` 完成结构与生成验证；当前机器缺少 LibreOffice，未完成 DOCX 页面渲染。PDF 已使用 Poppler 渲染并人工检查，无裁切或中文缺字。
+
+### 下一阶段入口
+
+进入 UI 美化阶段：重点优化报告版本导航、长报告阅读、图表/表格资产预览、配额提示、管理员监控信息密度、移动端和无障碍。数据库与对象存储迁移仍应作为独立生产化项目。

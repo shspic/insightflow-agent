@@ -9,6 +9,7 @@ import PasswordReset from "./pages/PasswordReset";
 import Register from "./pages/Register";
 import WorkspaceDetail from "./pages/WorkspaceDetail";
 import WorkspaceList from "./pages/WorkspaceList";
+import Usage from "./pages/Usage";
 import "./App.css";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/workspaces" element={<WorkspaceList />} />
               <Route path="/workspaces/:workspaceId" element={<WorkspaceDetail />} />
+              <Route path="/usage" element={<Usage />} />
               <Route element={<RequireAdmin />}>
                 <Route path="/admin" element={<Admin />} />
               </Route>

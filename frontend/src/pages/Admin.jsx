@@ -11,6 +11,7 @@ import {
   updateInviteCode,
   updateUserStatus,
 } from "../api/admin";
+import AdminOperations from "../components/AdminOperations";
 
 export default function Admin() {
   const [invites, setInvites] = useState([]);
@@ -62,6 +63,7 @@ export default function Admin() {
           <button type="button" onClick={() => setOneTimeSecret(null)}>关闭并清除</button>
         </div>
       )}
+      <AdminOperations />
 
       <section className="panel">
         <h3>邀请码管理</h3>

@@ -22,7 +22,11 @@ from app.models.workspace_file import WorkspaceFile
 from app.schemas.file_understanding import FileProfileResponse, FileUnderstandOptions
 from app.services.audit_service import add_audit_log
 from app.services.llm_service import call_llm, safe_json_dumps
-from app.services.ocr_service import FileOcrError, extract_text_from_image
+from app.services.ocr_service import (
+    FileOcrError,
+    extract_scanned_pdf_pages,
+    extract_text_from_image,
+)
 from app.services.rag_service import RagServiceError, index_pdf_file
 from app.services.workspace_service import get_owned_workspace_file, safe_public_text
 
@@ -388,7 +392,7 @@ def _parse_deterministically(
     if file_type == "xlsx":
         return _parse_xlsx(path, file_record.filename)
     if file_type == "pdf":
-        return _parse_pdf(db, file_record, path)
+        return _parse_pdf(db, file_record, path, run_ocr=options.run_ocr)
     if file_type in {"png", "jpg", "jpeg", "webp"}:
         return _parse_image(file_record, path, options.run_ocr)
     return _parse_markdown(db, file_record, path)
@@ -552,7 +556,13 @@ def _parse_xlsx(path: Path, filename: str) -> dict[str, Any]:
     )
 
 
-def _parse_pdf(db: Session, file_record: File, path: Path) -> dict[str, Any]:
+def _parse_pdf(
+    db: Session,
+    file_record: File,
+    path: Path,
+    *,
+    run_ocr: bool = True,
+) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
     text_parts: list[str] = []
     headings: list[str] = []
@@ -588,9 +598,52 @@ def _parse_pdf(db: Session, file_record: File, path: Path) -> dict[str, Any]:
         raise FileUnderstandingError(f"PDF 读取失败：{exc}", "PDF_PARSE_FAILED") from exc
 
     full_text = "\n".join(text_parts).strip()
-    scanned_pages = sum(1 for page in pages if page["text_length"] < 20)
+    scanned_page_numbers = [
+        page["page_number"]
+        for page in pages
+        if page["text_length"] < max(1, settings.pdf_ocr_min_text_chars)
+    ]
+    scanned_pages = len(scanned_page_numbers)
     scan_ratio = scanned_pages / len(pages) if pages else 0
     quality: list[dict[str, Any]] = []
+    ocr_results: list[dict[str, Any]] = []
+    if run_ocr and scanned_page_numbers:
+        try:
+            ocr_results = extract_scanned_pdf_pages(path, scanned_page_numbers)
+            _replace_pdf_ocr_chunks(db, file_record.id, ocr_results)
+            successful = [item for item in ocr_results if item.get("status") == "success"]
+            for item in successful:
+                text = str(item.get("text") or "").strip()
+                if text:
+                    text_parts.append(text)
+                    for page in pages:
+                        if page["page_number"] == item["page_number"]:
+                            page["ocr_status"] = "success"
+                            page["ocr_text_length"] = len(text)
+                            page["ocr_confidence"] = item.get("confidence")
+                            break
+            failed_count = len(ocr_results) - len(successful)
+            if successful:
+                quality.append(
+                    _quality_issue(
+                        "PDF_OCR_UNVERIFIED",
+                        "info",
+                        f"已对 {len(successful)} 个缺少文本的页面执行 OCR；重要内容需要人工核对。",
+                    )
+                )
+            if failed_count:
+                quality.append(
+                    _quality_issue(
+                        "PDF_OCR_PARTIAL",
+                        "warning",
+                        f"{failed_count} 个页面 OCR 未成功，已保留其余页面和原始 Profile 信息。",
+                    )
+                )
+        except FileOcrError as exc:
+            quality.append(
+                _quality_issue("PDF_OCR_UNAVAILABLE", "warning", _safe_error(exc.message))
+            )
+    full_text = "\n".join(text_parts).strip()
     if not full_text:
         quality.append(
             _quality_issue(
@@ -607,7 +660,6 @@ def _parse_pdf(db: Session, file_record: File, path: Path) -> dict[str, Any]:
                 "大部分页面文本过少，可能是扫描 PDF。",
             )
         )
-
     chunk_count = db.scalar(
         select(func.count()).select_from(FileChunk).where(FileChunk.file_id == file_record.id)
     ) or 0
@@ -639,6 +691,17 @@ def _parse_pdf(db: Session, file_record: File, path: Path) -> dict[str, Any]:
         "page_text_overview": pages,
         "suspected_scanned": scan_ratio >= 0.8,
         "scanned_page_ratio": round(scan_ratio, 4),
+        "ocr": {
+            "requested": bool(run_ocr and scanned_page_numbers),
+            "source_type": "scanned_pdf_ocr",
+            "candidate_pages": scanned_page_numbers,
+            "successful_pages": [
+                item["page_number"]
+                for item in ocr_results
+                if item.get("status") == "success" and item.get("text")
+            ],
+            "partial": any(item.get("status") != "success" for item in ocr_results),
+        },
         "chunk_count": int(chunk_count),
         "citation_capability": {
             "page_numbers": True,
@@ -1048,6 +1111,45 @@ def _replace_markdown_chunks(db: Session, file_id: int, text: str) -> None:
             for index, chunk in enumerate(chunks)
         ]
     )
+    db.flush()
+
+
+def _replace_pdf_ocr_chunks(
+    db: Session,
+    file_id: int,
+    page_results: list[dict[str, Any]],
+) -> None:
+    db.query(FileChunk).filter(
+        FileChunk.file_id == file_id,
+        FileChunk.source_type == "scanned_pdf_ocr",
+    ).delete(synchronize_session=False)
+    chunk_size = max(200, settings.rag_chunk_size)
+    records: list[FileChunk] = []
+    chunk_index = 0
+    for result in page_results:
+        if result.get("status") != "success":
+            continue
+        text = str(result.get("text") or "").strip()
+        if not text:
+            continue
+        for offset in range(0, len(text), chunk_size):
+            chunk_text = text[offset : offset + chunk_size]
+            records.append(
+                FileChunk(
+                    file_id=file_id,
+                    page_number=int(result["page_number"]),
+                    chunk_index=chunk_index,
+                    chunk_text=chunk_text,
+                    source_type="scanned_pdf_ocr",
+                    char_start=offset,
+                    char_end=offset + len(chunk_text),
+                    chunk_hash=hashlib.sha256(chunk_text.encode("utf-8")).hexdigest(),
+                    parser_version=f"{PARSER_VERSION}-ocr",
+                )
+            )
+            chunk_index += 1
+    if records:
+        db.add_all(records)
     db.flush()
 
 

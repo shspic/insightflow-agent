@@ -11,6 +11,7 @@ from app.models.workspace import Workspace
 from app.schemas.auth import MessageResponse
 from app.schemas.workspace import WorkspaceCreate, WorkspaceResponse, WorkspaceUpdate
 from app.services.audit_service import add_audit_log
+from app.services.quota_service import QuotaExceeded, check_workspace_creation
 from app.services.workspace_service import get_owned_workspace, workspace_response
 
 
@@ -28,6 +29,10 @@ def create_workspace(
     user: User = Depends(require_password_changed_csrf),
     db: Session = Depends(get_db),
 ) -> dict:
+    try:
+        check_workspace_creation(db, user)
+    except QuotaExceeded as exc:
+        raise HTTPException(status_code=429, detail=exc.detail()) from exc
     workspace = Workspace(
         owner_user_id=user.id,
         name=payload.name.strip(),
