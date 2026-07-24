@@ -1,0 +1,47 @@
+services:
+  backend:
+    environment: &smoke-environment
+      ENV: production
+      DEBUG: "false"
+      AUTH_SECRET_KEY: ${SMOKE_AUTH_SECRET_KEY:?必须设置隔离验证密钥}
+      AUTH_COOKIE_SECURE: "true"
+      AUTH_COOKIE_SAMESITE: lax
+      ENABLE_LEGACY_V1_API: "false"
+      PUBLIC_SITE_URL: https://127.0.0.1:${SMOKE_HTTPS_PORT:-18443}
+      CORS_ORIGINS: https://127.0.0.1:${SMOKE_HTTPS_PORT:-18443}
+      TRUST_PROXY_HEADERS: "true"
+      TRUSTED_PROXY_IPS: 172.30.0.10
+      ENABLE_HSTS: "true"
+      LLM_ENABLED: "false"
+      DEEPSEEK_MODEL: deepseek-v4-flash
+    volumes:
+      - smoke-data:/app/data
+      - smoke-storage:/app/storage
+      - smoke-backups:/app/backups
+      - smoke-app-logs:/app/logs
+
+  worker:
+    environment: *smoke-environment
+    volumes:
+      - smoke-data:/app/data
+      - smoke-storage:/app/storage
+      - smoke-backups:/app/backups
+      - smoke-app-logs:/app/logs
+
+  web:
+    ports: !override
+      - "${SMOKE_HTTP_PORT:-18080}:80"
+      - "${SMOKE_HTTPS_PORT:-18443}:443"
+    volumes:
+      - smoke-tls:/etc/nginx/tls
+      - smoke-acme:/var/www/certbot
+      - smoke-nginx-logs:/var/log/nginx
+
+volumes:
+  smoke-data:
+  smoke-storage:
+  smoke-backups:
+  smoke-app-logs:
+  smoke-tls:
+  smoke-acme:
+  smoke-nginx-logs:

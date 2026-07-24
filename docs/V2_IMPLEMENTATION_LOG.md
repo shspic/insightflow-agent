@@ -329,3 +329,41 @@
 - 长报告按结构块安全渲染，没有引入重型富文本或虚拟化框架；
 - 列表只展示当前 API 返回字段，不伪造最近状态、模板、降级或质量摘要；
 - 下一阶段应进入国内同域部署适配：反向代理 `/api`、SSE 关闭缓冲、HTTPS Cookie/CSRF、持久数据库与对象存储；本阶段没有执行云部署、域名或 DNS 操作。
+
+## V2-07：中国内地单机生产部署包、运维脚本与上线文档
+
+### 阶段编号
+
+`V2-07`
+
+### 已实施
+
+- 新增 `docker-compose.prod.yml`，包含 Nginx web、单进程 backend 和独立单 worker；
+- 前端改为开发/构建/生产多阶段 Dockerfile，生产关闭 source map 并由 Nginx 托管；
+- Nginx 增加同域 HTTPS、HTTP 跳转、SPA fallback、静态缓存、gzip、安全头、上传限制和 SSE 无缓冲；
+- 后端镜像安装 Tesseract 中英文、Poppler、Noto CJK 和 PDF/图片基础库，以 UID 10001 非 root 运行；
+- SQLite 增加 WAL、busy timeout、外键、连接 pre-ping/recycle，生产固定单 API/单 Worker；
+- 新增精确代理白名单、绝对持久化路径、占位密钥、Legacy V1、Secure Cookie 等生产门禁；
+- DeepSeek Base、Key、模型支持专用环境变量，旧模型名只触发 degraded，不冒充成功；
+- 新增安全密钥生成、首次部署、离线镜像加载、备份、清理、健康检查、升级、代码回滚、完整恢复回滚和证书 reload 脚本；
+- 新增 systemd timer 与 logrotate 示例；
+- 新增五份 V2-07 部署/安全/备案 HTTPS/运维/验收文档并更新 README 和部署入口。
+
+### 安全和数据边界
+
+- 没有修改真实 `.env`、真实数据库、DNS 或证书；
+- 没有连接云服务器、购买资源、提交备案或执行公网访问测试；
+- 升级先备份再停写迁移；回滚不默认删除数据库，不承诺任意 Alembic downgrade 无损；
+- 备份包含数据库、storage、manifest 和 SHA-256，不包含 `.env`、证书和密钥；
+- 清理默认 dry-run，自动 apply 需要双重显式确认。
+
+### 验证记录
+
+- 后端全量：`90 passed, 1708 warnings in 29.09s`，使用工作区 `--basetemp` 后退出码 0；警告为既有弃用和解析提示。
+- 新增部署静态/门禁测试 17 项，覆盖生产配置、旧模型降级、弱密码、Compose 隔离/持久化、Nginx SSE/SPA、镜像数据排除、回滚/清理安全和 Git 忽略。
+- 前端：`npm test` 为 10 passed；`npm run build` 成功，77 modules transformed；未生成 source map。
+- 本地与生产 Compose 均 `config --quiet` 返回 0；隔离 smoke Compose 在缺少验证密钥时按预期返回 1，提供临时验证密钥后返回 0。
+- 所有 `deploy/scripts/*.sh` 通过 Linux `bash -n`。
+- Docker Engine 29.6.1 可用；前端 Node build stage 在容器内实际完成 `npm ci` 和 Vite build。
+- 完整 production backend/web 构建在获取 Docker Hub 官方 Python/Nginx 基础镜像鉴权 token 时因 IPv6 连接超时失败，未进入 Dockerfile 指令；本机没有这两个精确缓存镜像。因此未启动隔离生产容器，未实际验证容器 health/readiness/HTTPS/SSE 运行态。
+- 未调用真实 DeepSeek，未连接服务器，未执行备案、DNS、真实证书或中国内地网络测试。

@@ -14,7 +14,7 @@ SAFE_TEST_ENV = {
     "DATABASE_URL": "sqlite:///:memory:",
     "LLM_PROVIDER": "deepseek",
     "LLM_API_KEY": "",
-    "LLM_MODEL": "deepseek-chat",
+    "DEEPSEEK_MODEL": "deepseek-v4-flash",
     "LLM_BASE_URL": "",
     "LLM_ENABLED": "false",
     "LLM_MAX_RETRIES": "1",

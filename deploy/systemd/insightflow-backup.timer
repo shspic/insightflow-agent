@@ -1,0 +1,10 @@
+[Unit]
+Description=每天运行 InsightFlow 备份
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

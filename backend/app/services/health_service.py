@@ -15,6 +15,29 @@ from app.db.session import SessionLocal
 from app.models.operations import WorkerStatus
 
 
+UNSUPPORTED_PRODUCTION_MODELS = {
+    "",
+    "deepseek-chat",
+    "deepseek-reasoner",
+    "replace_with_supported_model_name",
+}
+
+
+def model_configuration_issue() -> str | None:
+    if not settings.llm_enabled:
+        return "DeepSeek 已关闭，系统使用确定性降级模式"
+    if (
+        not settings.llm_api_key.strip()
+        or settings.llm_api_key.strip().lower().startswith(("replace_", "your_"))
+    ):
+        return "DeepSeek API Key 未配置"
+    if settings.llm_model.strip().lower() in UNSUPPORTED_PRODUCTION_MODELS:
+        return "DeepSeek 模型未配置或仍使用已淘汰的生产模型名"
+    if not settings.llm_base_url.strip().lower().startswith("https://"):
+        return "DeepSeek API Base 必须使用 HTTPS"
+    return None
+
+
 def readiness_details(db: Session) -> dict:
     checks: dict[str, dict] = {}
     try:
@@ -49,12 +72,11 @@ def readiness_details(db: Session) -> dict:
         "legacy_v1_enabled": settings.enable_legacy_v1_api,
         "environment": settings.env,
     }
+    model_issue = model_configuration_issue()
     checks["deepseek"] = {
-        "status": (
-            "ok"
-            if settings.llm_enabled and bool(settings.llm_api_key.strip())
-            else "degraded"
-        )
+        "status": "degraded" if model_issue else "ok",
+        **({"message": model_issue} if model_issue else {}),
+        "model": settings.llm_model if not model_issue else None,
     }
     tesseract = settings.tesseract_cmd or shutil.which("tesseract")
     checks["ocr"] = {"status": "ok" if tesseract else "degraded"}

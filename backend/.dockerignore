@@ -3,5 +3,14 @@ __pycache__
 **/__pycache__/
 *.pyc
 .env
-data
-storage
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+data/
+storage/
+backups/
+logs/
+tests/
+.pytest_cache/

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.core.config import settings
+from app.services.health_service import model_configuration_issue
 
 SUPPORTED_TASK_TYPES = {
     "data_analysis",
@@ -19,7 +20,13 @@ SUPPORTED_TASK_TYPES = {
     "unsupported",
 }
 
-PLACEHOLDER_KEYS = {"", "your_api_key_here", "your_deepseek_api_key", "replace_me"}
+PLACEHOLDER_KEYS = {
+    "",
+    "your_api_key_here",
+    "your_deepseek_api_key",
+    "replace_me",
+    "replace_with_deepseek_api_key",
+}
 
 
 @dataclass
@@ -33,7 +40,7 @@ class LLMResult:
 
 
 def is_llm_ready() -> bool:
-    return settings.llm_enabled and _has_real_api_key()
+    return model_configuration_issue() is None and _has_real_api_key()
 
 
 def call_llm(
@@ -48,6 +55,13 @@ def call_llm(
 
     if not _has_real_api_key():
         return LLMResult(success=False, skipped=True, message="LLM_API_KEY 未配置，使用本地规则降级。")
+    configuration_issue = model_configuration_issue()
+    if configuration_issue:
+        return LLMResult(
+            success=False,
+            skipped=True,
+            message=f"{configuration_issue}，使用本地规则降级。",
+        )
 
     payload = {
         "model": settings.llm_model,

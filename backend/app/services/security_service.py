@@ -58,6 +58,26 @@ def validate_password(password: str) -> None:
         raise ValueError(f"密码长度不能少于 {settings.password_min_length} 位")
     if len(password) > 256:
         raise ValueError("密码长度不能超过 256 位")
+    if settings.env.lower() == "production":
+        lowered = password.lower()
+        if lowered in {
+            "admin",
+            "admin123456",
+            "password",
+            "password123456",
+            "changeme",
+        }:
+            raise ValueError("生产环境不能使用默认或常见弱密码")
+        categories = sum(
+            (
+                any(character.islower() for character in password),
+                any(character.isupper() for character in password),
+                any(character.isdigit() for character in password),
+                any(not character.isalnum() for character in password),
+            )
+        )
+        if len(set(password)) < 8 or categories < 3:
+            raise ValueError("生产环境密码必须包含至少三类字符并具有足够随机性")
 
 
 def hash_password(password: str) -> str:

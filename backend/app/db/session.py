@@ -35,12 +35,24 @@ connect_args = (
 engine = create_engine(
     settings.database_url,
     connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=max(60, settings.database_pool_recycle_seconds),
 )
 if settings.database_url.startswith("sqlite"):
     @event.listens_for(engine, "connect")
-    def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    def _configure_sqlite_connection(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute(f"PRAGMA busy_timeout={max(1000, settings.sqlite_busy_timeout_ms)}")
+        if settings.database_url not in {"sqlite://", "sqlite:///:memory:"}:
+            journal_mode = (
+                settings.sqlite_journal_mode
+                if settings.sqlite_journal_mode
+                in {"WAL", "DELETE", "TRUNCATE", "PERSIST", "MEMORY", "OFF"}
+                else "WAL"
+            )
+            cursor.execute(f"PRAGMA journal_mode={journal_mode}")
+            cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

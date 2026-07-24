@@ -53,7 +53,10 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: development
     ports:
       - "5173:5173"
     environment:

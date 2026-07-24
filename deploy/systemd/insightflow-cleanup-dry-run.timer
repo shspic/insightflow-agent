@@ -1,0 +1,9 @@
+[Unit]
+Description=每周运行 InsightFlow 清理 dry-run
+
+[Timer]
+OnCalendar=Sun *-*-* 04:10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

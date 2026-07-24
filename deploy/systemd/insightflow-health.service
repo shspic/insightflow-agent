@@ -1,0 +1,10 @@
+[Unit]
+Description=InsightFlow 运维健康检查
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/insightflow/current
+ExecStart=/usr/bin/bash /opt/insightflow/current/deploy/scripts/healthcheck.sh

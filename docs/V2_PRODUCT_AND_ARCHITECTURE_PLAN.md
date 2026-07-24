@@ -2052,3 +2052,19 @@ V2 最终前端重设计已经落到代码：
 - 未增加大型 UI、状态管理或 E2E 依赖，未改变后端业务与数据模型。
 
 V2-06 仍不包含完整自动化 E2E、国内云部署、域名/DNS、PostgreSQL 和对象存储迁移。下一阶段的前端入口应保持相对 `/api/v2`，由同域反向代理承接 `/api`；部署层需重点验证 SSE 代理缓冲、Cookie/CSRF、下载响应头、HTTPS 和持久存储。
+
+## 20. V2-07 实施状态（2026-07-24）
+
+V2-07 已交付中国内地单机生产部署包：
+
+- `web`、`backend`、`worker` 三服务生产 Compose；
+- Nginx 同域 HTTPS、SPA fallback、静态缓存、API/SSE/上传/下载代理；
+- 单 API 进程、单 Worker、精确可信代理、非 root 应用容器和资源限制；
+- `/srv/insightflow` SQLite、storage、备份、日志和证书持久化；
+- SQLite WAL、busy timeout、外键、连接检查、Alembic head 门禁；
+- Tesseract 中英文、Poppler、Noto CJK、DOCX/PDF Linux 运行依赖；
+- 生产环境模板、占位符拒绝、可配置 DeepSeek 模型和降级 readiness；
+- 首次部署、镜像离线加载、升级、两类回滚、备份、清理、健康检查和证书 reload；
+- Ubuntu 安全、域名/ICP备案/DNS/HTTPS、日常运维和 36 项真实上线验收文档。
+
+本阶段没有购买服务器/域名，没有执行备案、DNS、证书签发、公网部署、真实 DeepSeek 调用或中国内地网络测试。单机 SQLite 继续只面向约 5 人低并发；需要多实例、高可用或频繁并发写入时应启动 PostgreSQL、对象存储和专业队列迁移。

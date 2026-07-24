@@ -1,0 +1,10 @@
+[Unit]
+Description=每 15 分钟运行 InsightFlow 健康检查
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

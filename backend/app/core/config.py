@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,9 +44,15 @@ class Settings:
     env: str = _get_env("ENV", "development")
     database_url: str = _get_env("DATABASE_URL", "sqlite:///./data/app.db")
     llm_provider: str = _get_env("LLM_PROVIDER", "deepseek")
-    llm_api_key: str = _get_env("LLM_API_KEY", "")
-    llm_model: str = _get_env("LLM_MODEL", "deepseek-chat")
-    llm_base_url: str = _get_env("LLM_BASE_URL", "")
+    llm_api_key: str = _get_env("DEEPSEEK_API_KEY", _get_env("LLM_API_KEY", ""))
+    llm_model: str = _get_env(
+        "DEEPSEEK_MODEL",
+        _get_env("LLM_MODEL", "deepseek-v4-flash"),
+    )
+    llm_base_url: str = _get_env(
+        "DEEPSEEK_API_BASE",
+        _get_env("LLM_BASE_URL", "https://api.deepseek.com/v1"),
+    )
     llm_enabled: bool = _parse_bool(_get_env("LLM_ENABLED", "true"))
     llm_max_retries: int = _parse_int(_get_env("LLM_MAX_RETRIES", "1"), 1)
     embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")
@@ -210,7 +217,23 @@ class Settings:
     backup_dir: str = _get_env("BACKUP_DIR", "./backups")
     debug: bool = _parse_bool(_get_env("DEBUG", "false"))
     trust_proxy_headers: bool = _parse_bool(_get_env("TRUST_PROXY_HEADERS", "false"))
+    trusted_proxy_ips: str = _get_env("TRUSTED_PROXY_IPS", "")
     enable_hsts: bool = _parse_bool(_get_env("ENABLE_HSTS", "false"))
+    sqlite_busy_timeout_ms: int = _parse_int(
+        _get_env("SQLITE_BUSY_TIMEOUT_MS", "30000"),
+        30000,
+    )
+    sqlite_journal_mode: str = _get_env("SQLITE_JOURNAL_MODE", "WAL").upper()
+    database_pool_recycle_seconds: int = _parse_int(
+        _get_env("DATABASE_POOL_RECYCLE_SECONDS", "1800"),
+        1800,
+    )
+    log_level: str = _get_env("LOG_LEVEL", "INFO").lower()
+    api_graceful_shutdown_seconds: int = _parse_int(
+        _get_env("API_GRACEFUL_SHUTDOWN_SECONDS", "60"),
+        60,
+    )
+    public_site_url: str = _get_env("PUBLIC_SITE_URL", "")
 
     @property
     def cors_origins(self) -> list[str]:
@@ -225,6 +248,8 @@ def validate_production_security(current_settings: Settings = settings) -> None:
         return
     if len(current_settings.auth_secret_key) < 32:
         raise RuntimeError("生产环境必须配置至少 32 个字符的 AUTH_SECRET_KEY")
+    if current_settings.auth_secret_key.startswith("replace_"):
+        raise RuntimeError("生产环境 AUTH_SECRET_KEY 不能使用示例占位符")
     if len(set(current_settings.auth_secret_key)) < 12:
         raise RuntimeError("生产环境 AUTH_SECRET_KEY 必须具有足够随机性")
     if not current_settings.auth_cookie_secure:
@@ -235,13 +260,51 @@ def validate_production_security(current_settings: Settings = settings) -> None:
         raise RuntimeError("生产环境必须关闭 DEBUG")
     if not current_settings.trust_proxy_headers:
         raise RuntimeError("生产环境必须配置可信 HTTPS 反向代理头策略")
+    trusted_proxies = {
+        item.strip() for item in current_settings.trusted_proxy_ips.split(",") if item.strip()
+    }
+    if not trusted_proxies or trusted_proxies.intersection({"*", "0.0.0.0/0", "::/0"}):
+        raise RuntimeError("生产环境 TRUSTED_PROXY_IPS 必须仅包含已知反向代理地址")
     if not current_settings.enable_hsts:
         raise RuntimeError("生产环境 HTTPS 必须启用 ENABLE_HSTS")
     if "*" in current_settings.cors_origins:
         raise RuntimeError("生产环境携带 Cookie 时 CORS_ORIGINS 不能包含 *")
+    if (
+        not current_settings.public_site_url.lower().startswith("https://")
+        or ".example." in current_settings.public_site_url.lower()
+    ):
+        raise RuntimeError("生产环境 PUBLIC_SITE_URL 必须是已确认的 HTTPS 正式地址")
+    if not current_settings.cors_origins or any(
+        ".example." in origin.lower() for origin in current_settings.cors_origins
+    ):
+        raise RuntimeError("生产环境 CORS_ORIGINS 必须是已确认的正式同域地址")
+    if current_settings.auth_cookie_samesite not in {"lax", "strict", "none"}:
+        raise RuntimeError("生产环境 AUTH_COOKIE_SAMESITE 配置无效")
+    if current_settings.log_level not in {"critical", "error", "warning", "info"}:
+        raise RuntimeError("生产环境 LOG_LEVEL 配置无效")
     lowered_database = current_settings.database_url.lower()
     if any(marker in lowered_database for marker in (":memory:", "test.db", "pytest", "temporary")):
         raise RuntimeError("生产环境不能使用明显的测试数据库地址")
+    if current_settings.database_url.startswith("sqlite:///"):
+        sqlite_path = current_settings.database_url.removeprefix("sqlite:///")
+        if re.match(r"^[A-Za-z]:[\\/]", sqlite_path):
+            raise RuntimeError("生产环境不能使用 Windows 绝对数据库路径")
+        if not (sqlite_path.startswith("/") or Path(sqlite_path).is_absolute()):
+            raise RuntimeError("生产环境 SQLite 数据库必须使用容器内绝对持久化路径")
+        if current_settings.sqlite_journal_mode != "WAL":
+            raise RuntimeError("生产环境 SQLite 必须启用 WAL")
+        if current_settings.sqlite_busy_timeout_ms < 1000:
+            raise RuntimeError("生产环境 SQLite busy timeout 不能低于 1000ms")
+    for storage_path in (
+        current_settings.upload_dir,
+        current_settings.chart_dir,
+        current_settings.report_dir,
+        current_settings.backup_dir,
+    ):
+        if re.match(r"^[A-Za-z]:[\\/]", storage_path):
+            raise RuntimeError("生产环境不能使用 Windows 绝对 storage 路径")
+        if not (storage_path.startswith("/") or Path(storage_path).is_absolute()):
+            raise RuntimeError("生产环境 storage 与备份目录必须使用容器内绝对持久化路径")
     if min(
         current_settings.upload_max_file_size_bytes,
         current_settings.user_storage_quota_bytes,

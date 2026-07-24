@@ -1,4 +1,5 @@
 import json
+import logging
 import signal
 import socket
 import threading
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.agents.specialists import get_specialist_agent
 from app.agents.tool_registry import ToolContext, ToolExecutionError
 from app.agents.v2_state import AgentStateV2, load_agent_state
-from app.core.config import settings
+from app.core.config import settings, validate_production_security
 from app.db.session import SessionLocal
 from app.models.agent_run import AgentRun
 from app.models.operations import WorkerStatus
@@ -35,6 +36,9 @@ from app.services.task_state_machine import (
     transition_task,
 )
 from app.services.workspace_service import safe_public_text
+from app.services.health_service import validate_production_runtime
+
+logger = logging.getLogger(__name__)
 
 
 class TaskWorker:
@@ -51,6 +55,11 @@ class TaskWorker:
                 _touch_worker(db, self.worker_id, status="idle")
                 task = claim_next_task(db, worker_id=self.worker_id)
                 if task is not None:
+                    logger.info(
+                        "Worker 已认领任务 worker_id=%s task_id=%s",
+                        self.worker_id,
+                        task.id,
+                    )
                     _touch_worker(db, self.worker_id, status="busy", task=task)
                     self.execute_claimed_task(db, task)
                     continue
@@ -86,6 +95,11 @@ class TaskWorker:
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as exc:
+            logger.exception(
+                "Worker 执行任务失败 worker_id=%s task_id=%s",
+                self.worker_id,
+                task.id,
+            )
             db.rollback()
             task = db.get(Task, task.id)
             if task and task.status not in {"completed", "completed_with_warnings", "failed", "cancelled"}:
@@ -703,6 +717,12 @@ def _json_list(value: str | None) -> list[str]:
 
 
 def main() -> None:
+    validate_production_security()
+    validate_production_runtime()
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     worker = TaskWorker()
 
     def stop_worker(*_: object) -> None:
@@ -711,9 +731,9 @@ def main() -> None:
     signal.signal(signal.SIGINT, stop_worker)
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, stop_worker)
-    print(f"InsightFlow Worker 已启动：{worker.worker_id}")
+    logger.info("InsightFlow Worker 已启动 worker_id=%s", worker.worker_id)
     worker.run_forever()
-    print("InsightFlow Worker 已安全退出。")
+    logger.info("InsightFlow Worker 已安全退出 worker_id=%s", worker.worker_id)
 
 
 if __name__ == "__main__":

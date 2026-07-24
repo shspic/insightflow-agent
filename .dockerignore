@@ -1,0 +1,10 @@
+*
+!frontend/
+!frontend/**
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+!deploy/
+deploy/*
+!deploy/nginx/
+!deploy/nginx/**

@@ -6,16 +6,21 @@ InsightFlow Agent 是一个基于 FastAPI + React + LangGraph 的多模态文档
 
 这个项目的定位不是普通聊天机器人，而是一个围绕“文件输入、任务判断、工具调用、结果生成、过程可观测”构建的任务执行型 AI 应用。
 
-## V2-06 当前状态
+## V2-07 当前状态
 
-V2-06 已在 V2-02 至 V2-05 的真实业务能力上完成全站前端重设计：统一设计 Token、浅色/深色/跟随系统主题、公共组件、响应式工作台布局、工作区子路由、批量上传、文件理解、计划确认、SSE 执行、报告阅读、使用量与管理员治理体验。
+V2-07 已把 V2 项目整理为中国内地单机生产部署包：Nginx 同域 HTTPS、前端静态构建、单进程 FastAPI、独立单 Worker、SQLite WAL、本地持久化、备份/清理、升级/回滚、日志轮转、健康检查、服务器安全和上线验收文档。
 
-本阶段没有增加后台业务接口，没有改变 Cookie Session、CSRF、工作区隔离、队列和下载规则，也没有引入新的前端依赖。前端仍以服务端状态为真相来源，默认使用同域相对 `/api/v2`。
+本阶段没有购买服务器/域名，没有备案、修改 DNS、申请真实证书、连接云服务器或执行中国内地网络测试。正式环境必须关闭 Legacy V1，前端继续使用同域相对 `/api/v2`。
 
 详细说明：
 
 - [V2-06 UI/UX 系统](docs/V2_06_UI_UX_SYSTEM.md)
 - [V2-06 手动验收](docs/V2_06_MANUAL_ACCEPTANCE.md)
+- [V2-07 中国内地部署](docs/V2_07_MAINLAND_DEPLOYMENT.md)
+- [V2-07 服务器初始化](docs/V2_07_SERVER_SETUP.md)
+- [V2-07 域名、备案与 HTTPS](docs/V2_07_DOMAIN_ICP_HTTPS.md)
+- [V2-07 运维手册](docs/V2_07_OPERATIONS_RUNBOOK.md)
+- [V2-07 上线验收](docs/V2_07_MANUAL_ACCEPTANCE.md)
 - [V2-05 报告与治理](docs/V2_05_REPORTS_GOVERNANCE_EVALUATION.md)
 - [V2-05 手动验收](docs/V2_05_MANUAL_ACCEPTANCE.md)
 - [V2-05 评估指南](docs/V2_05_EVALUATION_GUIDE.md)
@@ -40,14 +45,9 @@ V2-04 当前状态说明保留如下，作为兼容基础。
 
 V2-03 的文件理解接口本身仍为同步调用；V2-04 新任务执行已进入独立 Worker。当前不支持任意节点暂停后原地恢复、Redis/Celery、PostgreSQL、对象存储或正式国内生产部署。Markdown/DOCX/PDF 版本化导出已在 V2-05 实现。
 
-## 在线演示
+## 公网状态
 
-- 前端：[https://insightflow-agent.vercel.app](https://insightflow-agent.vercel.app/)
-- 后端：[https://insightflow-agent-spi.onrender.com](https://insightflow-agent-spi.onrender.com/)
-- 健康检查：[https://insightflow-agent-spi.onrender.com/api/health](https://insightflow-agent-spi.onrender.com/api/health)
-- Swagger：[https://insightflow-agent-spi.onrender.com/docs](https://insightflow-agent-spi.onrender.com/docs)
-
-说明：该地址是旧版演示，不代表 V2 的最终生产部署方案。V2 正式环境应采用同域名前端和 `/api` 反向代理，并使用持久数据库与持久文件存储。
+仓库不提供或承诺现成的 V2 公网地址。历史 Vercel/Render 演示配置不属于 V2-07 生产路径；真实上线必须由用户完成服务器、备案、DNS、HTTPS 和手动验收。
 
 ## 核心功能
 
@@ -251,7 +251,7 @@ TESSERACT_CMD=<Tesseract 安装目录>/tesseract.exe
 OCR_LANG=chi_sim+eng
 ```
 
-Docker 演示版默认不内置 Tesseract OCR，目的是减少构建阶段对 Debian 软件源的依赖，优先保证前端和后端可以一键启动。如果容器内未配置 OCR，引擎会返回明确中文提示，不影响文件上传、表格分析、图表、PDF RAG、LangGraph 任务流和 Markdown 报告等主要功能。
+当前后端镜像安装 Tesseract 中英文语言包、Poppler 和 Noto CJK 字体，支持图片/扫描 PDF OCR 与 PDF 中文导出。构建需要相应 Debian 软件源可用；也可以在可联网构建机生成镜像 tar 后传入服务器。
 
 ## 测试命令
 
@@ -284,20 +284,7 @@ V2 的低并发正式部署目标是同域名提供前端，反向代理将 `/ap
 - 报告下载保留 `Content-Disposition` 和鉴权 Cookie；
 - 不在业务组件写死 localhost、Vercel、Render 或外部 CDN。
 
-当前项目演示地址：
-
-- 前端：[https://insightflow-agent.vercel.app](https://insightflow-agent.vercel.app/)
-- 后端健康检查：[https://insightflow-agent-spi.onrender.com/api/health](https://insightflow-agent-spi.onrender.com/api/health)
-- Swagger：[https://insightflow-agent-spi.onrender.com/docs](https://insightflow-agent-spi.onrender.com/docs)
-
-免费部署版限制：
-
-- Render 免费服务可能冷启动。
-- SQLite 和本地 `storage` 只适合演示，不适合长期持久化。
-- OCR 依赖部署环境是否安装 Tesseract，公网演示版可能不可用。
-- 生产化建议升级为 Postgres + 对象存储，并增加认证、权限和配额控制。
-
-完整部署步骤见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。不要把真实 `LLM_API_KEY` 写入 README、代码或仓库文件。
+生产 Compose 使用 `/srv/insightflow` 持久化数据库、storage、备份、日志和证书。完整部署步骤见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) 与 [V2-07 中国内地部署](docs/V2_07_MAINLAND_DEPLOYMENT.md)。不要把真实 DeepSeek Key 写入 README、代码或仓库文件。
 
 ## API 模块说明
 
@@ -362,16 +349,14 @@ V2 的低并发正式部署目标是同域名提供前端，反向代理将 `/ap
 - 当前具备低并发多用户认证与工作区隔离，但仍不是生产级 SaaS。
 - RAG 使用关键词和轻量 TF-IDF 检索，不是生产级向量数据库方案。
 - OCR 依赖本机或容器环境中的 Tesseract 配置。
-- 扫描 PDF 目前只标记需要 OCR，不执行 PDF 页面 OCR。
-- Render 免费部署存在冷启动和临时存储限制。
+- 扫描 PDF OCR 受页数、像素、DPI 和超时预算限制，识别结果仍需人工复核。
 - 暂不支持复杂多轮记忆。
 - 文件理解接口仍为同步调用；V2 任务已异步执行，但当前仅支持单机单 Worker。
 - 不支持任意节点暂停后原地恢复；进程异常依靠租约过期后重新认领和已完成步骤复用。
-- 暂不支持云端对象存储及生产级备份恢复。
+- 单机本地备份无法应对服务器整盘损坏，必须由用户建立异地备份。
 
 ## 后续规划
 
-- V2-05：补齐报告/资产独立版本表、任务配额、运行监控、评估集和生产安全门禁。
-- 后续迁移对象存储、PostgreSQL 和专业队列后端。
-- 向量检索、多文件跨文档问答和生产级备份恢复。
-- DOCX / PDF 报告导出与更完整的测试、评估和任务回归体系。
+- 真实服务器上的备案、DNS、HTTPS、DeepSeek 和多运营商最终验收。
+- 达到迁移阈值后迁移 PostgreSQL、对象存储和专业队列后端。
+- 建立自动化浏览器 E2E、异地备份和持续恢复演练。

@@ -1,0 +1,121 @@
+name: insightflow
+
+x-app-common: &app-common
+  image: ${INSIGHTFLOW_BACKEND_IMAGE:-insightflow-backend:local}
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  env_file:
+    - ${INSIGHTFLOW_ENV_FILE:-./deploy/.env.production.example}
+  environment:
+    DATABASE_URL: sqlite:////app/data/insightflow.db
+    ALEMBIC_DATABASE_URL: sqlite:////app/data/insightflow.db
+    UPLOAD_DIR: /app/storage/uploads
+    CHART_DIR: /app/storage/charts
+    REPORT_DIR: /app/storage/reports
+    BACKUP_DIR: /app/backups
+    TRUSTED_PROXY_IPS: 172.30.0.10
+  volumes:
+    - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/data:/app/data
+    - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/storage:/app/storage
+    - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/backups:/app/backups
+    - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/logs/app:/app/logs
+  networks:
+    - internal
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=256m,mode=1777
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "5"
+
+services:
+  backend:
+    <<: *app-common
+    command: ["python", "-m", "app.cli.run_api"]
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    stop_grace_period: 60s
+    mem_limit: 900m
+    mem_reservation: 384m
+    cpus: "1.50"
+
+  worker:
+    <<: *app-common
+    command: ["python", "-m", "app.workers.task_worker"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.workers.healthcheck"]
+      interval: 20s
+      timeout: 8s
+      retries: 4
+      start_period: 30s
+    stop_grace_period: 180s
+    mem_limit: 2200m
+    mem_reservation: 768m
+    cpus: "2.00"
+
+  web:
+    image: ${INSIGHTFLOW_WEB_IMAGE:-insightflow-web:local}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: production
+      args:
+        VITE_API_BASE_URL: ""
+        VITE_APP_VERSION: ${INSIGHTFLOW_VERSION:-production}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/secrets/tls:/etc/nginx/tls:ro
+      - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/secrets/acme:/var/www/certbot:ro
+      - ${INSIGHTFLOW_ROOT:-/srv/insightflow}/logs/nginx:/var/log/nginx
+    networks:
+      internal:
+        ipv4_address: 172.30.0.10
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /var/run:size=8m,mode=755
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    stop_grace_period: 30s
+    mem_limit: 192m
+    mem_reservation: 64m
+    cpus: "0.50"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
