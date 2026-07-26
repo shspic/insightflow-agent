@@ -110,7 +110,7 @@ export default function Admin() {
           }}>
             <FormField label="自定义邀请码（可选）"
               hint="留空时由系统自动生成。支持 8～64 位英文字母、数字、-、_。">
-              <Input minLength="8" maxLength="64" pattern="[A-Za-z0-9_-]{8,64}"
+              <Input minLength="8" maxLength="64" pattern={"[A-Za-z0-9_\\-]{8,64}"}
                 autoComplete="off" value={customInviteCode}
                 onChange={(event) => setCustomInviteCode(event.target.value)} />
             </FormField>
@@ -149,7 +149,7 @@ export default function Admin() {
             <div className="section-heading"><strong>{item.username}</strong><Badge tone="warning">{item.status}</Badge></div>
             <p>{item.request_note || "无申请说明"}</p><p className="muted">{formatDate(item.requested_at)}</p>
             <div className="row-actions">
-              <Button variant="secondary" onClick={() => confirmAction({
+              <Button variant="danger" onClick={() => confirmAction({
                 title: `拒绝 ${item.username} 的重置申请？`, description: "申请会标记为拒绝并写入审计日志。",
                 confirmLabel: "拒绝申请",
               }, () => run("reset-reject", () => rejectResetRequest(item.id, "管理员拒绝"), null, "申请已拒绝"))}>拒绝</Button>

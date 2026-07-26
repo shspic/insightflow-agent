@@ -21,6 +21,7 @@ import {
   EmptyState,
   FormField,
   Progress,
+  Select,
   StatusBadge,
   Stepper,
   Textarea,
@@ -520,8 +521,10 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged, i
                   <div className="row-actions">
                     <button type="button" onClick={() => moveStep(index, -1)}>上移</button>
                     <button type="button" onClick={() => moveStep(index, 1)}>下移</button>
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="danger"
                       onClick={() =>
                         setPlanDraft({
                           ...planDraft,
@@ -532,7 +535,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged, i
                       }
                     >
                       删除可选步骤
-                    </button>
+                    </Button>
                   </div>
                 )}
               </article>
@@ -559,7 +562,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged, i
             <Button type="button" loading={busy} onClick={confirmPlan}>确认并入队</Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="danger"
               disabled={busy}
               onClick={requestCancellation}
             >
@@ -573,7 +576,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged, i
         <section className="task-stage">
           <h4>执行步骤</h4>
           {task.steps.map((step) => (
-            <article key={step.id} className="execution-step">
+            <article key={step.id} className={`execution-step is-${step.status}`}>
               <strong>{step.step_order}. {step.title}</strong>
               <span>{AGENT_LABELS[step.agent_type] || step.agent_type} · {step.tool_name}</span>
               <span>{statusText(step.status)} · {step.progress_percent}% · 已重试 {step.retry_count} 次</span>
@@ -595,7 +598,7 @@ export default function TaskExecutionFlow({ workspaceId, files, onTaskChanged, i
           {LIVE.has(task.status) && (
             <Button
               type="button"
-              variant="warning"
+              variant="danger"
               disabled={busy}
               onClick={requestCancellation}
             >

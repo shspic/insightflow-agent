@@ -1,11 +1,12 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import { RequireAdmin, RequireSession } from "./components/AuthGuards";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { Skeleton } from "./components/common";
 import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
+import { resolvePageTitle } from "./utils/ui";
 const Admin = lazy(() => import("./pages/Admin"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
@@ -17,9 +18,18 @@ const Usage = lazy(() => import("./pages/Usage"));
 import "./styles/tokens.css";
 import "./App.css";
 
+function PageTitle() {
+  const location = useLocation();
+  useEffect(() => {
+    document.title = resolvePageTitle(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <PageTitle />
       <AuthProvider>
         <ErrorBoundary>
           <Suspense fallback={<main className="route-loading"><Skeleton lines={5} /></main>}>

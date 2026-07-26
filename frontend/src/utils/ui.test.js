@@ -10,6 +10,7 @@ import {
   oneTimeSecretReducer,
   quotaState,
   readThemePreference,
+  resolvePageTitle,
   sortReportVersions,
   statusMeta,
   validatePlanSteps,
@@ -85,4 +86,13 @@ test("主题读取对非法值和存储异常回退为跟随系统", () => {
   assert.equal(readThemePreference({ getItem: () => "dark" }), "dark");
   assert.equal(readThemePreference({ getItem: () => "unknown" }), "system");
   assert.equal(readThemePreference({ getItem: () => { throw new Error("blocked"); } }), "system");
+});
+
+test("浏览器标题按路由统一包含产品名称", () => {
+  assert.equal(resolvePageTitle("/login"), "登录 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/workspaces/9/tasks/12"), "任务详情 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/workspaces/9/reports/12"), "报告 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/workspaces/9/context"), "Workspace Context · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/workspaces/9/settings"), "工作区设置 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/admin"), "管理后台 · InsightFlow Agent");
 });

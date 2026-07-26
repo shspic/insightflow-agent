@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Alert, Badge, Button, Progress } from "./common";
+import { Alert, Badge, Button, Spinner } from "./common";
 import { formatBytes } from "../utils/ui";
 
 const ACCEPTED_FILE_TYPES = ".csv,.xlsx,.pdf,.png,.jpg,.jpeg,.webp,.md,.markdown";
@@ -22,6 +22,7 @@ export default function BatchFileUploader({ uploadAction, onUploaded, storageHin
   const inputRef = useRef(null);
   const [queue, setQueue] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [message, setMessage] = useState("");
   const pending = useMemo(() => queue.filter((item) => item.status === "等待"), [queue]);
   const failed = useMemo(() => queue.filter((item) => item.status === "失败" && item.file), [queue]);
@@ -80,13 +81,25 @@ export default function BatchFileUploader({ uploadAction, onUploaded, storageHin
 
   return (
     <section
-      className="batch-upload"
-      onDragOver={(event) => event.preventDefault()}
+      className={`batch-upload ${isDragging ? "is-dragging" : ""}`}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsDragging(false);
+      }}
       onDrop={(event) => {
         event.preventDefault();
+        setIsDragging(false);
         appendFiles(event.dataTransfer.files);
       }}
       aria-label="批量文件上传"
+      aria-busy={isUploading}
     >
       <div className="batch-upload__dropzone">
         <div>
@@ -118,7 +131,12 @@ export default function BatchFileUploader({ uploadAction, onUploaded, storageHin
               </div>
             ))}
           </div>
-          {isUploading && <Progress value={45} label="正在上传与校验" />}
+          {isUploading && (
+            <div className="upload-busy" role="status" aria-live="polite">
+              <Spinner decorative />
+              <span><strong>正在上传与校验</strong><small>等待服务端返回真实结果，不显示估算百分比。</small></span>
+            </div>
+          )}
           <div className="row-actions">
             <Button onClick={() => uploadItems(pending)} disabled={isUploading || !pending.length}
               loading={isUploading}>上传 {pending.length || ""} 个文件</Button>

@@ -227,7 +227,7 @@ function ProfileCard({ file, profile, busy, onUnderstand, onSave, onRemove }) {
           <Button type="button" disabled={busy} loading={busy} onClick={onUnderstand}>
             {busy ? "理解中" : profile ? "重新理解" : "理解文件"}
           </Button>
-          <Button type="button" variant="ghost" disabled={busy} onClick={onRemove}>移除</Button>
+          <Button type="button" variant="danger" disabled={busy} onClick={onRemove}>移除</Button>
         </div>
       </div>
       {!profile && <p className="parse-empty">尚未生成文件 Profile。</p>}
@@ -449,15 +449,14 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
   );
 
   async function loadProfiles() {
+    const profiledFiles = files.filter((file) =>
+      ["ready", "failed", "unsupported"].includes(file.status),
+    );
     const entries = await Promise.all(
-      files.map(async (file) => {
-        try {
-          return [file.file_id, await fetchWorkspaceFileProfile(workspaceId, file.file_id)];
-        } catch (requestError) {
-          if (requestError.status === 404) return [file.file_id, null];
-          throw requestError;
-        }
-      }),
+      profiledFiles.map(async (file) => [
+        file.file_id,
+        await fetchWorkspaceFileProfile(workspaceId, file.file_id),
+      ]),
     );
     setProfiles(Object.fromEntries(entries));
   }
@@ -519,7 +518,13 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
         use_deepseek: false,
         run_ocr: true,
       });
-      await loadProfiles();
+      const profileEntries = await Promise.all(
+        result.results.map(async (item) => [
+          item.file_id,
+          await fetchWorkspaceFileProfile(workspaceId, item.file_id),
+        ]),
+      );
+      setProfiles((current) => ({ ...current, ...Object.fromEntries(profileEntries) }));
       await onFilesChanged?.();
       const failed = result.results.filter((item) => item.status !== "ready");
       setMessage(failed.length ? `${failed.length} 个文件未完成理解` : "批量理解完成");

@@ -209,7 +209,7 @@ export default function ReportCenter({ workspaceId, taskId }) {
                   setCurrentReportVersion(workspaceId, taskId, selected.id), "当前报告版本已切换")}>
                   设为当前
                 </Button>
-                <Button size="sm" variant="ghost" onClick={handleDelete}>删除版本</Button>
+                <Button size="sm" variant="danger" onClick={handleDelete}>删除版本</Button>
               </div>
             )}
           </Card>
@@ -259,7 +259,7 @@ export default function ReportCenter({ workspaceId, taskId }) {
           </Card>
         </aside>
       </div>
-      <Dialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} title="反馈与重新生成"
+      <Dialog open={feedbackOpen} busy={Boolean(busy)} onClose={() => setFeedbackOpen(false)} title="反馈与重新生成"
         description="先选择问题类型，再补充简短说明。反馈不会修改 Prompt、工具或已有报告版本。"
         footer={(
           <>

@@ -16,10 +16,16 @@ export function Button({
       className={`ui-button ui-button--${variant} ui-button--${size} ${className}`}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      aria-label={loading ? loadingLabel : props["aria-label"]}
       {...props}
     >
-      {loading && <Spinner size="sm" />}
-      <span>{loading ? loadingLabel : children}</span>
+      <span className={loading ? "ui-button__label is-loading" : "ui-button__label"}>{children}</span>
+      {loading && (
+        <span className="ui-button__loading" aria-hidden="true">
+          <Spinner size="sm" decorative />
+          {loadingLabel}
+        </span>
+      )}
     </button>
   );
 }
@@ -52,16 +58,25 @@ export function Switch({ label, ...props }) {
 }
 
 export function FormField({ label, hint, error, required, children, className = "" }) {
-  const id = useId();
+  const generatedId = useId();
+  const controlId = isValidElement(children) && children.props.id ? children.props.id : generatedId;
+  const hintId = hint ? `${controlId}-hint` : undefined;
+  const errorId = error ? `${controlId}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   const child = isValidElement(children)
-    ? cloneElement(children, { id: children.props.id || id, "aria-invalid": Boolean(error) })
+    ? cloneElement(children, {
+        id: controlId,
+        "aria-describedby": describedBy,
+        "aria-invalid": Boolean(error),
+        "aria-required": required || undefined,
+      })
     : children;
   return (
-    <label className={`ui-field ${className}`} htmlFor={id}>
+    <label className={`ui-field ${className}`} htmlFor={controlId}>
       <span className="ui-field__label">{label}{required && <span aria-hidden="true"> *</span>}</span>
-      {hint && <small className="ui-field__hint">{hint}</small>}
+      {hint && <small className="ui-field__hint" id={hintId}>{hint}</small>}
       {child}
-      {error && <small className="ui-field__error" role="alert">{error}</small>}
+      {error && <small className="ui-field__error" id={errorId} role="alert">{error}</small>}
     </label>
   );
 }
@@ -88,8 +103,20 @@ export function Alert({ title, children, tone = "info", action, className = "" }
   );
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, size = "md" }) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+  size = "md",
+  busy = false,
+  closeOnBackdrop = true,
+}) {
   const ref = useRef(null);
+  const titleId = useId();
+  const descriptionId = useId();
   useEffect(() => {
     if (!open) return undefined;
     const prior = document.activeElement;
@@ -98,7 +125,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     );
     focusable?.focus();
     const handleKey = (event) => {
-      if (event.key === "Escape") onClose?.();
+      if (event.key === "Escape" && !busy) onClose?.();
       if (event.key === "Tab" && ref.current) {
         const items = [...ref.current.querySelectorAll(
           'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
@@ -120,23 +147,24 @@ export function Dialog({ open, onClose, title, description, children, footer, si
       document.removeEventListener("keydown", handleKey);
       prior?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, onClose, busy]);
   if (!open) return null;
   return (
     <div className="ui-modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose?.();
+      if (event.target === event.currentTarget && closeOnBackdrop && !busy) onClose?.();
     }}>
       <section
         ref={ref}
         className={`ui-dialog ui-dialog--${size}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-title"
-        aria-describedby={description ? "dialog-description" : undefined}
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        aria-busy={busy || undefined}
       >
         <header className="ui-dialog__header">
-          <div><h2 id="dialog-title">{title}</h2>{description && <p id="dialog-description">{description}</p>}</div>
-          <IconButton label="关闭对话框" variant="ghost" onClick={onClose}>关闭</IconButton>
+          <div><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}</div>
+          <IconButton label="关闭对话框" variant="ghost" onClick={onClose} disabled={busy}>关闭</IconButton>
         </header>
         <div className="ui-dialog__body">{children}</div>
         {footer && <footer className="ui-dialog__footer">{footer}</footer>}
@@ -161,7 +189,7 @@ export function ConfirmDialog({
   busy,
 }) {
   return (
-    <Dialog open={open} onClose={onClose} title={title} description={description} footer={(
+    <Dialog open={open} onClose={onClose} title={title} description={description} busy={busy} footer={(
       <>
         <Button variant="secondary" onClick={onClose} disabled={busy}>{cancelLabel}</Button>
         <Button variant={tone} onClick={onConfirm} loading={busy}>{confirmLabel}</Button>
@@ -204,12 +232,26 @@ export function Skeleton({ lines = 3, className = "" }) {
   );
 }
 
-export function Spinner({ size = "md" }) {
-  return <span className={`ui-spinner ui-spinner--${size}`} role="status" aria-label="加载中" />;
+export function Spinner({ size = "md", decorative = false, label = "加载中" }) {
+  return (
+    <span
+      className={`ui-spinner ui-spinner--${size}`}
+      role={decorative ? undefined : "status"}
+      aria-label={decorative ? undefined : label}
+      aria-hidden={decorative || undefined}
+    />
+  );
 }
 
 export function EmptyState({ title, description, action }) {
-  return <div className="ui-empty"><strong>{title}</strong><p>{description}</p>{action}</div>;
+  return (
+    <div className="ui-empty" role="status">
+      <span className="ui-empty__signal" aria-hidden="true" />
+      <strong>{title}</strong>
+      <p>{description}</p>
+      {action}
+    </div>
+  );
 }
 
 export function ErrorState({ error, onRetry }) {
