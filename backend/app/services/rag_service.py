@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +70,7 @@ def index_pdf_file(db: Session, file_record: File) -> dict[str, Any]:
         "chunk_count": len(chunks),
         "chunk_size": settings.rag_chunk_size,
         "chunk_overlap": settings.rag_chunk_overlap,
-        "indexed_at": datetime.utcnow().isoformat(),
+        "indexed_at": utcnow().isoformat(),
     }
     schema["indexed"] = indexed_metadata
     schema["rag_index"] = indexed_metadata

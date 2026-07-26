@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,7 +46,7 @@ class FileProcessingRun(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     used_model: Mapped[bool] = mapped_column(default=False, nullable=False)
     fallback_used: Mapped[bool] = mapped_column(default=False, nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     file = relationship("File")

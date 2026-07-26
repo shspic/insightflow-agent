@@ -1,3 +1,5 @@
+import re
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -44,7 +46,7 @@ def login(client: TestClient, username: str, password: str = PASSWORD):
     )
 
 
-def test_create_admin_cli_service_is_safe_and_does_not_overwrite(db_session):
+def test_create_admin_cli_service_is_safe_and_does_not_overwrite(client, db_session):
     admin = create_or_update_admin(
         db_session,
         username="root.admin",
@@ -60,6 +62,23 @@ def test_create_admin_cli_service_is_safe_and_does_not_overwrite(db_session):
         assert "已存在" in str(exc)
     else:
         raise AssertionError("已存在管理员不应被静默覆盖")
+
+    updated = create_or_update_admin(
+        db_session,
+        username="root.admin",
+        password="AnotherSafe!2026",
+        update_password=True,
+    )
+    assert updated.role == "admin"
+    assert updated.status == "active"
+    assert not verify_password(updated.password_hash, PASSWORD)
+    assert verify_password(updated.password_hash, "AnotherSafe!2026")
+    assert login(client, "root.admin", "AnotherSafe!2026").status_code == 200
+    me_response = client.get("/api/v2/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["username"] == "root.admin"
+    assert me_response.json()["role"] == "admin"
+    assert me_response.json()["status"] == "active"
 
 
 def test_non_admin_cannot_access_admin_api(client, db_session):
@@ -79,6 +98,7 @@ def test_invite_is_returned_once_and_rotation_invalidates_old_code(client, db_se
     )
     assert created.status_code == 201
     old_code = created.json()["invite_code"]
+    assert re.fullmatch(r"[A-Za-z0-9_-]{8,64}", old_code)
     invite_id = created.json()["id"]
     assert old_code not in str(db_session.scalar(select(InviteCode).where(InviteCode.id == invite_id)).__dict__)
 
@@ -119,6 +139,91 @@ def test_invite_is_returned_once_and_rotation_invalidates_old_code(client, db_se
     )
     assert new_registration.status_code == 201
     user_client.close()
+
+
+def test_custom_invite_creation_validation_conflict_and_usage_limit(client, db_session):
+    add_user(db_session, "custom.invite.admin", role="admin")
+    assert login(client, "custom.invite.admin").status_code == 200
+
+    created = client.post(
+        "/api/v2/admin/invite-codes",
+        headers=session_csrf(client),
+        json={"code": "  Custom_Code-2026  ", "max_uses": 1},
+    )
+    assert created.status_code == 201
+    assert created.json()["invite_code"] == "Custom_Code-2026"
+
+    duplicate = client.post(
+        "/api/v2/admin/invite-codes",
+        headers=session_csrf(client),
+        json={"code": "Custom_Code-2026", "max_uses": 2},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "邀请码已存在"
+
+    invalid = client.post(
+        "/api/v2/admin/invite-codes",
+        headers=session_csrf(client),
+        json={"code": "含空格 bad", "max_uses": 1},
+    )
+    assert invalid.status_code == 422
+
+    user_client = TestClient(app)
+    wrong_case = user_client.post(
+        "/api/v2/auth/register",
+        headers=public_csrf(user_client),
+        json={
+            "username": "wrong.case.user",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+            "invite_code": "custom_code-2026",
+        },
+    )
+    assert wrong_case.status_code == 400
+
+    registered = user_client.post(
+        "/api/v2/auth/register",
+        headers=public_csrf(user_client),
+        json={
+            "username": "custom.code.user",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+            "invite_code": "Custom_Code-2026",
+        },
+    )
+    assert registered.status_code == 201
+
+    exhausted = user_client.post(
+        "/api/v2/auth/register",
+        headers=public_csrf(user_client),
+        json={
+            "username": "second.custom.user",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+            "invite_code": "Custom_Code-2026",
+        },
+    )
+    assert exhausted.status_code == 400
+    invite = db_session.scalar(
+        select(InviteCode).where(InviteCode.id == created.json()["id"])
+    )
+    db_session.refresh(invite)
+    assert invite.used_count == 1
+    assert invite.status == "exhausted"
+    user_client.close()
+
+
+def test_non_admin_cannot_create_custom_invite(client, db_session):
+    add_user(db_session, "no.invite.permission")
+    assert login(client, "no.invite.permission").status_code == 200
+
+    response = client.post(
+        "/api/v2/admin/invite-codes",
+        headers=session_csrf(client),
+        json={"code": "Forbidden_Code-2026", "max_uses": 1},
+    )
+
+    assert response.status_code == 403
 
 
 def test_password_reset_temporary_password_is_one_time_and_forces_change(client, db_session):

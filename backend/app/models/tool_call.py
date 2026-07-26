@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -24,6 +25,6 @@ class ToolCall(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     task = relationship("Task", back_populates="tool_calls")

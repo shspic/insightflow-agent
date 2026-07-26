@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import (
     CheckConstraint,
@@ -73,11 +74,11 @@ class FileProfile(Base):
     fallback_used: Mapped[bool] = mapped_column(default=False, nullable=False)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
         nullable=False,
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

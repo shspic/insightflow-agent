@@ -13,6 +13,7 @@ from app.core.config import settings
 
 
 USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{3,50}$")
+INVITE_CODE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 SENSITIVE_KEYS = {
     "password",
     "password_hash",
@@ -102,6 +103,13 @@ def generate_csrf_token() -> str:
 
 def generate_invite_code() -> str:
     return f"IF-{secrets.token_urlsafe(18)}"
+
+
+def validate_invite_code(code: str) -> str:
+    normalized = code.strip()
+    if not INVITE_CODE_PATTERN.fullmatch(normalized):
+        raise ValueError("邀请码需为 8 至 64 位英文字母、数字、连字符或下划线")
+    return normalized
 
 
 def generate_temporary_password() -> str:

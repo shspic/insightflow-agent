@@ -6,6 +6,7 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+.pytest-baseline/
 .pytest-v205-*/
 .pytest-tmp-*/
 .venv/
@@ -42,6 +43,9 @@ node_modules/
 frontend/node_modules/
 dist/
 frontend/dist/
+
+# Local isolated acceptance environment
+.runtime/
 
 # Local browser verification
 .playwright-cli/

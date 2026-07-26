@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,7 +26,7 @@ class TaskClarification(Base):
     questions_json: Mapped[str] = mapped_column(Text, nullable=False)
     answers_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     task = relationship("Task")

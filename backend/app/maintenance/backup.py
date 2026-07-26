@@ -4,6 +4,7 @@ import json
 import sqlite3
 import zipfile
 from datetime import datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -15,7 +16,7 @@ def create_backup(output_root: Path | None = None) -> dict:
     if not source_db.is_file():
         raise RuntimeError("SQLite 数据库文件不存在")
     root = output_root or _path(settings.backup_dir)
-    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    timestamp = utcnow().strftime("%Y%m%dT%H%M%SZ")
     destination = root / f"insightflow-backup-{timestamp}"
     if destination.exists():
         raise RuntimeError("备份目标已存在")
@@ -34,7 +35,7 @@ def create_backup(output_root: Path | None = None) -> dict:
                 if path.is_file() and path.name != ".env":
                     archive.write(path, path.relative_to(BACKEND_DIR).as_posix())
     manifest = {
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": utcnow().isoformat(),
         "database_revision_hint": "执行 alembic current 确认",
         "files": {
             database_backup.name: {

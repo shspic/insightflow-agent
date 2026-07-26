@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from app.core.timeutils import utcnow
 from typing import Any
 
 from sqlalchemy import func, select
@@ -134,7 +135,7 @@ def answer_clarification(
         }
     )
     clarification.status = "skipped" if continue_with_recommendation else "answered"
-    clarification.answered_at = datetime.utcnow()
+    clarification.answered_at = utcnow()
     append_task_event(
         db,
         task_id=task.id,
@@ -223,7 +224,7 @@ def patch_plan(
     )
     validate_plan_steps(steps)
     plan.status = "superseded"
-    plan.superseded_at = datetime.utcnow()
+    plan.superseded_at = utcnow()
     new_plan = TaskPlan(
         task_id=task.id,
         version=_next_plan_version(db, task.id),
@@ -285,7 +286,7 @@ def confirm_plan(db: Session, *, task: Task, plan: TaskPlan) -> Task:
     ]
     validate_plan_steps(step_models)
     plan.status = "confirmed"
-    plan.confirmed_at = datetime.utcnow()
+    plan.confirmed_at = utcnow()
     for order, item in enumerate(step_models, start=1):
         db.add(
             TaskStep(
@@ -439,7 +440,7 @@ def _generate_plan(
     current = db.get(TaskPlan, task.current_plan_id) if task.current_plan_id else None
     if current is not None and current.status == "draft":
         current.status = "superseded"
-        current.superseded_at = datetime.utcnow()
+        current.superseded_at = utcnow()
     owner = db.get(User, task.owner_user_id)
     if owner is None:
         raise TaskPlanningError("任务所有者不存在", "USER_NOT_FOUND")
@@ -516,7 +517,7 @@ def _generate_plan(
             duration_ms=result.duration_ms,
             status="completed",
             fallback_used=int(result.fallback_used),
-            completed_at=datetime.utcnow(),
+            completed_at=utcnow(),
         )
     db.add(agent_run)
     db.flush()

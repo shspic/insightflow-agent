@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -63,7 +64,7 @@ def transition_task(
     allowed = ALLOWED_TASK_TRANSITIONS.get(task.status, set())
     if target_status not in allowed:
         raise TaskStateError(f"任务不能从 {task.status} 转换为 {target_status}")
-    now = datetime.utcnow()
+    now = utcnow()
     old_status = task.status
     task.status = target_status
     if progress_percent is not None:
@@ -106,7 +107,7 @@ def set_task_progress(
 ) -> None:
     progress = _validate_progress(progress_percent)
     task.progress_percent = progress
-    task.updated_at = datetime.utcnow()
+    task.updated_at = utcnow()
     append_task_event(
         db,
         task_id=task.id,

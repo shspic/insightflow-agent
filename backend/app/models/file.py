@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -23,11 +24,11 @@ class File(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     schema_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
         nullable=False,
     )
 

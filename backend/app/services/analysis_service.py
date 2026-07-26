@@ -1,5 +1,4 @@
 import json
-import warnings
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -133,9 +132,7 @@ def _detect_date_columns(dataframe: pd.DataFrame) -> list[str]:
         if non_empty.empty:
             continue
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            parsed = pd.to_datetime(non_empty, errors="coerce")
+        parsed = pd.to_datetime(non_empty, errors="coerce", format="mixed")
 
         if parsed.notna().sum() / len(non_empty) >= 0.8:
             date_columns.append(column)

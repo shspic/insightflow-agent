@@ -1,8 +1,9 @@
-import { API_BASE_URL, V2_API_BASE_URL } from "./config";
+import { API_BASE_URL, V2_API_BASE_URL } from "./config.js";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const CSRF_COOKIE_NAME = "insightflow_csrf";
+const CSRF_ERROR_CODE = "CSRF_VALIDATION_FAILED";
 let csrfToken = null;
+let csrfRequest = null;
 
 export class ApiError extends Error {
   constructor(message, status, code = null) {
@@ -13,30 +14,37 @@ export class ApiError extends Error {
   }
 }
 
-function readCookie(name) {
-  const prefix = `${encodeURIComponent(name)}=`;
-  const item = document.cookie.split("; ").find((value) => value.startsWith(prefix));
-  return item ? decodeURIComponent(item.slice(prefix.length)) : null;
+function clearCsrfToken() {
+  csrfToken = null;
 }
 
-async function ensureCsrfToken() {
-  let token = csrfToken || readCookie(CSRF_COOKIE_NAME);
-  if (token) {
-    return token;
+async function ensureCsrfToken({ forceRefresh = false } = {}) {
+  if (!forceRefresh && csrfToken) {
+    return csrfToken;
   }
-  const response = await fetch(`${V2_API_BASE_URL}/auth/csrf`, {
-    credentials: "include",
-  });
-  if (!response.ok) {
-    throw new ApiError("无法建立安全请求上下文", response.status);
+  if (csrfRequest) {
+    return csrfRequest;
   }
-  const data = await response.json().catch(() => null);
-  token = data?.csrf_token || readCookie(CSRF_COOKIE_NAME);
-  if (!token) {
-    throw new ApiError("未收到 CSRF Token，请确认使用同源访问或 Vite Proxy", 403);
+  clearCsrfToken();
+  csrfRequest = (async () => {
+    const response = await fetch(`${V2_API_BASE_URL}/auth/csrf`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new ApiError("无法建立安全请求上下文", response.status);
+    }
+    const data = await response.json().catch(() => null);
+    if (!data?.csrf_token) {
+      throw new ApiError("未收到 CSRF Token，请确认使用同源访问或 Vite Proxy", 403);
+    }
+    csrfToken = data.csrf_token;
+    return csrfToken;
+  })();
+  try {
+    return await csrfRequest;
+  } finally {
+    csrfRequest = null;
   }
-  csrfToken = token;
-  return csrfToken;
 }
 
 function getErrorMessage(data, status) {
@@ -63,42 +71,63 @@ function getErrorMessage(data, status) {
 
 export async function apiRequest(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
-  const headers = new Headers(options.headers || {});
-  if (MUTATING_METHODS.has(method)) {
-    headers.set("X-CSRF-Token", await ensureCsrfToken());
-  }
-  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  const response = await fetch(`${V2_API_BASE_URL}${path}`, {
-    ...options,
-    method,
-    headers,
-    credentials: "include",
-  });
-  const data = await response.json().catch(() => null);
-  if (data?.csrf_token) {
-    csrfToken = data.csrf_token;
-  }
-  if (!response.ok) {
+  const needsCsrf = MUTATING_METHODS.has(method);
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const headers = new Headers(options.headers || {});
+    if (needsCsrf) {
+      headers.set("X-CSRF-Token", await ensureCsrfToken({ forceRefresh: attempt === 1 }));
+    }
+    if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    const response = await fetch(`${V2_API_BASE_URL}${path}`, {
+      ...options,
+      method,
+      headers,
+      credentials: "include",
+    });
+    const data = await response.json().catch(() => null);
+    if (data?.csrf_token) {
+      csrfToken = data.csrf_token;
+    }
+    if (response.ok) {
+      if (path === "/auth/logout" || path === "/auth/revoke-sessions") {
+        clearCsrfToken();
+      }
+      return data;
+    }
+
     const code = typeof data?.detail === "object" ? data.detail.code : null;
+    if (
+      needsCsrf
+      && response.status === 403
+      && code === CSRF_ERROR_CODE
+      && attempt === 0
+    ) {
+      clearCsrfToken();
+      continue;
+    }
+
     const error = new ApiError(getErrorMessage(data, response.status), response.status, code);
     if (response.status === 401) {
-      csrfToken = null;
+      clearCsrfToken();
       window.dispatchEvent(new CustomEvent("auth:unauthorized"));
     }
     if (code === "PASSWORD_CHANGE_REQUIRED") {
       window.dispatchEvent(new CustomEvent("auth:password-change-required"));
     }
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.error("API 请求失败", { path, status: response.status, data });
     }
     throw error;
   }
-  if (path === "/auth/logout" || path === "/auth/revoke-sessions") {
-    csrfToken = null;
-  }
-  return data;
+  throw new ApiError("CSRF 校验失败", 403, CSRF_ERROR_CODE);
+}
+
+export function resetCsrfToken() {
+  clearCsrfToken();
+  csrfRequest = null;
 }
 
 export function apiResourceUrl(path) {

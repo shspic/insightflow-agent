@@ -47,7 +47,7 @@ class Settings:
     llm_api_key: str = _get_env("DEEPSEEK_API_KEY", _get_env("LLM_API_KEY", ""))
     llm_model: str = _get_env(
         "DEEPSEEK_MODEL",
-        _get_env("LLM_MODEL", "deepseek-v4-flash"),
+        _get_env("LLM_MODEL", "<部署时核实的可用模型名>"),
     )
     llm_base_url: str = _get_env(
         "DEEPSEEK_API_BASE",

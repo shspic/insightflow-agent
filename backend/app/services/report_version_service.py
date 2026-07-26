@@ -5,6 +5,7 @@ import re
 import shutil
 import uuid
 from datetime import datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from typing import Any, Literal
 
@@ -78,7 +79,7 @@ def create_report_version(
     quality = _quality_summary(state, template.required_sections, content)
     warnings = list(dict.fromkeys(str(item)[:500] for item in (state.get("warnings") or [])))
     status = "ready_with_warnings" if warnings or quality["status"] != "passed" else "ready"
-    now = datetime.utcnow()
+    now = utcnow()
     report = Report(
         task_id=task.id,
         workspace_id=task.workspace_id,
@@ -212,7 +213,7 @@ def delete_report_version(db: Session, *, task: Task, report: Report) -> None:
     )
     if len(usable) <= 1 or task.report_id == report.id:
         raise ReportVersionError("不能删除当前版本或任务唯一可用报告", "REPORT_DELETE_BLOCKED")
-    now = datetime.utcnow()
+    now = utcnow()
     report.status = "superseded"
     report.superseded_at = now
     for asset in _report_assets(db, report.id):
@@ -225,7 +226,7 @@ def set_current_report(db: Session, *, task: Task, report: Report) -> Report:
         raise ReportVersionError("报告不属于当前任务", "REPORT_SCOPE_MISMATCH")
     if report.status not in {"ready", "ready_with_warnings"}:
         raise ReportVersionError("只有可用报告版本可以设为当前版本", "REPORT_NOT_READY")
-    now = datetime.utcnow()
+    now = utcnow()
     for item in db.scalars(
         select(Report).where(
             Report.task_id == task.id,

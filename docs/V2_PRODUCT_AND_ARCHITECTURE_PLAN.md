@@ -2068,3 +2068,20 @@ V2-07 已交付中国内地单机生产部署包：
 - Ubuntu 安全、域名/ICP备案/DNS/HTTPS、日常运维和 36 项真实上线验收文档。
 
 本阶段没有购买服务器/域名，没有执行备案、DNS、证书签发、公网部署、真实 DeepSeek 调用或中国内地网络测试。单机 SQLite 继续只面向约 5 人低并发；需要多实例、高可用或频繁并发写入时应启动 PostgreSQL、对象存储和专业队列迁移。
+
+## 21. V2-08 实施状态（2026-07-24）
+
+V2-08 已完成全线封板，版本号 `2.0.0-rc.1`：
+
+- 全仓库代码/配置/文档一致性审计，修复过时引用和不一致描述；
+- 弃用警告治理：`datetime.utcnow()` 统一替换为项目 `timeutils.utcnow()`，覆盖 55+ 文件；
+- Pandas 未来警告修复、DeepSeek 模型名配置化、`.gitignore` 更新；
+- 隔离验收环境（`scripts/*.ps1` + `.runtime/`）和合成演示资料（`examples/demo_workspace/`）；
+- 全部回归测试通过：后端 `90 passed`、前端 `10 passed`、Alembic 升级/回退/再升级、deterministic 85 条、前端 build 77 模块、`pip check`/`compileall` 通过；
+- Docker Compose（开发 + 生产）配置校验通过。
+
+本阶段没有修改数据库迁移、业务 API Schema、Cookie Session、CSRF、Worker 或部署架构。代码主线已封板，后续不再追加 V2 功能。
+
+国内上线仍需用户完成：服务器购买、域名备案、DNS 解析、HTTPS 证书、DeepSeek 配置、公网上线验收。
+
+后续可选的独立项目（非 V2 主线）：PostgreSQL 迁移、对象存储迁移、语义向量检索建设、自动化 E2E 测试。

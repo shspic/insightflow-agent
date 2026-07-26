@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from app.core.timeutils import utcnow
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -152,7 +153,7 @@ def test_queue_claim_is_exclusive_and_expired_lease_recovers(db_session):
         user_input="排队任务",
         status="queued",
         file_ids_json="[]",
-        queued_at=datetime.utcnow(),
+        queued_at=utcnow(),
     )
     db_session.add(task)
     db_session.flush()
@@ -176,7 +177,7 @@ def test_queue_claim_is_exclusive_and_expired_lease_recovers(db_session):
     first = claim_next_task(db_session, worker_id="worker-a")
     assert first is not None
     assert claim_next_task(db_session, worker_id="worker-b") is None
-    first.lease_expires_at = datetime.utcnow() - timedelta(seconds=1)
+    first.lease_expires_at = utcnow() - timedelta(seconds=1)
     db_session.commit()
     recovered = claim_next_task(db_session, worker_id="worker-b")
     assert recovered is not None
@@ -188,7 +189,7 @@ def test_queue_claim_is_exclusive_and_expired_lease_recovers(db_session):
         user_input="未确认",
         status="queued",
         file_ids_json="[]",
-        queued_at=datetime.utcnow(),
+        queued_at=utcnow(),
     )
     db_session.add(unconfirmed)
     db_session.flush()

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 
 from sqlalchemy import select
 
@@ -8,7 +9,7 @@ from app.models.operations import WorkerStatus
 
 
 def main() -> int:
-    stale_after = datetime.utcnow() - timedelta(
+    stale_after = utcnow() - timedelta(
         seconds=max(1, settings.worker_stale_seconds)
     )
     with SessionLocal() as db:

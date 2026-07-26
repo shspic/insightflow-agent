@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 from datetime import datetime
+from app.core.timeutils import utcnow
 from typing import Any
 from uuid import uuid4
 
@@ -201,7 +202,7 @@ class TaskWorker:
             self._cancel(db, task)
             return None
         step.status = "running"
-        step.started_at = datetime.utcnow()
+        step.started_at = utcnow()
         step.failed_at = None
         step.error_code = None
         step.error_message = None
@@ -303,7 +304,7 @@ class TaskWorker:
             )
             step.status = "completed"
             step.progress_percent = 100
-            step.completed_at = datetime.utcnow()
+            step.completed_at = utcnow()
             if step.step_key not in state.completed_steps:
                 state.completed_steps.append(step.step_key)
             state.failed_steps = [key for key in state.failed_steps if key != step.step_key]
@@ -326,7 +327,7 @@ class TaskWorker:
             run.fallback_used = int(
                 bool(model_review.get("fallback_used", False))
             )
-            run.completed_at = datetime.utcnow()
+            run.completed_at = utcnow()
             progress = min(
                 95,
                 5
@@ -354,7 +355,7 @@ class TaskWorker:
                 payload={"step_key": step.step_key, "output_status": output.get("status")},
             )
             task.progress_percent = progress
-            task.last_heartbeat_at = datetime.utcnow()
+            task.last_heartbeat_at = utcnow()
             db.commit()
             heartbeat_task(db, task_id=task.id, worker_id=self.worker_id)
             return output
@@ -366,14 +367,14 @@ class TaskWorker:
             message = exc.message if isinstance(exc, ToolExecutionError) else str(exc)
             code = exc.code if isinstance(exc, ToolExecutionError) else "AGENT_STEP_FAILED"
             step.status = "failed"
-            step.failed_at = datetime.utcnow()
+            step.failed_at = utcnow()
             step.error_code = code
             step.error_message = safe_public_text(message)
             run.status = "failed"
             run.duration_ms = int((time.monotonic() - started) * 1000)
             run.error_code = code
             run.error_message = safe_public_text(message)
-            run.completed_at = datetime.utcnow()
+            run.completed_at = utcnow()
             if step.step_key not in state.failed_steps:
                 state.failed_steps.append(step.step_key)
             state.current_step = None
@@ -511,7 +512,7 @@ class TaskWorker:
         release_task_lease(db, task)
         duration_ms = 0
         if task.started_at:
-            duration_ms = max(0, int((datetime.utcnow() - task.started_at).total_seconds() * 1000))
+            duration_ms = max(0, int((utcnow() - task.started_at).total_seconds() * 1000))
         increment_usage(
             db,
             task.owner_user_id,
@@ -555,7 +556,7 @@ class TaskWorker:
         step.status = "failed"
         step.error_code = "DEPENDENCY_NOT_COMPLETED"
         step.error_message = "步骤依赖未完成"
-        step.failed_at = datetime.utcnow()
+        step.failed_at = utcnow()
         set_task_failure(
             task,
             error_code="DEPENDENCY_NOT_COMPLETED",
@@ -610,7 +611,7 @@ def _touch_worker(
     completed_delta: int = 0,
     failed_delta: int = 0,
 ) -> WorkerStatus:
-    now = datetime.utcnow()
+    now = utcnow()
     record = db.scalar(
         select(WorkerStatus).where(WorkerStatus.worker_id == worker_id)
     )

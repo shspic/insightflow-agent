@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,7 +40,7 @@ def get_active_prompt(db: Session, prompt_name: str) -> PromptVersion:
         db.add(record)
     else:
         record.status = "active"
-        record.activated_at = datetime.utcnow()
+        record.activated_at = utcnow()
     db.flush()
     return record
 
@@ -51,7 +52,7 @@ def activate_prompt(db: Session, prompt_id: int, admin_user_id: int) -> PromptVe
     if target.prompt_name not in PROMPTS:
         raise ValueError("Prompt 名称不在受控注册表中")
     _validate_prompt(target)
-    now = datetime.utcnow()
+    now = utcnow()
     active_records = db.scalars(
         select(PromptVersion).where(
             PromptVersion.prompt_name == target.prompt_name,
@@ -80,7 +81,7 @@ def _from_definition(definition: PromptDefinition) -> PromptVersion:
         input_schema_json=json.dumps({"schema": definition.input_schema}),
         output_schema_json=json.dumps({"schema": definition.output_schema}),
         content_hash=hashlib.sha256(definition.template_text.encode("utf-8")).hexdigest(),
-        activated_at=datetime.utcnow(),
+        activated_at=utcnow(),
     )
 
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,7 +14,7 @@ class RateLimitExceededError(Exception):
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return utcnow()
 
 
 def ensure_not_blocked(db: Session, scope_type: str, scope_value: str) -> None:

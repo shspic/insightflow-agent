@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,7 +21,7 @@ class PasswordResetRequest(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending", index=True)
     request_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     handled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     handled_by_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),

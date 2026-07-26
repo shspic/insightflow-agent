@@ -79,6 +79,7 @@ def create_invite_code(
         invite, raw_code = create_invite(
             db,
             admin=admin,
+            code=payload.code,
             max_uses=payload.max_uses,
             expires_at=payload.expires_at,
             ip_address=_client_ip(request),

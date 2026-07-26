@@ -1,7 +1,9 @@
 import json
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.auth_session import AuthSession
@@ -17,6 +19,7 @@ from app.services.security_service import (
     invite_code_hash,
     invite_code_hint,
     sanitize_details,
+    validate_invite_code,
 )
 
 
@@ -28,7 +31,7 @@ class AdminServiceError(Exception):
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return utcnow()
 
 
 def effective_invite_status(invite: InviteCode) -> str:
@@ -46,15 +49,22 @@ def create_invite(
     db: Session,
     *,
     admin: User,
+    code: str | None,
     max_uses: int | None,
     expires_at: datetime | None,
     ip_address: str | None,
 ) -> tuple[InviteCode, str]:
     if expires_at is not None and expires_at <= _utcnow():
         raise AdminServiceError("过期时间必须晚于当前时间")
-    raw_code = generate_invite_code()
+    try:
+        raw_code = generate_invite_code() if code is None else validate_invite_code(code)
+    except ValueError as exc:
+        raise AdminServiceError(str(exc), 422) from exc
+    code_digest = invite_code_hash(raw_code)
+    if db.scalar(select(InviteCode.id).where(InviteCode.code_hash == code_digest)) is not None:
+        raise AdminServiceError("邀请码已存在", 409)
     invite = InviteCode(
-        code_hash=invite_code_hash(raw_code),
+        code_hash=code_digest,
         code_hint=invite_code_hint(raw_code),
         status="active",
         max_uses=max_uses,
@@ -74,7 +84,11 @@ def create_invite(
         details={"code_hint": invite.code_hint, "max_uses": max_uses},
         ip_address=ip_address,
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise AdminServiceError("邀请码已存在", 409) from exc
     db.refresh(invite)
     return invite, raw_code
 

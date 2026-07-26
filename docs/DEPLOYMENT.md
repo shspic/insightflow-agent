@@ -26,7 +26,33 @@ cd D:\spir\NO2_agent
 docker compose up --build
 ```
 
-## V2-07 生产入口
+本地开发访问地址：
+
+- 前端：`http://localhost:5173`
+- 后端：`http://localhost:8000`
+- Swagger：`http://localhost:8000/docs`
+- 健康检查：`http://localhost:8000/api/health`
+
+以上地址是本地开发专用，不对外提供服务。
+
+## V2-08 验收环境
+
+V2-08 提供的隔离验收脚本使用独立 `.runtime/` 目录，包含临时数据库和临时 storage，不影响开发/生产数据：
+
+```powershell
+# 启动验收环境（后端 + Worker + 前端）
+.\scripts\start_final_acceptance.ps1
+
+# 停止验收环境
+.\scripts\stop_final_acceptance.ps1
+
+# 清理验收环境（删除临时数据库、storage 和日志）
+.\scripts\clean_final_acceptance.ps1
+```
+
+验收环境自动创建管理员账号和演示工作区。详细说明见 `examples/demo_workspace/README.md`。
+
+## V2-07 生产入口（当前主要部署方案）
 
 V2 正式部署只采用中国内地 Linux 单机同域方案：
 
@@ -55,6 +81,16 @@ sudo bash deploy/scripts/deploy.sh
 - [日常运维、备份、升级与回滚](V2_07_OPERATIONS_RUNBOOK.md)
 - [真实上线手动验收](V2_07_MANUAL_ACCEPTANCE.md)
 
+## 历史演示环境（V1，非 V2 生产路径）
+
+以下地址为 V1 单用户演示版的历史部署，不再作为 V2 正式生产路径：
+
+- 前端（Vercel）：`https://insightflow-agent.vercel.app`
+- 后端（Render）：`https://insightflow-agent-spi.onrender.com`
+- 健康检查（Render）：`https://insightflow-agent-spi.onrender.com/api/health`
+
+该部署存在已知限制：Render 免费服务冷启动慢、文件系统不持久、OCR 可能不可用、无用户认证和多租户隔离。V2 正式环境应从零按 V2-07 方案部署，不继承 V1 的 Vercel/Render 数据或配置。
+
 ## 明确边界
 
-仓库没有购买服务器/域名，没有备案、修改 DNS、登录云控制台、连接真实服务器、申请真实证书、升级真实数据库或完成中国内地网络测试。历史 Vercel/Render 资料不再是 V2 生产默认配置。
+仓库没有购买服务器/域名，没有执行备案、修改 DNS、登录云控制台、连接真实服务器、申请真实证书、升级真实数据库或完成中国内地网络测试。代码主线已封板（`2.0.0-rc.1`），国内上线需用户手动完成服务器购买、域名备案、DNS、HTTPS、DeepSeek 配置和公网验收。

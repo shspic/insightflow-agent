@@ -178,7 +178,7 @@ async def upload_workspace_files_batch(
         raise HTTPException(status_code=404, detail="工作区不存在")
     if len(files) > max(1, settings.upload_max_batch_files):
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"单次最多上传 {settings.upload_max_batch_files} 个文件",
         )
     results: list[WorkspaceFileUploadResult] = []
@@ -257,9 +257,9 @@ async def upload_workspace_files_batch(
 
 def _upload_error_code(status_code: int) -> str:
     return {
-        status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: "FILE_TOO_LARGE",
+        status.HTTP_413_CONTENT_TOO_LARGE: "FILE_TOO_LARGE",
         status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: "UNSUPPORTED_FILE_TYPE",
-        status.HTTP_422_UNPROCESSABLE_ENTITY: "FILE_VALIDATION_FAILED",
+        status.HTTP_422_UNPROCESSABLE_CONTENT: "FILE_VALIDATION_FAILED",
         status.HTTP_429_TOO_MANY_REQUESTS: "UPLOAD_QUOTA_EXCEEDED",
     }.get(status_code, "UPLOAD_FAILED")
 

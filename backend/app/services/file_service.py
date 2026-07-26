@@ -118,12 +118,12 @@ async def save_uploaded_file(
                 if written_size > size_limit:
                     raise FileUploadError(
                         f"单文件大小不能超过 {size_limit} 字节",
-                        status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        status.HTTP_413_CONTENT_TOO_LARGE,
                     )
 
                 buffer.write(chunk)
         if written_size == 0:
-            raise FileUploadError("不允许上传空文件", status.HTTP_422_UNPROCESSABLE_ENTITY)
+            raise FileUploadError("不允许上传空文件", status.HTTP_422_UNPROCESSABLE_CONTENT)
         detected_mime_type = _validate_saved_file(
             saved_path,
             extension,
@@ -186,19 +186,19 @@ def _validate_saved_file(
         _validate_xlsx(path, header)
     elif extension == ".pdf":
         if not header.startswith(b"%PDF-"):
-            raise FileUploadError("PDF 文件头无效", status.HTTP_422_UNPROCESSABLE_ENTITY)
+            raise FileUploadError("PDF 文件头无效", status.HTTP_422_UNPROCESSABLE_CONTENT)
         _validate_pdf(path)
     elif extension == ".png":
         if not header.startswith(b"\x89PNG\r\n\x1a\n"):
-            raise FileUploadError("PNG 文件头无效", status.HTTP_422_UNPROCESSABLE_ENTITY)
+            raise FileUploadError("PNG 文件头无效", status.HTTP_422_UNPROCESSABLE_CONTENT)
         _validate_image(path)
     elif extension in {".jpg", ".jpeg"}:
         if not header.startswith(b"\xff\xd8\xff"):
-            raise FileUploadError("JPEG 文件头无效", status.HTTP_422_UNPROCESSABLE_ENTITY)
+            raise FileUploadError("JPEG 文件头无效", status.HTTP_422_UNPROCESSABLE_CONTENT)
         _validate_image(path)
     elif extension == ".webp":
         if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WEBP":
-            raise FileUploadError("WEBP 文件头无效", status.HTTP_422_UNPROCESSABLE_ENTITY)
+            raise FileUploadError("WEBP 文件头无效", status.HTTP_422_UNPROCESSABLE_CONTENT)
         _validate_image(path)
     else:
         _validate_text_file(path, extension)
@@ -207,32 +207,32 @@ def _validate_saved_file(
 
 def _validate_xlsx(path: Path, header: bytes) -> None:
     if not header.startswith(b"PK"):
-        raise FileUploadError("XLSX 文件头无效", status.HTTP_422_UNPROCESSABLE_ENTITY)
+        raise FileUploadError("XLSX 文件头无效", status.HTTP_422_UNPROCESSABLE_CONTENT)
     try:
         with zipfile.ZipFile(path) as archive:
             names = set(archive.namelist())
             if "[Content_Types].xml" not in names or "xl/workbook.xml" not in names:
                 raise FileUploadError(
                     "文件不是有效的 XLSX 工作簿",
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
             uncompressed_size = sum(item.file_size for item in archive.infolist())
             if uncompressed_size > 100 * 1024 * 1024:
                 raise FileUploadError(
                     "XLSX 解压后内容超过安全上限",
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
             if path.stat().st_size and uncompressed_size / path.stat().st_size > 100:
                 raise FileUploadError(
                     "XLSX 压缩比异常",
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
     except FileUploadError:
         raise
     except (zipfile.BadZipFile, OSError) as exc:
         raise FileUploadError(
             "XLSX 压缩结构无效",
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
         ) from exc
 
 
@@ -242,12 +242,12 @@ def _validate_pdf(path: Path) -> None:
             if len(document) > max(1, settings.pdf_max_pages):
                 raise FileUploadError(
                     f"PDF 页数不能超过 {settings.pdf_max_pages}",
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
     except FileUploadError:
         raise
     except Exception as exc:
-        raise FileUploadError("PDF 文件损坏或无法读取", status.HTTP_422_UNPROCESSABLE_ENTITY) from exc
+        raise FileUploadError("PDF 文件损坏或无法读取", status.HTTP_422_UNPROCESSABLE_CONTENT) from exc
 
 
 def _validate_image(path: Path) -> None:
@@ -257,19 +257,19 @@ def _validate_image(path: Path) -> None:
             if width * height > max(1, settings.image_max_pixels):
                 raise FileUploadError(
                     f"图片像素数不能超过 {settings.image_max_pixels}",
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
             image.verify()
     except FileUploadError:
         raise
     except Exception as exc:
-        raise FileUploadError("图片损坏或格式无效", status.HTTP_422_UNPROCESSABLE_ENTITY) from exc
+        raise FileUploadError("图片损坏或格式无效", status.HTTP_422_UNPROCESSABLE_CONTENT) from exc
 
 
 def _validate_text_file(path: Path, extension: str) -> None:
     raw = path.read_bytes()
     if b"\x00" in raw:
-        raise FileUploadError("文本文件包含二进制空字符", status.HTTP_422_UNPROCESSABLE_ENTITY)
+        raise FileUploadError("文本文件包含二进制空字符", status.HTTP_422_UNPROCESSABLE_CONTENT)
     decoded = None
     for encoding in ("utf-8-sig", "utf-8", "gb18030"):
         try:
@@ -278,11 +278,11 @@ def _validate_text_file(path: Path, extension: str) -> None:
         except UnicodeDecodeError:
             continue
     if decoded is None:
-        raise FileUploadError("文本文件编码不受支持", status.HTTP_422_UNPROCESSABLE_ENTITY)
+        raise FileUploadError("文本文件编码不受支持", status.HTTP_422_UNPROCESSABLE_CONTENT)
     if extension == ".csv":
         sample = decoded[:8192]
         if not any(delimiter in sample for delimiter in (",", "\t", ";", "|")):
             raise FileUploadError(
                 "CSV 未检测到常见分隔符",
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
             )

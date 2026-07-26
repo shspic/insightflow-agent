@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import {
+  buildInviteCodePayload,
   createInviteCode,
   fetchAuditLogs,
   fetchInviteCodes,
@@ -41,6 +42,7 @@ export default function Admin() {
   const [audits, setAudits] = useState([]);
   const [secret, dispatchSecret] = useReducer(oneTimeSecretReducer, { title: "", value: "", visible: false });
   const [error, setError] = useState("");
+  const [customInviteCode, setCustomInviteCode] = useState("");
   const [maxUses, setMaxUses] = useState("5");
   const [active, setActive] = useState("operations");
   const [busy, setBusy] = useState("");
@@ -97,10 +99,21 @@ export default function Admin() {
           <div className="section-heading"><div><h2>邀请码</h2><p className="muted">原始邀请码只在创建或轮换响应中显示一次。</p></div></div>
           <form className="inline-form" onSubmit={(event) => {
             event.preventDefault();
-            run("invite-create", () => createInviteCode({ max_uses: Number(maxUses) }),
-              (result) => dispatchSecret({ type: "show", title: "新邀请码", value: result.invite_code }),
+            run("invite-create", () => createInviteCode(
+              buildInviteCodePayload(customInviteCode, maxUses),
+            ),
+              (result) => {
+                setCustomInviteCode("");
+                dispatchSecret({ type: "show", title: "新邀请码", value: result.invite_code });
+              },
               "邀请码已创建");
           }}>
+            <FormField label="自定义邀请码（可选）"
+              hint="留空时由系统自动生成。支持 8～64 位英文字母、数字、-、_。">
+              <Input minLength="8" maxLength="64" pattern="[A-Za-z0-9_-]{8,64}"
+                autoComplete="off" value={customInviteCode}
+                onChange={(event) => setCustomInviteCode(event.target.value)} />
+            </FormField>
             <FormField label="最大使用次数"><Input type="number" min="1" value={maxUses}
               onChange={(event) => setMaxUses(event.target.value)} /></FormField>
             <Button loading={busy === "invite-create"}>创建邀请码</Button>

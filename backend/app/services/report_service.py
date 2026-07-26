@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -313,7 +314,7 @@ def _load_file_ids(file_ids_json: str | None) -> list[int]:
 
 def _save_report_file(task_id: int, content: str) -> str:
     report_dir = _resolve_report_dir()
-    filename = f"task_{task_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}.md"
+    filename = f"task_{task_id}_{utcnow().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}.md"
     report_file = report_dir / filename
     report_file.write_text(content, encoding="utf-8")
     return _to_stored_report_path(report_file)

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import date, datetime
+from app.core.timeutils import utcnow
 from typing import Any
 
 from sqlalchemy import func, select
@@ -25,7 +26,7 @@ def operational_summary(db: Session) -> dict[str, Any]:
             durations.append(max(0, int((task.completed_at - task.started_at).total_seconds() * 1000)))
     total = max(1, len(tasks))
     return {
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": utcnow().isoformat(),
         "tasks": {
             "total": len(tasks),
             "status_distribution": dict(status_distribution),

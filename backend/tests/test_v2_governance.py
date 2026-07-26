@@ -5,6 +5,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from app.core.timeutils import utcnow
 import pytest
 from sqlalchemy import func, select
 
@@ -57,12 +58,12 @@ def test_quota_default_override_and_expiry(db_session):
         target_user_id=user.id,
         quota_key="daily_tasks",
         limit_value=25,
-        expires_at=datetime.utcnow() + timedelta(hours=1),
+        expires_at=utcnow() + timedelta(hours=1),
         note="测试覆盖",
         admin_user_id=user.id,
     )
     check_task_creation(db_session, user)
-    active.expires_at = datetime.utcnow() - timedelta(seconds=1)
+    active.expires_at = utcnow() - timedelta(seconds=1)
     db_session.flush()
     with pytest.raises(QuotaExceeded):
         check_task_creation(db_session, user)
@@ -229,19 +230,19 @@ def test_cleanup_dry_run_then_apply_deletes_only_expired_session(db_session):
     expired = AuthSession(
         user_id=user.id,
         token_hash="expired",
-        expires_at=datetime.utcnow() - timedelta(days=60),
+        expires_at=utcnow() - timedelta(days=60),
     )
     active = AuthSession(
         user_id=user.id,
         token_hash="active",
-        expires_at=datetime.utcnow() + timedelta(days=1),
+        expires_at=utcnow() + timedelta(days=1),
     )
     db_session.add_all([expired, active])
     db_session.commit()
     dry = run_cleanup(
         db_session,
         dry_run=True,
-        now=datetime.utcnow(),
+        now=utcnow(),
         execution_source="test",
     )
     assert dry.deleted_count == 0
@@ -249,7 +250,7 @@ def test_cleanup_dry_run_then_apply_deletes_only_expired_session(db_session):
     applied = run_cleanup(
         db_session,
         dry_run=False,
-        now=datetime.utcnow(),
+        now=utcnow(),
         execution_source="test",
     )
     assert applied.deleted_count >= 1

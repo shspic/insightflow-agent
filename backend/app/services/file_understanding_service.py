@@ -4,6 +4,7 @@ import json
 import re
 import time
 from datetime import date, datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from typing import Any, Literal
 
@@ -197,7 +198,7 @@ def understand_file(
         profile.prompt_version = PROMPT_VERSION if options.use_deepseek else None
         profile.model_latency_ms = model_latency_ms
         profile.fallback_used = fallback_used
-        profile.completed_at = datetime.utcnow()
+        profile.completed_at = utcnow()
         association.file_role = suggested_role
         file_record.status = "ready"
         file_record.summary = summary
@@ -206,7 +207,7 @@ def understand_file(
         run.duration_ms = int((time.perf_counter() - started) * 1000)
         run.used_model = semantic is not None
         run.fallback_used = fallback_used
-        run.completed_at = datetime.utcnow()
+        run.completed_at = utcnow()
         db.commit()
         db.refresh(profile)
         return profile
@@ -970,7 +971,7 @@ def _build_table_profile(
                     "median": _finite_number(numeric.median()),
                 }
         if inferred_type == "date" and not non_null.empty:
-            parsed = pd.to_datetime(non_null, errors="coerce").dropna()
+            parsed = pd.to_datetime(non_null, errors="coerce", format="mixed").dropna()
             if not parsed.empty:
                 date_ranges[column_name] = {
                     "min": parsed.min().isoformat(),
@@ -1228,13 +1229,13 @@ def _finish_failed_profile(
     profile.status = final_status
     profile.error_code = error_code
     profile.error_message = safe_message
-    profile.completed_at = datetime.utcnow()
+    profile.completed_at = utcnow()
     file_record.status = final_status
     run.status = final_status
     run.error_code = error_code
     run.error_message = safe_message
     run.duration_ms = int((time.perf_counter() - started) * 1000)
-    run.completed_at = datetime.utcnow()
+    run.completed_at = utcnow()
     db.commit()
     db.refresh(profile)
 
@@ -1301,7 +1302,7 @@ def _infer_series_type(series: pd.Series) -> str:
     non_empty = series.dropna()
     if not non_empty.empty:
         with pd.option_context("mode.chained_assignment", None):
-            parsed = pd.to_datetime(non_empty, errors="coerce")
+            parsed = pd.to_datetime(non_empty, errors="coerce", format="mixed")
         if parsed.notna().sum() / len(non_empty) >= 0.8:
             return "date"
     return "text"

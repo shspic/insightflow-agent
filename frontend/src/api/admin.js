@@ -1,4 +1,12 @@
-import { apiRequest } from "./client";
+import { apiRequest } from "./client.js";
+
+export function buildInviteCodePayload(code, maxUses) {
+  const normalizedCode = code.trim();
+  return {
+    ...(normalizedCode ? { code: normalizedCode } : {}),
+    max_uses: Number(maxUses),
+  };
+}
 
 export const fetchInviteCodes = () => apiRequest("/admin/invite-codes");
 export const createInviteCode = (payload) => apiRequest("/admin/invite-codes", {

@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest } from "./client.js";
 
 export const fetchCurrentUser = () => apiRequest("/auth/me");
 export const login = (payload) => apiRequest("/auth/login", {

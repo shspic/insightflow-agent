@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -11,7 +12,7 @@ class CleanupRun(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     cleanup_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     scanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     deleted_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

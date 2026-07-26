@@ -1,5 +1,6 @@
 import hmac
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
@@ -16,6 +17,13 @@ def _auth_error(detail: str = "身份认证已失效") -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
 
 
+def _csrf_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={"code": "CSRF_VALIDATION_FAILED", "message": "CSRF 校验失败"},
+    )
+
+
 def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
@@ -23,7 +31,7 @@ def get_current_user(
     raw_token = request.cookies.get(settings.auth_cookie_name)
     if not raw_token:
         raise _auth_error()
-    now = datetime.utcnow()
+    now = utcnow()
     session_record = db.scalar(
         select(AuthSession).where(
             AuthSession.token_hash == hash_token(raw_token),
@@ -84,7 +92,7 @@ def require_public_csrf(
         or not hmac.compare_digest(csrf_cookie, csrf_header)
         or not verify_public_csrf_token(csrf_cookie)
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF 校验失败")
+        raise _csrf_error()
 
 
 def require_session_csrf(
@@ -101,7 +109,7 @@ def require_session_csrf(
         or not session_record.csrf_token_hash
         or not hmac.compare_digest(hash_token(csrf_cookie), session_record.csrf_token_hash)
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF 校验失败")
+        raise _csrf_error()
     return user
 
 

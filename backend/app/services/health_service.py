@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 from pathlib import Path
 
 from alembic.config import Config
@@ -15,11 +16,15 @@ from app.db.session import SessionLocal
 from app.models.operations import WorkerStatus
 
 
+# 以下模型名已确认不可用于生产。实际可用模型名需在部署时向 DeepSeek
+# 官方文档核实，不在此处写死未经证实的推荐值。空字符串和占位符也会被拦截。
 UNSUPPORTED_PRODUCTION_MODELS = {
     "",
     "deepseek-chat",
     "deepseek-reasoner",
     "replace_with_supported_model_name",
+    "your_model_name_here",
+    "deepseek-v4-flash",
 }
 
 
@@ -57,7 +62,7 @@ def readiness_details(db: Session) -> dict:
         checks["migration"] = {"status": "failed", "message": "无法检查数据库版本"}
 
     checks["storage"] = _storage_check()
-    stale_after = datetime.utcnow() - timedelta(seconds=max(1, settings.worker_stale_seconds))
+    stale_after = utcnow() - timedelta(seconds=max(1, settings.worker_stale_seconds))
     worker = db.query(WorkerStatus).order_by(WorkerStatus.last_heartbeat_at.desc()).first()
     checks["worker"] = {
         "status": (

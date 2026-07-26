@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
@@ -29,7 +30,7 @@ def claim_next_task(
     worker_id: str,
     now: datetime | None = None,
 ) -> Task | None:
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     candidate = db.scalar(
         select(Task.id)
         .join(TaskPlan, TaskPlan.id == Task.current_plan_id)
@@ -97,7 +98,7 @@ def heartbeat_task(
     worker_id: str,
     now: datetime | None = None,
 ) -> bool:
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     result = db.execute(
         update(Task)
         .where(
@@ -126,7 +127,7 @@ def release_task_lease(db: Session, task: Task) -> None:
 def request_task_cancellation(db: Session, task: Task) -> Task:
     if task.status in TERMINAL_TASK_STATUSES:
         return task
-    task.cancellation_requested_at = datetime.utcnow()
+    task.cancellation_requested_at = utcnow()
     if task.status in {
         "draft",
         "awaiting_clarification",
@@ -297,7 +298,7 @@ def requeue_task_for_reanalysis(db: Session, task: Task) -> Task:
     task.worker_id = None
     task.lease_expires_at = None
     task.started_at = None
-    task.queued_at = datetime.utcnow()
+    task.queued_at = utcnow()
     if task.agent_state_json:
         try:
             state = json.loads(task.agent_state_json)

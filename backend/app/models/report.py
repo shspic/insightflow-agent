@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -41,9 +42,9 @@ class Report(Base):
     quality_status: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     quality_summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     warnings_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utcnow, onupdate=utcnow, nullable=False
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from app.core.timeutils import utcnow
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -77,7 +78,7 @@ def test_register_rejects_invalid_expired_and_exhausted_invites(client, db_sessi
     add_invite(
         db_session,
         "IF-expired-code",
-        expires_at=datetime.utcnow() - timedelta(seconds=1),
+        expires_at=utcnow() - timedelta(seconds=1),
     )
     expired = register(client, "student.expired", "IF-expired-code")
     assert expired.status_code == 400
@@ -129,7 +130,7 @@ def test_disabled_user_and_expired_session_are_rejected(client, db_session):
     db_session.commit()
     assert login(client, "disabled.user").status_code == 200
     session_record = db_session.scalar(select(AuthSession).where(AuthSession.user_id == user.id))
-    session_record.expires_at = datetime.utcnow() - timedelta(seconds=1)
+    session_record.expires_at = utcnow() - timedelta(seconds=1)
     db_session.commit()
     assert client.get("/api/v2/auth/me").status_code == 401
 
@@ -166,6 +167,24 @@ def test_csrf_is_required_and_change_password_revokes_old_session(client, db_ses
     old_client.cookies.set(settings.auth_cookie_name, old_session_token)
     assert old_client.get("/api/v2/auth/me").status_code == 401
     old_client.close()
+
+
+def test_public_csrf_failure_has_machine_readable_error_code(client):
+    response = client.post(
+        "/api/v2/auth/register",
+        json={
+            "username": "missing.csrf",
+            "password": PASSWORD,
+            "password_confirm": PASSWORD,
+            "invite_code": "IF-test-invite-code",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == {
+        "code": "CSRF_VALIDATION_FAILED",
+        "message": "CSRF 校验失败",
+    }
 
 
 def test_login_rate_limit_persists_in_database(client, db_session):

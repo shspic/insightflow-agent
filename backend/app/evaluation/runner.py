@@ -2,6 +2,7 @@ import csv
 import json
 import time
 from datetime import datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -43,7 +44,7 @@ def run_evaluation(
     if not cases:
         run.status = "failed"
         run.error_message = "没有匹配的评估案例"
-        run.completed_at = datetime.utcnow()
+        run.completed_at = utcnow()
         db.commit()
         return run
     try:
@@ -71,7 +72,7 @@ def run_evaluation(
         )
         run.metrics_json = json.dumps(_aggregate_metrics(cases, results), ensure_ascii=False)
         run.status = "completed"
-        run.completed_at = datetime.utcnow()
+        run.completed_at = utcnow()
         db.commit()
         db.refresh(run)
         return run
@@ -80,7 +81,7 @@ def run_evaluation(
         run = db.get(EvaluationRun, run.id)
         run.status = "failed"
         run.error_message = str(exc)[:500]
-        run.completed_at = datetime.utcnow()
+        run.completed_at = utcnow()
         db.commit()
         return run
 

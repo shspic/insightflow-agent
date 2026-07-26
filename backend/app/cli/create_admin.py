@@ -3,6 +3,7 @@ import getpass
 import os
 import sys
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -28,7 +29,7 @@ def create_or_update_admin(
     if existing is not None and existing.role != "admin":
         raise ValueError("已存在同名普通用户，不能通过此命令提升权限")
 
-    now = datetime.utcnow()
+    now = utcnow()
     if existing is None:
         admin = User(
             username=normalized,

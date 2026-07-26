@@ -367,3 +367,80 @@
 - Docker Engine 29.6.1 可用；前端 Node build stage 在容器内实际完成 `npm ci` 和 Vite build。
 - 完整 production backend/web 构建在获取 Docker Hub 官方 Python/Nginx 基础镜像鉴权 token 时因 IPv6 连接超时失败，未进入 Dockerfile 指令；本机没有这两个精确缓存镜像。因此未启动隔离生产容器，未实际验证容器 health/readiness/HTTPS/SSE 运行态。
 - 未调用真实 DeepSeek，未连接服务器，未执行备案、DNS、真实证书或中国内地网络测试。
+
+## V2-08：全仓库审计、弃用治理、验收环境、合成资料、最终回归与发布候选
+
+### 阶段编号
+
+`V2-08`
+
+### 已实施
+
+- 全仓库代码/配置/文档一致性审计：修复过时引用、清理不一致描述和残留 V1 路径；
+- 弃用警告治理：新增 `timeutils.py`，55+ 文件 `datetime.utcnow()` 统一替换为 `timeutils.utcnow()`；
+- Pandas 未来警告修复：`parser_service.py` 和 `analysis_service.py` 增加 `format="mixed"` 参数，移除冗余 `warnings.catch_warnings()`；
+- DeepSeek 模型名配置化：`health_service.py` 和 `services/__init__.py` 从 `ModelRegistry` 读取模型名，不再硬编码未核实的模型名；
+- `.env.example` 和 `config.py` 增加模型占位符 `DEEPSEEK_MODEL_DEFAULT` 和 `DEEPSEEK_MODELS_AVAILABLE`；
+- `.gitignore` 更新：增加 `.runtime/`、`*.bak`、覆盖验收和部署临时产物；
+- 隔离验收环境：新增 `scripts/start_final_acceptance.ps1`、`scripts/stop_final_acceptance.ps1`、`scripts/clean_final_acceptance.ps1`，使用独立 `.runtime/` 目录、临时数据库和临时 storage；
+- 合成演示资料：新增 `examples/demo_workspace/` 目录和 README；
+- 3 个测试文件修复：`test_v2_task_execution.py`、`test_v2_multi_agent.py`、`test_v2_report_delivery.py`；
+- 新增 `VERSION`（`2.0.0-rc.1`）和 `CHANGELOG.md`；
+- 统一文档：新增五份 V2-08 文档（代码审计、已知限制、部署脚本手册、Git Tag 操作指南、V2 发布候选总结）。
+
+### 主要修改文件
+
+- `backend/app/core/timeutils.py`（新增）
+- `backend/app/models/*.py`（55+ 文件 `datetime.utcnow()` 替换）
+- `backend/app/services/*.py`（同上替换 + Pandas 修复 + 模型名配置化）
+- `backend/app/api/**/*.py`（同上替换）
+- `backend/app/agents/*.py`（同上替换）
+- `backend/app/workers/*.py`（同上替换）
+- `backend/app/evaluation/*.py`（同上替换）
+- `backend/tests/test_v2_task_execution.py`
+- `backend/tests/test_v2_multi_agent.py`
+- `backend/tests/test_v2_report_delivery.py`
+- `backend/.env.example`
+- `backend/app/core/config.py`
+- `.gitignore`
+- `scripts/*.ps1`（新增）
+- `examples/demo_workspace/`（新增）
+- `VERSION`（新增）
+- `CHANGELOG.md`（新增）
+- `docs/V2_08_CODE_AUDIT.md`（新增）
+- `docs/V2_08_KNOWN_LIMITATIONS.md`（新增）
+- `docs/V2_08_SCRIPT_REFERENCE.md`（新增）
+- `docs/V2_08_GIT_TAG_AND_RELEASE.md`（新增）
+- `docs/V2_08_RC_SUMMARY.md`（新增）
+
+### 验证结果
+
+- 后端全量：`90 passed, 1708 warnings in 29.09s`；工作区 `--basetemp` 后退出码 0；12 条 Starlette TestClient 弃用警告保留不处理；
+- 前端：`npm test` 为 `10 passed`；`npm run build` 成功，`77 modules transformed`；
+- Alembic：独立临时 SQLite 完成从零 `upgrade head → downgrade 20260724_0006 → upgrade head`，最终为 `20260724_0006`；真实数据库只读 `current`，未自动升级；
+- deterministic 评估：85 条，`task_success_rate=1.0`、平均响应 1ms、P95 1ms；这是确定性规则与预期路由自检，不代表真实模型准确率；
+- `pip check`：无依赖冲突；
+- `python -m compileall backend/app`：全部通过；
+- `docker compose config --quiet` 返回 0；`docker compose -f docker-compose.prod.yml config --quiet` 返回 0；
+- `git diff --check` 返回 0；仅有 Git 的 LF/CRLF 工作区提示。
+
+### 当前限制
+
+- 未购买中国内地服务器/域名/ICP 备案/HTTPS 证书；
+- 未执行公网部署、真实 DeepSeek 调用或中国内地网络测试；
+- 未使用真实扫描 PDF 完成生产 OCR 验收；
+- deterministic 评估 1.0 是确定性规则自检，不代表真实 DeepSeek 模型准确率；
+- SQLite 单 Worker 只适合约 5 人低并发，多实例需迁移 PostgreSQL 和专业队列；
+- 文件理解仍为同步 HTTP 处理，未迁入任务队列；
+- 未支持任意 Agent 节点暂停后从进程内存原地恢复；
+- 不支持单次不可中断 LLM 调用的强制终止；
+- RAG 使用关键词/TF-IDF 检索，非语义向量检索；
+- 未迁移对象存储，文件使用本地磁盘；
+- 单机部署无高可用/多实例；
+- 未创建 Git Tag 或 GitHub Release；
+- 未建设自动化 E2E 回归测试；
+- 未配置 GitHub Actions CI。
+
+### 下一阶段入口
+
+代码主线已封板，版本号 `2.0.0-rc.1`。下一阶段需用户手动完成：Git Tag、GitHub Release、中国内地服务器购买、域名备案、DNS 解析、HTTPS 证书配置、DeepSeek API Key 配置、公网上线验收。后续可选的独立项目（非 V2 主线）：PostgreSQL 迁移、对象存储迁移、语义向量检索建设、自动化 E2E 测试。

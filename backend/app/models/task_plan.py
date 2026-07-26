@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,7 +32,7 @@ class TaskPlan(Base):
     estimated_model_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     estimated_tool_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_by: Mapped[str] = mapped_column(String(50), nullable=False, default="supervisor")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

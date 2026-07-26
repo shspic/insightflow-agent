@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
@@ -107,7 +108,7 @@ def update_workspace(
         if payload.status not in {"active", "archived"}:
             raise HTTPException(status_code=400, detail="状态只能是 active 或 archived")
         workspace.status = payload.status
-    workspace.updated_at = datetime.utcnow()
+    workspace.updated_at = utcnow()
     add_audit_log(
         db,
         user_id=user.id,
@@ -136,8 +137,8 @@ def delete_workspace(
     )
     if workspace is None:
         raise HTTPException(status_code=404, detail="工作区不存在")
-    workspace.deleted_at = datetime.utcnow()
-    workspace.updated_at = datetime.utcnow()
+    workspace.deleted_at = utcnow()
+    workspace.updated_at = utcnow()
     add_audit_log(
         db,
         user_id=user.id,
@@ -167,7 +168,7 @@ def restore_workspace(
     if workspace is None or workspace.deleted_at is None:
         raise HTTPException(status_code=404, detail="已删除工作区不存在")
     workspace.deleted_at = None
-    workspace.updated_at = datetime.utcnow()
+    workspace.updated_at = utcnow()
     add_audit_log(
         db,
         user_id=user.id,

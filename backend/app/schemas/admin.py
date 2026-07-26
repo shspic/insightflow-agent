@@ -1,14 +1,27 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.auth import UserResponse
+from app.services.security_service import validate_invite_code
 
 
 class InviteCodeCreate(BaseModel):
+    code: str | None = None
     max_uses: int | None = Field(default=None, gt=0)
     expires_at: datetime | None = None
+
+    @field_validator("code", mode="before")
+    @classmethod
+    def validate_optional_code(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        if isinstance(value, str):
+            return validate_invite_code(value)
+        return value
 
 
 class InviteCodeUpdate(BaseModel):

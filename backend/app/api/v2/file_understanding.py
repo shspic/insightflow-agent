@@ -88,7 +88,7 @@ def understand_workspace_files(
 ) -> BatchFileUnderstandResponse:
     if len(payload.file_ids) > max(1, settings.understanding_batch_max_files):
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"单次最多理解 {settings.understanding_batch_max_files} 个文件",
         )
     results: list[FileUnderstandResult] = []

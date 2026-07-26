@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+from app.core.timeutils import utcnow
 from typing import Any
 
 from sqlalchemy import func, select
@@ -224,7 +225,7 @@ def get_limit(
         select(QuotaOverride).where(
             QuotaOverride.user_id == user.id,
             QuotaOverride.quota_key == quota_key,
-            (QuotaOverride.expires_at.is_(None) | (QuotaOverride.expires_at > datetime.utcnow())),
+            (QuotaOverride.expires_at.is_(None) | (QuotaOverride.expires_at > utcnow())),
         )
     )
     if override is not None:

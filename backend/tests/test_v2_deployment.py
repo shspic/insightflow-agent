@@ -175,5 +175,6 @@ def test_secrets_certificates_backups_and_prod_env_are_ignored() -> None:
 def test_frontend_production_uses_relative_api_and_no_source_maps() -> None:
     config = read("frontend/src/api/config.js")
     vite = read("frontend/vite.config.js")
-    assert 'import.meta.env.VITE_API_BASE_URL || ""' in config
+    assert "import.meta.env?.VITE_API_BASE_URL" in config
+    assert '|| ""' in config
     assert "sourcemap: false" in vite

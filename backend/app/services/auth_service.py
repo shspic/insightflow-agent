@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 
 from sqlalchemy import case, select, update
 from sqlalchemy.exc import IntegrityError
@@ -40,7 +41,7 @@ class CreatedSession:
 
 
 def _utcnow() -> datetime:
-    return datetime.utcnow()
+    return utcnow()
 
 
 def _effective_invite_status(invite: InviteCode, now: datetime) -> str:

@@ -36,6 +36,7 @@ from app.services.rate_limit_service import ensure_not_blocked, record_attempt
 from app.services.security_service import create_public_csrf_token, generate_csrf_token, hash_token
 from sqlalchemy import select
 from datetime import datetime
+from app.core.timeutils import utcnow
 
 
 router = APIRouter(prefix="/api/v2/auth", tags=["v2-auth"])
@@ -101,7 +102,7 @@ def csrf_token(
             select(AuthSession).where(
                 AuthSession.token_hash == hash_token(raw_session),
                 AuthSession.revoked_at.is_(None),
-                AuthSession.expires_at > datetime.utcnow(),
+                AuthSession.expires_at > utcnow(),
             )
         )
         if session_record is not None:

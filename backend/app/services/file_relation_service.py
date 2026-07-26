@@ -2,6 +2,7 @@ import itertools
 import json
 import re
 from datetime import datetime
+from app.core.timeutils import utcnow
 from pathlib import Path
 from typing import Any, Literal
 
@@ -146,7 +147,7 @@ def discover_file_relations(
             existing.confidence = normalized["confidence"]
             existing.evidence_json = json.dumps(normalized["evidence"], ensure_ascii=False)
             existing.suggested_by = normalized["suggested_by"]
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = utcnow()
             updated_count += 1
         else:
             preserved_count += 1
@@ -260,14 +261,14 @@ def mutate_file_relation(
     if normalized_action == "confirm":
         relation.status = "confirmed"
         relation.user_note = note
-        relation.confirmed_at = datetime.utcnow()
-        relation.updated_at = datetime.utcnow()
+        relation.confirmed_at = utcnow()
+        relation.updated_at = utcnow()
         result = relation
     elif normalized_action == "reject":
         relation.status = "rejected"
         relation.user_note = note
         relation.confirmed_at = None
-        relation.updated_at = datetime.utcnow()
+        relation.updated_at = utcnow()
         result = relation
     elif normalized_action in {"replace", "update"}:
         new_type = _normalize_relation_type(relation_type, custom_relation_type)
@@ -287,9 +288,9 @@ def mutate_file_relation(
         )
         if conflicting is not None and conflicting.id != relation.id:
             conflicting.status = "superseded"
-            conflicting.updated_at = datetime.utcnow()
+            conflicting.updated_at = utcnow()
         relation.status = "superseded"
-        relation.updated_at = datetime.utcnow()
+        relation.updated_at = utcnow()
         evidence = _json_dict(relation.evidence_json)
         evidence["user_correction"] = {
             "original_relation_id": relation.id,
@@ -308,7 +309,7 @@ def mutate_file_relation(
             status="confirmed",
             user_note=note,
             supersedes_relation_id=relation.id,
-            confirmed_at=datetime.utcnow(),
+            confirmed_at=utcnow(),
         )
         db.add(result)
         db.flush()

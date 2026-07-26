@@ -6,14 +6,22 @@ InsightFlow Agent 是一个基于 FastAPI + React + LangGraph 的多模态文档
 
 这个项目的定位不是普通聊天机器人，而是一个围绕“文件输入、任务判断、工具调用、结果生成、过程可观测”构建的任务执行型 AI 应用。
 
-## V2-07 当前状态
+## V2-08 当前状态（2.0.0-rc.1）
 
-V2-07 已把 V2 项目整理为中国内地单机生产部署包：Nginx 同域 HTTPS、前端静态构建、单进程 FastAPI、独立单 Worker、SQLite WAL、本地持久化、备份/清理、升级/回滚、日志轮转、健康检查、服务器安全和上线验收文档。
+V2-08 已完成 V2-01 至 V2-07 全部阶段的最终回归验收：90 条后端测试、10 条前端测试、Alembic 完整迁移、deterministic 评估、代码/文档一致性审计、弃用警告治理、隔离验收环境和合成演示资料建设。代码主线已正式封板为 2.0.0-rc.1 发布候选版本。
 
-本阶段没有购买服务器/域名，没有备案、修改 DNS、申请真实证书、连接云服务器或执行中国内地网络测试。正式环境必须关闭 Legacy V1，前端继续使用同域相对 `/api/v2`。
+已完成：多用户认证和工作区隔离、五类文件理解与关系确认、计划确认与任务队列、独立 Worker 与 SSE、Supervisor + 五个专业 Agent、三格式报告导出、配额/监控/评估/备份、全站 UI 和中国内地单机部署包。
+
+尚未完成：未购买服务器、未备案、未配置公网 HTTPS、未执行真实 DeepSeek/OCR 验收、未迁移 PostgreSQL 和对象存储。
 
 详细说明：
 
+- [V2-08 最终发布](docs/V2_08_FINAL_RELEASE.md)
+- [V2-08 最终验收](docs/V2_08_FINAL_ACCEPTANCE.md)
+- [V2-08 已知限制](docs/V2_08_KNOWN_LIMITATIONS.md)
+- [V2-08 演示指南](docs/V2_08_DEMO_GUIDE.md)
+- [V2-08 安全检查](docs/V2_08_SECURITY_CHECKLIST.md)
+- [变更日志](CHANGELOG.md)
 - [V2-06 UI/UX 系统](docs/V2_06_UI_UX_SYSTEM.md)
 - [V2-06 手动验收](docs/V2_06_MANUAL_ACCEPTANCE.md)
 - [V2-07 中国内地部署](docs/V2_07_MAINLAND_DEPLOYMENT.md)
@@ -25,6 +33,8 @@ V2-07 已把 V2 项目整理为中国内地单机生产部署包：Nginx 同域 
 - [V2-05 手动验收](docs/V2_05_MANUAL_ACCEPTANCE.md)
 - [V2-05 评估指南](docs/V2_05_EVALUATION_GUIDE.md)
 - [V2-05 备份恢复](docs/V2_05_BACKUP_AND_RECOVERY.md)
+- [V2 产品架构计划](docs/V2_PRODUCT_AND_ARCHITECTURE_PLAN.md)
+- [V2 实施日志](docs/V2_IMPLEMENTATION_LOG.md)
 
 真实数据库升级前必须停写并备份，再手工执行：
 
@@ -45,9 +55,11 @@ V2-04 当前状态说明保留如下，作为兼容基础。
 
 V2-03 的文件理解接口本身仍为同步调用；V2-04 新任务执行已进入独立 Worker。当前不支持任意节点暂停后原地恢复、Redis/Celery、PostgreSQL、对象存储或正式国内生产部署。Markdown/DOCX/PDF 版本化导出已在 V2-05 实现。
 
-## 公网状态
+## 版本与公网状态
 
-仓库不提供或承诺现成的 V2 公网地址。历史 Vercel/Render 演示配置不属于 V2-07 生产路径；真实上线必须由用户完成服务器、备案、DNS、HTTPS 和手动验收。
+当前版本：**2.0.0-rc.1**（发布候选，2026-07-24），详见 [CHANGELOG.md](CHANGELOG.md)。
+
+仓库不提供或承诺现成的 V2 公网地址。历史 Vercel/Render 演示地址（V1 时代）不属于 V2 生产路径，仅作为历史记录保留在部分旧文档中。真实上线必须由用户完成服务器购买、域名备案、DNS 配置、HTTPS 证书和手动验收。
 
 ## 核心功能
 
@@ -149,9 +161,15 @@ NO2_agent/
     TESTING.md
   screenshots/
     .gitkeep
+  examples/
+    demo_workspace/   # 合成演示资料
+  scripts/             # 验收和部署辅助脚本
   docker-compose.yml
+  docker-compose.prod.yml
   README.md
   AGENTS.md
+  CHANGELOG.md
+  VERSION
 ```
 
 ## 本地开发启动方式
@@ -338,25 +356,37 @@ V2 的低并发正式部署目标是同域名提供前端，反向代理将 `/ap
 
 ## 适合岗位
 
-- AI 应用开发实习。
-- AI Agent 应用开发实习。
-- Python 后端开发实习。
-- RAG 应用开发实习。
-- 全栈 AI 应用开发实习。
+- AI 应用开发实习
+- AI Agent 应用开发实习
+- Python 后端开发实习
+- RAG 应用开发实习
+- 全栈 AI 应用开发实习
+- 数据分析工具开发实习
 
 ## 当前限制
 
-- 当前具备低并发多用户认证与工作区隔离，但仍不是生产级 SaaS。
-- RAG 使用关键词和轻量 TF-IDF 检索，不是生产级向量数据库方案。
-- OCR 依赖本机或容器环境中的 Tesseract 配置。
-- 扫描 PDF OCR 受页数、像素、DPI 和超时预算限制，识别结果仍需人工复核。
-- 暂不支持复杂多轮记忆。
-- 文件理解接口仍为同步调用；V2 任务已异步执行，但当前仅支持单机单 Worker。
-- 不支持任意节点暂停后原地恢复；进程异常依靠租约过期后重新认领和已完成步骤复用。
-- 单机本地备份无法应对服务器整盘损坏，必须由用户建立异地备份。
+- 单机 SQLite + 单 Worker，适合 5 人以内低并发，不是生产级 SaaS。
+- RAG 使用关键词和 TF-IDF 检索，不是生产级向量数据库方案。
+- OCR 依赖本机或容器中的 Tesseract，中文识别需人工复核。
+- 扫描 PDF OCR 受页数、像素、DPI 和超时限制。
+- 文件理解接口仍为同步调用。
+- 不支持任意节点暂停后原地恢复。
+- 单机本地备份无法应对整盘损坏。
+- 未执行真实 DeepSeek 质量评估（模型名使用占位符）。
+- 未购买服务器/域名/备案/HTTPS。
+- 未执行生产 Docker 容器构建和启动验证。
+- deterministic 评估准确率 1.0 是规则自检，不代表 Agent 或模型真实准确率。
 
-## 后续规划
+## 后续步骤
 
-- 真实服务器上的备案、DNS、HTTPS、DeepSeek 和多运营商最终验收。
-- 达到迁移阈值后迁移 PostgreSQL、对象存储和专业队列后端。
-- 建立自动化浏览器 E2E、异地备份和持续恢复演练。
+### 用户手动完成
+1. 购买中国内地服务器、域名并完成 ICP 备案。
+2. 配置 DNS、申请 HTTPS 证书，完成公网部署。
+3. 核实 DeepSeek 可用模型名并配置生产 Key。
+4. 执行真实 OCR、真实模型调用和中国内地多运营商网络验收。
+
+### 可选独立项目
+- PostgreSQL、对象存储和专业队列后端迁移。
+- 语义 embedding 和持久化向量检索。
+- 自动化浏览器 E2E 测试。
+- CI/CD 和持续部署流水线。

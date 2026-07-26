@@ -1,6 +1,7 @@
 import argparse
 import json
 from datetime import datetime, timedelta
+from app.core.timeutils import utcnow
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -29,7 +30,7 @@ def run_cleanup(
     execution_source: str = "cli",
     now: datetime | None = None,
 ) -> CleanupRun:
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     run = CleanupRun(
         cleanup_type="retention_and_orphans",
         dry_run=int(dry_run),
@@ -252,7 +253,7 @@ def run_cleanup(
     run.released_bytes = released
     run.error_count = errors
     run.details_json = json.dumps(details, ensure_ascii=False)
-    run.completed_at = datetime.utcnow()
+    run.completed_at = utcnow()
     db.commit()
     db.refresh(run)
     return run
