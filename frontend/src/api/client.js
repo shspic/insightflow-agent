@@ -117,7 +117,7 @@ export async function apiRequest(path, options = {}) {
     if (code === "PASSWORD_CHANGE_REQUIRED") {
       window.dispatchEvent(new CustomEvent("auth:password-change-required"));
     }
-    if (import.meta.env?.DEV) {
+    if (import.meta.env?.DEV && response.status !== 401) {
       console.error("API 请求失败", { path, status: response.status, data });
     }
     throw error;

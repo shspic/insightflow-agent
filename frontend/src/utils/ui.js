@@ -147,6 +147,27 @@ export function formatDate(value, fallback = "—") {
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString("zh-CN");
 }
 
+export function resolvePageTitle(pathname = "/") {
+  const page = pathname === "/login" ? "登录"
+    : pathname === "/register" ? "注册"
+      : pathname === "/password-reset" ? "重置密码"
+        : pathname === "/change-password" ? "修改密码"
+          : pathname.startsWith("/admin") ? "管理后台"
+            : pathname === "/usage" ? "使用量"
+              : pathname.includes("/reports") ? "报告"
+                : pathname.includes("/tasks/") ? "任务详情"
+                  : pathname.endsWith("/tasks") ? "任务历史"
+                    : pathname.includes("/files") ? "文件"
+                      : pathname.includes("/relations") ? "文件关系"
+                        : pathname.includes("/new-analysis") ? "新建分析"
+                          : pathname.endsWith("/context") ? "Workspace Context"
+                            : pathname.endsWith("/settings") ? "工作区设置"
+                              : pathname.startsWith("/workspaces") ? "工作区"
+                                : pathname === "/forbidden" ? "无权访问"
+                                  : "页面未找到";
+  return `${page} · InsightFlow Agent`;
+}
+
 export function mapApiError(error) {
   const byStatus = {
     400: ["请求无法处理", "请检查输入内容后重试。"],

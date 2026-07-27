@@ -43,8 +43,9 @@ export function AuthProvider({ children }) {
     refreshUser,
     async login(payload) {
       const result = await authApi.login(payload);
-      setUser(result.user);
-      return result;
+      const currentUser = await authApi.fetchCurrentUser();
+      setUser(currentUser);
+      return { ...result, user: currentUser };
     },
     async logout() {
       try {

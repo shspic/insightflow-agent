@@ -190,7 +190,7 @@ export default function WorkspaceList() {
                 )}>{item.status === "active" ? "归档" : "恢复使用"}</Button>
               )}
               {!item.is_deleted && (
-                <Button variant="ghost" onClick={() => removeItem(item)}>软删除</Button>
+                <Button variant="danger" onClick={() => removeItem(item)}>软删除</Button>
               )}
               {item.is_deleted && (
                 <Button variant="secondary" onClick={() => restoreItem(item)}>恢复</Button>
@@ -208,6 +208,7 @@ export default function WorkspaceList() {
       )}
       <Dialog
         open={Boolean(dialog)}
+        busy={isSaving}
         onClose={() => setDialog(null)}
         title={dialog?.type === "edit" ? "编辑工作区" : "创建工作区"}
         description="名称用于导航和报告上下文，描述可以说明资料范围或分析目标。"

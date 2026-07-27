@@ -57,7 +57,7 @@ export function AuthPage({ title, description, children }) {
       <section className="auth-intro" aria-label="产品说明">
         <div>
           <p className="eyebrow">InsightFlow Agent</p>
-          <h1>让资料分析过程清楚、可控、可核验</h1>
+          <h1><span>让资料分析过程</span><span>清楚、可控、可核验</span></h1>
         </div>
         <p>上传表格、文档和图片，确认执行计划，查看 Agent 实时进度，最终获得带引用的版本化报告。</p>
         <ul>

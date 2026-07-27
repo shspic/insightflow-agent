@@ -18,6 +18,14 @@ export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const handleKey = (event) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [mobileOpen]);
 
   async function handleLogout() {
     await logout();
@@ -27,10 +35,12 @@ export default function AppLayout() {
   return (
     <div className={`product-shell ${collapsed ? "is-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content">跳到主要内容</a>
-      <aside className={`app-sidebar ${mobileOpen ? "is-open" : ""}`} aria-label="主导航">
+      <aside id="app-sidebar" className={`app-sidebar ${mobileOpen ? "is-open" : ""}`} aria-label="主导航">
         <div className="app-brand">
-          <span className="app-brand__mark" aria-hidden="true">IF</span>
-          {!collapsed && <div><strong>InsightFlow</strong><small>资料分析工作台</small></div>}
+          <span className="app-brand__mark" aria-hidden="true">
+            <img src="/favicon.png" alt="" />
+          </span>
+          {!collapsed && <div><strong>InsightFlow Agent</strong><small>多模态分析工作台</small></div>}
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
@@ -61,10 +71,14 @@ export default function AppLayout() {
           {!collapsed && <small>服务端状态始终是任务真相来源</small>}
         </div>
       </aside>
-      {mobileOpen && <button className="sidebar-scrim" aria-label="关闭导航" onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && <button type="button" className="sidebar-scrim" aria-label="关闭导航" onClick={() => setMobileOpen(false)} />}
       <div className="app-workspace">
         <header className="topbar">
-          <IconButton label="打开导航" variant="ghost" className="mobile-menu" onClick={() => setMobileOpen(true)}>
+          <IconButton label="打开导航" variant="ghost" className="mobile-menu"
+            aria-expanded={mobileOpen} aria-controls="app-sidebar" onClick={() => {
+              setCollapsed(false);
+              setMobileOpen(true);
+            }}>
             菜单
           </IconButton>
           <div className="topbar__context">
@@ -80,7 +94,7 @@ export default function AppLayout() {
                 <option value="dark">深色</option>
               </Select>
             </label>
-            <Button variant="ghost" onClick={handleLogout}>退出登录</Button>
+            <Button variant="danger" onClick={handleLogout}>退出登录</Button>
           </Dropdown>
         </header>
         <main id="main-content" className="app-content" tabIndex="-1">

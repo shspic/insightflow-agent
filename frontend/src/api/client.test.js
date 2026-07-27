@@ -31,6 +31,32 @@ test.afterEach(() => {
   delete globalThis.CustomEvent;
 });
 
+test("登录先获取 CSRF，并携带凭据与正确请求头", async () => {
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url.endsWith("/auth/csrf")) {
+      return jsonResponse(200, { csrf_token: "login-token" });
+    }
+    assert.equal(options.method, "POST");
+    assert.equal(options.credentials, "include");
+    assert.equal(options.headers.get("X-CSRF-Token"), "login-token");
+    assert.equal(options.headers.get("Content-Type"), "application/json");
+    return jsonResponse(200, {
+      user: { username: "login.user", role: "user" },
+      csrf_token: "session-token",
+    });
+  };
+
+  const result = await login({ username: "login.user", password: "SafePassword!2026" });
+
+  assert.equal(result.user.role, "user");
+  assert.deepEqual(requests.map((item) => item.url), [
+    "/api/v2/auth/csrf",
+    "/api/v2/auth/login",
+  ]);
+});
+
 test("注册前从服务端获取新 CSRF，且不盲信旧 Cookie", async () => {
   const requests = [];
   globalThis.fetch = async (url, options = {}) => {
