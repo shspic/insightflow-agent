@@ -12,6 +12,16 @@ from app.models.password_reset_request import PasswordResetRequest
 from app.models.prompt_version import PromptVersion
 from app.models.report import Report
 from app.models.report_asset import ReportAsset
+from app.models.review_action import ReviewAction
+from app.models.review_brief import ReviewBrief
+from app.models.review_finding import ReviewFinding
+from app.models.review_run import ReviewRun
+from app.models.review_report import ReviewReport
+from app.models.review_report_asset import ReviewReportAsset
+from app.models.review_verification_run import ReviewVerificationRun
+from app.models.review_tool_call import ReviewToolCall
+from app.models.review_candidate_decision import ReviewCandidateDecision
+from app.models.evidence import Evidence
 from app.models.user_feedback import UserFeedback
 from app.models.usage import ModelUsageRecord, QuotaOverride, UsageCounter
 from app.models.evaluation import (
@@ -46,6 +56,15 @@ __all__ = [
     "PromptVersion",
     "Report",
     "ReportAsset",
+    "ReviewAction",
+    "ReviewBrief",
+    "ReviewFinding",
+    "ReviewRun",
+    "ReviewReport",
+    "ReviewVerificationRun",
+    "ReviewToolCall",
+    "ReviewReportAsset",
+    "Evidence",
     "UserFeedback",
     "UsageCounter",
     "QuotaOverride",

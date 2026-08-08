@@ -26,6 +26,7 @@ import {
 } from "./common";
 import { useFeedback } from "../context/FeedbackContext";
 import { FILE_STATUS, RELATION_STATUS, fileTypeMeta } from "../utils/ui";
+import { OPTIONAL_ENGINEERING_ROLES, REQUIRED_ENGINEERING_ROLES } from "../utils/engineeringReview";
 
 const FILE_ROLES = [
   ["primary_dataset", "主要数据集"],
@@ -40,6 +41,12 @@ const FILE_ROLES = [
   ["supporting_material", "支持材料"],
   ["unknown", "未知"],
   ["custom", "自定义"],
+];
+
+const ENGINEERING_FILE_ROLES = [
+  ...REQUIRED_ENGINEERING_ROLES,
+  ...OPTIONAL_ENGINEERING_ROLES,
+  ...FILE_ROLES,
 ];
 
 const RELATION_TYPES = [
@@ -83,7 +90,7 @@ function formatBytes(value) {
 function roleLabel(value) {
   if (!value) return "-";
   if (value.startsWith("custom:")) return value.slice("custom:".length);
-  return FILE_ROLES.find(([key]) => key === value)?.[1] || value;
+  return ENGINEERING_FILE_ROLES.find(([key]) => key === value)?.[1] || value;
 }
 
 function relationLabel(value) {
@@ -141,7 +148,7 @@ function StructureSummary({ profile }) {
   );
 }
 
-function ProfileEditor({ profile, onSave, isSaving }) {
+function ProfileEditor({ profile, onSave, isSaving, roleOptions }) {
   const currentRole = profile.confirmed_role?.startsWith("custom:") ? "custom" : (
     profile.confirmed_role || profile.suggested_role || "unknown"
   );
@@ -170,7 +177,7 @@ function ProfileEditor({ profile, onSave, isSaving }) {
       <label>
         确认角色
         <select value={role} onChange={(event) => setRole(event.target.value)}>
-          {FILE_ROLES.map(([value, label]) => (
+          {roleOptions.map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
@@ -193,7 +200,7 @@ function ProfileEditor({ profile, onSave, isSaving }) {
           onChange={(event) => setTags(event.target.value)}
         />
       </label>
-      <div className="row-actions">
+      <div className="row-actions profile-editor__actions">
         <button type="button" disabled={isSaving} onClick={() => save()}>
           {isSaving ? "保存中" : "保存角色和标签"}
         </button>
@@ -214,7 +221,7 @@ function ProfileEditor({ profile, onSave, isSaving }) {
   );
 }
 
-function ProfileCard({ file, profile, busy, onUnderstand, onSave, onRemove }) {
+function ProfileCard({ file, profile, busy, onUnderstand, onSave, onRemove, roleOptions }) {
   const typeMeta = fileTypeMeta(file.file_type);
   return (
     <article className="file-profile-card">
@@ -272,7 +279,7 @@ function ProfileCard({ file, profile, busy, onUnderstand, onSave, onRemove }) {
               </span>
             ))}
           </div>
-          <ProfileEditor profile={profile} onSave={onSave} isSaving={busy} />
+          <ProfileEditor profile={profile} onSave={onSave} isSaving={busy} roleOptions={roleOptions} />
         </details>
       )}
     </article>
@@ -420,7 +427,14 @@ function ContextPreview({ context }) {
   );
 }
 
-export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChanged, mode = "files" }) {
+export default function WorkspaceUnderstanding({
+  workspaceId,
+  files,
+  onFilesChanged,
+  onProfilesChanged,
+  workspaceType = "general",
+  mode = "files",
+}) {
   const [profiles, setProfiles] = useState({});
   const [selectedIds, setSelectedIds] = useState([]);
   const [relations, setRelations] = useState([]);
@@ -430,10 +444,15 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+
+  useEffect(() => {
+    onProfilesChanged?.(profiles);
+  }, [onProfilesChanged, profiles]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [relationFilter, setRelationFilter] = useState("all");
   const { confirm, toast } = useFeedback();
+  const roleOptions = workspaceType === "engineering" ? ENGINEERING_FILE_ROLES : FILE_ROLES;
   const fileKey = useMemo(() => files.map((file) => file.file_id).join(","), [files]);
   const visibleFiles = useMemo(() => files.filter((file) => {
     const profile = profiles[file.file_id];
@@ -458,7 +477,8 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
         await fetchWorkspaceFileProfile(workspaceId, file.file_id),
       ]),
     );
-    setProfiles(Object.fromEntries(entries));
+    const nextProfiles = Object.fromEntries(entries);
+    setProfiles(nextProfiles);
   }
 
   async function loadRelations() {
@@ -611,7 +631,7 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
             </Select></FormField>
             <FormField label="角色"><Select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
               <option value="all">全部角色</option>
-              {FILE_ROLES.filter(([value]) => value !== "custom").map(([value, label]) =>
+              {roleOptions.filter(([value]) => value !== "custom").map(([value, label]) =>
                 <option key={value} value={value}>{label}</option>)}
             </Select></FormField>
           </div>
@@ -632,6 +652,7 @@ export default function WorkspaceUnderstanding({ workspaceId, files, onFilesChan
             {visibleFiles.map((file) => (
               <ProfileCard key={`${file.file_id}-${profiles[file.file_id]?.id || "none"}`}
                 file={file} profile={profiles[file.file_id]} busy={Boolean(busy[`file-${file.file_id}`])}
+                roleOptions={roleOptions}
                 onUnderstand={() => understandOne(file.file_id)}
                 onSave={(payload) => saveProfile(file.file_id, payload)}
                 onRemove={() => removeFile(file.file_id)} />

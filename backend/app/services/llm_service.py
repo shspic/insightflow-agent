@@ -37,10 +37,17 @@ class LLMResult:
     skipped: bool = False
     token_usage: dict[str, Any] | None = None
     duration_ms: int | None = None
+    finish_reason: str | None = None
+    model: str | None = None
 
 
 def is_llm_ready() -> bool:
     return model_configuration_issue() is None and _has_real_api_key()
+
+
+# 允许的 thinking / response_format 取值（非法值必须在网络请求前拒绝）
+ALLOWED_RESPONSE_FORMATS = (None, "text", "json_object")
+ALLOWED_THINKING_MODES = (None, "enabled", "disabled")
 
 
 def call_llm(
@@ -48,8 +55,17 @@ def call_llm(
     temperature: float = 0.2,
     max_tokens: int = 800,
     timeout_seconds: int = 30,
+    response_format: str | None = None,
+    thinking: str | None = None,
 ) -> LLMResult:
     started = time.monotonic()
+    if response_format not in ALLOWED_RESPONSE_FORMATS:
+        return LLMResult(
+            success=False, message=f"非法的 response_format: {response_format}"
+        )
+    if thinking not in ALLOWED_THINKING_MODES:
+        return LLMResult(success=False, message=f"非法的 thinking 模式: {thinking}")
+
     if not settings.llm_enabled:
         return LLMResult(success=False, skipped=True, message="LLM 已关闭，使用本地规则降级。")
 
@@ -69,6 +85,10 @@ def call_llm(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    if response_format is not None:
+        payload["response_format"] = {"type": response_format}
+    if thinking is not None:
+        payload["thinking"] = {"type": thinking}
     request = urllib.request.Request(
         _resolve_chat_url(),
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -100,9 +120,14 @@ def call_llm(
     if response_data is None:
         return LLMResult(success=False, message=last_message)
 
-    content = _extract_content(response_data)
+    content, finish_reason, model_name = _extract_choice_fields(response_data)
     if not content:
-        return LLMResult(success=False, message="LLM 返回内容为空。")
+        return LLMResult(
+            success=False,
+            message="LLM 返回内容为空。",
+            finish_reason=finish_reason,
+            model=model_name,
+        )
 
     usage = response_data.get("usage")
     return LLMResult(
@@ -110,6 +135,8 @@ def call_llm(
         content=content.strip(),
         token_usage=usage if isinstance(usage, dict) else None,
         duration_ms=int((time.monotonic() - started) * 1000),
+        finish_reason=finish_reason,
+        model=model_name,
     )
 
 
@@ -297,17 +324,38 @@ def _has_real_api_key() -> bool:
 
 
 def _extract_content(response_data: dict[str, Any]) -> str | None:
+    content, _finish, _model = _extract_choice_fields(response_data)
+    return content
+
+
+def _extract_choice_fields(
+    response_data: dict[str, Any],
+) -> tuple[str | None, str | None, str | None]:
+    """从第一条 choice 读取 (content, finish_reason, model)。
+
+    明确不读取/不返回 reasoning_content（不得记录或持久化 Chain of Thought）。
+    """
     choices = response_data.get("choices")
     if not isinstance(choices, list) or not choices:
-        return None
+        return None, None, None
 
-    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    first = choices[0] if isinstance(choices[0], dict) else None
+    if first is None:
+        return None, None, None
+
+    finish_reason = first.get("finish_reason")
+    finish_reason = finish_reason if isinstance(finish_reason, str) else None
+
+    model_name = response_data.get("model")
+    model_name = model_name if isinstance(model_name, str) else None
+
+    message = first.get("message")
     if isinstance(message, dict):
         content = message.get("content")
-        return content if isinstance(content, str) else None
+        return (content if isinstance(content, str) else None), finish_reason, model_name
 
-    text = choices[0].get("text") if isinstance(choices[0], dict) else None
-    return text if isinstance(text, str) else None
+    text = first.get("text")
+    return (text if isinstance(text, str) else None), finish_reason, model_name
 
 
 def _normalize_task_type(value: str) -> str:

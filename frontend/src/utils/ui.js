@@ -154,7 +154,8 @@ export function resolvePageTitle(pathname = "/") {
         : pathname === "/change-password" ? "修改密码"
           : pathname.startsWith("/admin") ? "管理后台"
             : pathname === "/usage" ? "使用量"
-              : pathname.includes("/reports") ? "报告"
+              : pathname.includes("/verification") ? "智能核验"
+                : pathname.includes("/reports") ? "报告"
                 : pathname.includes("/tasks/") ? "任务详情"
                   : pathname.endsWith("/tasks") ? "任务历史"
                     : pathname.includes("/files") ? "文件"
@@ -162,9 +163,11 @@ export function resolvePageTitle(pathname = "/") {
                         : pathname.includes("/new-analysis") ? "新建分析"
                           : pathname.endsWith("/context") ? "Workspace Context"
                             : pathname.endsWith("/settings") ? "工作区设置"
-                              : pathname.startsWith("/workspaces") ? "工作区"
-                                : pathname === "/forbidden" ? "无权访问"
-                                  : "页面未找到";
+                              : pathname.startsWith("/engineering") ? "engineering"
+                                : pathname.startsWith("/general") ? "general"
+                                  : pathname.startsWith("/workspaces") ? "工作区"
+                                    : pathname === "/forbidden" ? "无权访问"
+                                      : "页面未找到";
   return `${page} · InsightFlow Agent`;
 }
 

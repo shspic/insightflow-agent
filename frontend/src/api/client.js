@@ -98,7 +98,9 @@ export async function apiRequest(path, options = {}) {
       return data;
     }
 
-    const code = typeof data?.detail === "object" ? data.detail.code : null;
+    const code = typeof data?.detail === "object"
+      ? (data.detail.code || data.detail.error_code || null)
+      : null;
     if (
       needsCsrf
       && response.status === 403
@@ -138,7 +140,11 @@ export async function downloadResource(path, fallbackName = "download") {
   const response = await fetch(apiResourceUrl(path), { credentials: "include" });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new ApiError(getErrorMessage(data, response.status), response.status, data?.detail?.code);
+    throw new ApiError(
+      getErrorMessage(data, response.status),
+      response.status,
+      data?.detail?.code || data?.detail?.error_code || null,
+    );
   }
   const blob = await response.blob();
   const disposition = response.headers.get("content-disposition") || "";

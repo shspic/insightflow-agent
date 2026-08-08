@@ -10,8 +10,11 @@ python-docx
 PyMuPDF
 pytest
 pytesseract
+PyYAML
 python-dotenv
 python-multipart
 reportlab
+sentence-transformers==5.7.0
 sqlalchemy
+torch==2.13.0
 uvicorn[standard]

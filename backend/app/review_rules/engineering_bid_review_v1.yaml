@@ -1,0 +1,280 @@
+# =============================================================================
+# 合成演示规则包 — 工程检测服务投标资料一致性辅助审查 v1
+# =============================================================================
+# 警告：本文件所有规则均为合成演示数据，不作为真实招投标、工程或法律判断依据。
+# 规则依据仅包括：用户上传的招标要求、澄清文件、本项目明确标注的合成招标条款。
+# =============================================================================
+
+pack_id: engineering_bid_review_v1
+version: "1.1.0"
+title: "工程检测服务投标资料一致性辅助审查规则"
+description: >
+  合成演示规则包，用于验证规则加载、确定性执行、证据绑定和人工复核闭环。
+  所有条款来自合成招标场景，不代表任何真实招标项目。
+disclaimer: >
+  合成演示规则，不作为真实招投标、工程或法律判断依据。
+  所有规则条款均为虚构，仅用于系统能力验证。
+
+rules:
+  # =========================================================================
+  # required_field — 必填字段检查
+  # =========================================================================
+  - rule_id: SYN-REQ-001
+    version: "1.0"
+    type: required_field
+    title: "投标响应必须填写项目名称"
+    description: >
+      合成招标条款 SYN-TENDER-001 要求投标响应文件必须明确填写项目名称，
+      项目名称为必填字段，不得留空。
+    severity: high
+    inputs:
+      fields:
+        - bid_response.project_name
+    parameters:
+      allow_whitespace_only: false
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-001 §2.1 项目名称填写要求"
+    suggestion: "在投标响应文件中补充项目名称字段，确保与招标要求中的项目名称完全一致。"
+
+  - rule_id: SYN-REQ-002
+    version: "1.0"
+    type: required_field
+    title: "人员清单必须填写项目负责人姓名"
+    description: >
+      合成招标条款 SYN-TENDER-003 要求人员设备清单中必须指定项目负责人，
+      负责人姓名为必填字段。
+    severity: high
+    inputs:
+      fields:
+        - personnel_equipment_data.leader_name
+    parameters:
+      allow_whitespace_only: false
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-003 §3.1 项目负责人资质要求"
+    suggestion: "在人员设备清单中补填项目负责人姓名。"
+
+  # =========================================================================
+  # cross_file_equal — 跨文件一致性检查
+  # =========================================================================
+  - rule_id: SYN-EQ-001
+    version: "1.0"
+    type: cross_file_equal
+    title: "投标响应与人员表中的项目名称应一致"
+    description: >
+      合成招标条款 SYN-TENDER-005 要求投标响应中填写的项目名称
+      必须与人员设备清单中的项目名称完全一致，不得存在差异。
+    severity: high
+    inputs:
+      fields:
+        - bid_response.project_name
+        - personnel_equipment_data.project_name
+    parameters:
+      normalize: true
+      case_sensitive: false
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-005 §2.3 文件间一致性要求"
+    suggestion: "核对投标响应和人员设备清单中的项目名称，确保两处完全一致后重新提交。"
+
+  - rule_id: SYN-EQ-002
+    version: "1.0"
+    type: cross_file_equal
+    title: "项目负责人证书编号在两份文件中应一致"
+    description: >
+      合成招标条款 SYN-TENDER-006 要求投标响应中填写的项目负责人
+      证书编号与人员清单中记录的证书编号必须一致。
+    severity: high
+    inputs:
+      fields:
+        - bid_response.leader_cert_number
+        - personnel_equipment_data.leader_cert_number
+    parameters:
+      normalize: true
+      case_sensitive: false
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-006 §3.3 证书编号一致性"
+    suggestion: "人工核对原始证书与投标响应中的证书编号，确认正确值后统一修改。"
+
+  # =========================================================================
+  # numeric_threshold — 数值阈值检查
+  # =========================================================================
+  - rule_id: SYN-NUM-001
+    version: "1.0"
+    type: numeric_threshold
+    title: "拟投入人员数量不少于合成招标条款要求"
+    description: >
+      合成招标条款 SYN-TENDER-007 要求拟投入本项目的检测人员不少于 5 人。
+    severity: medium
+    inputs:
+      fields:
+        - personnel_equipment_data.total_personnel
+    parameters:
+      threshold: 5
+      operator: gte
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-007 §4.1 人员数量最低要求"
+    suggestion: "补充人员配置至满足最低数量要求，或提供人员不足的合理解释与替代方案。"
+
+  - rule_id: SYN-NUM-002
+    version: "1.0"
+    type: numeric_threshold
+    title: "投标报价不得超过合成预算上限"
+    description: >
+      合成招标条款 SYN-TENDER-008 设定项目预算上限为 2000000 元（含税）。
+    severity: high
+    inputs:
+      fields:
+        - bid_response.total_price
+    parameters:
+      threshold: 2000000
+      operator: lte
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-008 §5.1 预算上限"
+    suggestion: "调整报价方案使其不超过预算上限，或提供成本构成说明供招标方审核。"
+
+  # =========================================================================
+  # date_order — 日期顺序检查
+  # =========================================================================
+  - rule_id: SYN-DATE-001
+    version: "1.0"
+    type: date_order
+    title: "资质有效期不早于合成项目服务结束日期"
+    description: >
+      合成招标条款 SYN-TENDER-009 要求所有资质证书的有效期
+      必须覆盖至项目服务结束日期（2027-12-31）之后。
+    severity: high
+    inputs:
+      fields:
+        - qualification_attachment.expiry_date
+    parameters:
+      reference_date: "2027-12-31"
+      operator: gte
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-009 §6.2 资质有效期要求"
+    suggestion: "更新即将到期的资质证书，或在投标文件中说明续期计划和时间安排。"
+
+  - rule_id: SYN-DATE-002
+    version: "1.0"
+    type: date_order
+    title: "投标响应日期不得晚于合成截标日期"
+    description: >
+      合成招标条款 SYN-TENDER-010 规定截标日期为 2026-09-30，
+      投标响应的签署日期不得晚于该日期。
+    severity: medium
+    inputs:
+      fields:
+        - bid_response.submission_date
+    parameters:
+      reference_date: "2026-09-30"
+      operator: lte
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-010 §1.3 截标时间"
+    suggestion: "确认投标文件的签署日期，若超期需联系招标方说明情况。"
+
+  # =========================================================================
+  # document_presence — 文档存在性检查
+  # =========================================================================
+  - rule_id: SYN-DOC-001
+    version: "1.0"
+    type: document_presence
+    title: "应提交合成资质附件"
+    description: >
+      合成招标条款 SYN-TENDER-011 要求投标方必须提交有效的检测资质证书附件。
+    severity: high
+    inputs:
+      fields: []
+    parameters:
+      required_roles:
+        - qualification_attachment
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-011 §6.1 资质文件提交要求"
+    suggestion: "上传有效的检测资质证书附件，并确认文件角色为 qualification_attachment。"
+
+  - rule_id: SYN-DOC-002
+    version: "1.0"
+    type: document_presence
+    title: "应提交人员设备清单"
+    description: >
+      合成招标条款 SYN-TENDER-012 要求投标方提交完整的人员与设备配置清单。
+    severity: medium
+    inputs:
+      fields: []
+    parameters:
+      required_roles:
+        - personnel_equipment_data
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-012 §4.1 人员设备清单要求"
+    suggestion: "上传人员与设备配置清单，并确认文件角色为 personnel_equipment_data。"
+
+  # =========================================================================
+  # evidence_required — 证据定位要求
+  # =========================================================================
+  - rule_id: SYN-EVD-001
+    version: "1.0"
+    type: evidence_required
+    title: "项目负责人字段必须具备证据定位"
+    description: >
+      合成澄清条款 SYN-CLAR-001 要求项目负责人的所有资质字段
+      必须能够在投标文件中定位到具体证据（页码或单元格）。
+    severity: medium
+    inputs:
+      fields:
+        - bid_response.leader_name
+        - personnel_equipment_data.leader_name
+    parameters: {}
+    source_kind: synthetic_clarification_clause
+    source_locator: "SYN-CLAR-001 §2.1 人员资质证据要求"
+    suggestion: "为项目负责人相关字段补充证据定位，标注来源文件的页码或单元格位置。"
+
+  - rule_id: SYN-EVD-002
+    version: "1.0"
+    type: evidence_required
+    title: "资质证书编号必须具备证据定位"
+    description: >
+      合成澄清条款 SYN-CLAR-002 要求所有资质证书编号
+      必须能够在资质附件中定位到具体证据。
+    severity: medium
+    inputs:
+      fields:
+        - qualification_attachment.cert_number
+    parameters: {}
+    source_kind: synthetic_clarification_clause
+    source_locator: "SYN-CLAR-002 §3.1 证书编号可追溯要求"
+    suggestion: "为资质证书编号字段补充证据定位，标注来源文件的页码或行号。"
+
+  # =========================================================================
+  # 设备规则（v1.1.0 新增）
+  # =========================================================================
+  - rule_id: SYN-NUM-003
+    version: "1.0"
+    type: numeric_threshold
+    title: "主要检测设备不少于合成招标条款要求"
+    description: >
+      合成招标条款 SYN-TENDER-013 要求拟投入本项目的主要检测设备不少于 4 台。
+    severity: medium
+    inputs:
+      fields:
+        - personnel_equipment_data.total_equipment
+    parameters:
+      threshold: 4
+      operator: gte
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-013 §5.1 设备数量最低要求"
+    suggestion: "补充检测设备配置至满足最低数量要求，或提供设备不足的合理解释。"
+
+  - rule_id: SYN-DATE-003
+    version: "1.0"
+    type: date_order
+    title: "设备校准有效期不早于合成项目服务结束日期"
+    description: >
+      合成招标条款 SYN-TENDER-014 要求全部主要检测设备的校准有效期
+      必须覆盖至项目服务结束日期（2027-12-31）之后。
+    severity: medium
+    inputs:
+      fields:
+        - personnel_equipment_data.earliest_calibration_expiry
+    parameters:
+      reference_date: "2027-12-31"
+      operator: gte
+    source_kind: synthetic_tender_clause
+    source_locator: "SYN-TENDER-014 §5.2 设备校准有效期要求"
+    suggestion: "更新即将到期的设备校准证书，或在投标文件中说明校准计划和时间安排。"

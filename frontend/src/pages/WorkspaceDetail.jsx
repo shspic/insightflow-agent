@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, NavLink, useParams } from "react-router-dom";
+import { Link, NavLink, Navigate, useLocation, useParams } from "react-router-dom";
 import { fetchWorkspaceFileRelations } from "../api/fileUnderstanding";
 import { fetchMyUsage } from "../api/operations";
 import { fetchWorkspace } from "../api/workspaces";
@@ -42,8 +42,17 @@ function workspaceSection(rawSection, taskId) {
   return matched?.[0] || "overview";
 }
 
-export default function WorkspaceDetail() {
+function workspaceBasePath(workspaceType) {
+  return workspaceType === "engineering" ? "/engineering/projects" : "/general/workspaces";
+}
+
+function workspaceListPath(workspaceType) {
+  return workspaceType === "engineering" ? "/engineering/projects" : "/general/workspaces";
+}
+
+export default function WorkspaceDetail({ type }) {
   const { workspaceId, section: rawSection, taskId } = useParams();
+  const location = useLocation();
   const section = workspaceSection(rawSection, taskId);
   const [workspace, setWorkspace] = useState(null);
   const [files, setFiles] = useState([]);
@@ -80,6 +89,9 @@ export default function WorkspaceDetail() {
 
   useEffect(() => { loadAll(); }, [workspaceId]);
 
+  const basePath = workspace ? workspaceBasePath(workspace.workspace_type) : (type === "engineering" ? "/engineering/projects" : "/general/workspaces");
+  const listPath = workspace ? workspaceListPath(workspace.workspace_type) : (type === "engineering" ? "/engineering/projects" : "/general/workspaces");
+
   const overview = useMemo(() => ({
     ready: files.filter((file) => file.status === "ready").length,
     unready: files.filter((file) => file.status !== "ready").length,
@@ -104,25 +116,34 @@ export default function WorkspaceDetail() {
     return <Alert title="工作区无法加载" tone="danger">{error || "工作区不存在或没有访问权限。"}</Alert>;
   }
 
+  // canonical route：URL 类型与实际 workspace_type 不一致时自动纠正
+  const currentTypePrefix = type === "engineering" ? "/engineering/projects" : "/general/workspaces";
+  const correctPrefix = workspaceBasePath(workspace.workspace_type);
+  if (correctPrefix !== currentTypePrefix) {
+    // 从当前 URL 提取 workspaceId 之后的后缀，保留 section/taskId/report
+    const pathAfterId = location.pathname.split(workspaceId)[1] || "";
+    return <Navigate to={`${correctPrefix}/${workspaceId}${pathAfterId}`} replace />;
+  }
+
   return (
     <section className="page-section">
       <PageHeader
-        eyebrow={<Link to="/workspaces">工作区 / 返回列表</Link>}
+        eyebrow={<Link to={listPath}>{workspace?.workspace_type === "engineering" ? "审查项目 / 返回列表" : "工作区 / 返回列表"}</Link>}
         title={workspace.name}
-        description={workspace.description || "尚未填写工作区说明。"}
+        description={workspace.description || (workspace?.workspace_type === "engineering" ? "尚未填写项目说明。" : "尚未填写工作区说明。")}
         actions={(
           <>
             <Badge tone={workspace.status === "active" ? "success" : "warning"}>
               {workspace.status === "active" ? "使用中" : "已归档"}
             </Badge>
-            <Link className="button-link" to={`/workspaces/${workspaceId}/new-analysis`}>新建分析</Link>
+            <Link className="button-link" to={`${basePath}/${workspaceId}/new-analysis`}>新建分析</Link>
           </>
         )}
       />
       <nav className="workspace-tabs" aria-label="工作区模块">
         {TABS.map(([, label, path]) => (
           <NavLink key={label} end={path === ""}
-            to={`/workspaces/${workspaceId}${path ? `/${path}` : ""}`}>
+            to={`${basePath}/${workspaceId}${path ? `/${path}` : ""}`}>
             {label}
           </NavLink>
         ))}
@@ -136,13 +157,13 @@ export default function WorkspaceDetail() {
           </Alert>}
           <div className="overview-grid">
             <Card><span className="muted">文件就绪</span><p className="usage-value">{overview.ready} / {files.length}</p>
-              <Link to={`/workspaces/${workspaceId}/files`}>{overview.unready ? `${overview.unready} 个待处理` : "查看文件"}</Link></Card>
+              <Link to={`${basePath}/${workspaceId}/files`}>{overview.unready ? `${overview.unready} 个待处理` : "查看文件"}</Link></Card>
             <Card><span className="muted">已确认关系</span><p className="usage-value">{overview.confirmedRelations}</p>
-              <Link to={`/workspaces/${workspaceId}/relations`}>{overview.pendingRelations ? `${overview.pendingRelations} 个待确认` : "查看关系"}</Link></Card>
+              <Link to={`${basePath}/${workspaceId}/relations`}>{overview.pendingRelations ? `${overview.pendingRelations} 个待确认` : "查看关系"}</Link></Card>
             <Card><span className="muted">运行中任务</span><p className="usage-value">{overview.running}</p>
-              <Link to={`/workspaces/${workspaceId}/tasks`}>查看任务</Link></Card>
+              <Link to={`${basePath}/${workspaceId}/tasks`}>查看任务</Link></Card>
             <Card><span className="muted">可用报告</span><p className="usage-value">{overview.reports}</p>
-              <Link to={`/workspaces/${workspaceId}/reports`}>进入报告中心</Link></Card>
+              <Link to={`${basePath}/${workspaceId}/reports`}>进入报告中心</Link></Card>
           </div>
           <div className="overview-grid">
             <Card>
@@ -152,14 +173,14 @@ export default function WorkspaceDetail() {
               {overview.unready === 0 && overview.pendingRelations > 0 && <p>确认高匹配关系，避免错误合并影响分析。</p>}
               {files.length > 0 && overview.unready === 0 && <p>资料已具备分析条件，可以创建任务草稿。</p>}
               <div className="row-actions">
-                <Link className="button-link" to={`/workspaces/${workspaceId}/files`}>管理资料</Link>
-                <Link className="button-link" to={`/workspaces/${workspaceId}/new-analysis`}>开始分析</Link>
+                <Link className="button-link" to={`${basePath}/${workspaceId}/files`}>管理资料</Link>
+                <Link className="button-link" to={`${basePath}/${workspaceId}/new-analysis`}>开始分析</Link>
               </div>
             </Card>
             <Card>
               <h2>最近任务</h2>
               {tasks.slice(0, 4).map((task) => (
-                <Link className="recent-item" key={task.id} to={`/workspaces/${workspaceId}/tasks/${task.id}`}>
+                <Link className="recent-item" key={task.id} to={`${basePath}/${workspaceId}/tasks/${task.id}`}>
                   <span>{task.user_input}</span><StatusBadge status={task.status} dictionary={TASK_STATUS} />
                 </Link>
               ))}
@@ -205,7 +226,7 @@ export default function WorkspaceDetail() {
               <option value="all">全部状态</option>
               {Object.entries(TASK_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta[0]}</option>)}
             </Select></FormField>
-            <Link className="button-link" to={`/workspaces/${workspaceId}/new-analysis`}>新建分析</Link>
+            <Link className="button-link" to={`${basePath}/${workspaceId}/new-analysis`}>新建分析</Link>
           </div>
           <div className="file-table-wrap">
             <table className="file-table"><thead><tr>
@@ -216,7 +237,7 @@ export default function WorkspaceDetail() {
                 <td><StatusBadge status={task.status} dictionary={TASK_STATUS} /></td>
                 <td>{task.file_ids.length}</td><td>{formatDate(task.created_at)}</td><td>{formatDate(task.updated_at)}</td>
                 <td>{task.has_report ? "有" : "—"}</td>
-                <td><Link to={`/workspaces/${workspaceId}/tasks/${task.id}`}>查看详情</Link></td>
+                <td><Link to={`${basePath}/${workspaceId}/tasks/${task.id}`}>查看详情</Link></td>
               </tr>)}
             </tbody></table>
           </div>
@@ -233,7 +254,7 @@ export default function WorkspaceDetail() {
               <StatusBadge status={task.status} dictionary={TASK_STATUS} />
               <h3>{task.user_input}</h3>
               <p className="muted">任务 #{task.id} · 更新于 {formatDate(task.updated_at)}</p>
-              <Link className="button-link" to={`/workspaces/${workspaceId}/reports/${task.id}`}>阅读报告</Link>
+              <Link className="button-link" to={`${basePath}/${workspaceId}/reports/${task.id}`}>阅读报告</Link>
             </Card>
           ))}
           {!reportTasks.length && <EmptyState title="暂无报告" description="任务完成并生成报告后，会在这里集中展示。" />}
@@ -245,8 +266,8 @@ export default function WorkspaceDetail() {
           <p><strong>名称：</strong>{workspace.name}</p>
           <p><strong>说明：</strong>{workspace.description || "未填写"}</p>
           <p><strong>状态：</strong>{workspace.status}</p>
-          <p className="muted">重命名、编辑描述、归档与软删除在工作区列表统一操作，以减少误操作入口。</p>
-          <Link to="/workspaces">返回工作区列表</Link>
+          <p className="muted">重命名、编辑描述、归档与永久删除在工作区列表统一操作，以减少误操作入口。</p>
+          <Link to={listPath}>返回{workspace?.workspace_type === "engineering" ? "项目列表" : "工作区列表"}</Link>
         </Card>
       )}
     </section>

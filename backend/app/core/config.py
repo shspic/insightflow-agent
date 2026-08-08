@@ -55,9 +55,9 @@ class Settings:
     )
     llm_enabled: bool = _parse_bool(_get_env("LLM_ENABLED", "true"))
     llm_max_retries: int = _parse_int(_get_env("LLM_MAX_RETRIES", "1"), 1)
-    embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")
-    vector_store: str = _get_env("VECTOR_STORE", "chroma")
-    rag_retrieval_mode: str = _get_env("RAG_RETRIEVAL_MODE", "auto")
+    embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")  # 规划中，未接入真实 Embedding
+    vector_store: str = _get_env("VECTOR_STORE", "chroma")  # 规划中，未接入真实 Chroma/FAISS
+    rag_retrieval_mode: str = _get_env("RAG_RETRIEVAL_MODE", "auto")  # auto/tfidf/keyword，当前为 TF-IDF 算法
     rag_top_k: int = _parse_int(_get_env("RAG_TOP_K", "5"), 5)
     rag_chunk_size: int = _parse_int(_get_env("RAG_CHUNK_SIZE", "800"), 800)
     rag_chunk_overlap: int = _parse_int(_get_env("RAG_CHUNK_OVERLAP", "100"), 100)

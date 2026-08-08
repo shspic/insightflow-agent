@@ -366,16 +366,17 @@ V2 的低并发正式部署目标是同域名提供前端，反向代理将 `/ap
 ## 当前限制
 
 - 单机 SQLite + 单 Worker，适合 5 人以内低并发，不是生产级 SaaS。
-- RAG 使用关键词和 TF-IDF 检索，不是生产级向量数据库方案。
+- RAG 使用关键词和 TF-IDF 检索，不是生产级向量数据库方案。当前**未接入真实 Embedding 模型和 Chroma/FAISS 向量索引**，`VECTOR_STORE` 和 `EMBEDDING_PROVIDER` 配置仅为规划占位。
 - OCR 依赖本机或容器中的 Tesseract，中文识别需人工复核。
 - 扫描 PDF OCR 受页数、像素、DPI 和超时限制。
 - 文件理解接口仍为同步调用。
 - 不支持任意节点暂停后原地恢复。
 - 单机本地备份无法应对整盘损坏。
-- 未执行真实 DeepSeek 质量评估（模型名使用占位符）。
+- 未执行真实 DeepSeek 质量评估（模型名从 `DEEPSEEK_MODEL` 环境变量读取，当前使用占位符表示尚未核实可用模型）。
 - 未购买服务器/域名/备案/HTTPS。
 - 未执行生产 Docker 容器构建和启动验证。
-- deterministic 评估准确率 1.0 是规则自检，不代表 Agent 或模型真实准确率。
+- deterministic 评估准确率 1.0 是规则自检，不代表 Agent 或模型真实准确率。该结果只证明确定性执行器、数据集加载、路由预期和持久化链路一致，不是 DeepSeek、真实 OCR 或人工报告质量准确率。
+- MCP 当前为规划阶段，未正式实现。详见 [docs/MCP_PLAN.md](docs/MCP_PLAN.md)。
 
 ## 后续步骤
 

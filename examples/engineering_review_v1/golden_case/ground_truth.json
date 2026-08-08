@@ -1,0 +1,227 @@
+{
+  "case_id": "SYN-ENG-2026-001",
+  "rule_pack_id": "engineering_bid_review_v1",
+  "rule_pack_version": "1.1.0",
+  "disclaimer": "合成演示数据，不作为真实招投标、工程、资质或法律判断依据。",
+  "project": {
+    "id": "SYN-ENG-2026-001",
+    "name": "东海新区综合交通枢纽工程第三方检测服务（合成）",
+    "bidder": "海岳工程检测技术有限公司（虚构）",
+    "tenderer": "东海新区城市建设事务中心（虚构）",
+    "deadline": "2026-09-30",
+    "service_end": "2027-12-31",
+    "budget": 2000000
+  },
+  "file_roles": {
+    "01_合成招标要求.pdf": "tender_requirement",
+    "02_合成投标响应.pdf": "bid_response",
+    "03_人员设备清单.xlsx": "personnel_equipment_data",
+    "04_合成资质附件.pdf": "qualification_attachment",
+    "05_项目澄清.md": "clarification_document"
+  },
+  "expected_fields": {
+    "bid_response.project_name": "",
+    "bid_response.leader_name": "林海",
+    "bid_response.leader_cert_number": "SYN-JC-24018",
+    "bid_response.total_price": 2150000,
+    "bid_response.submission_date": "2026-10-02",
+    "personnel_equipment_data.project_name": "东海新区综合交通枢纽第三方检测服务",
+    "personnel_equipment_data.leader_name": "",
+    "personnel_equipment_data.leader_cert_number": "SYN-JC-24081",
+    "personnel_equipment_data.total_personnel": 4,
+    "personnel_equipment_data.total_equipment": 3,
+    "personnel_equipment_data.earliest_calibration_expiry": "2026-12-31",
+    "qualification_attachment.expiry_date": "2027-06-30",
+    "qualification_attachment.cert_number": "SYN-CMA-2026-014"
+  },
+  "expected_passed_rules": [
+    "SYN-DOC-001",
+    "SYN-DOC-002"
+  ],
+  "expected_findings": [
+    {
+      "issue_code": "SYN-REQ-001",
+      "rule_id": "SYN-REQ-001",
+      "rule_type": "required_field",
+      "severity": "high",
+      "affected_fields": ["bid_response.project_name"],
+      "expected_values": {"bid_response.project_name": ""},
+      "evidence_source": "02_合成投标响应.pdf",
+      "evidence_locator": "pdf_page:1",
+      "expected_conclusion": "投标响应项目名称字段为空，不符合 SYN-TENDER-001 必填要求。",
+      "expected_suggestion": "在投标响应文件中补充项目名称字段，确保与招标要求中的项目名称完全一致。"
+    },
+    {
+      "issue_code": "SYN-REQ-002",
+      "rule_id": "SYN-REQ-002",
+      "rule_type": "required_field",
+      "severity": "high",
+      "affected_fields": ["personnel_equipment_data.leader_name"],
+      "expected_values": {"personnel_equipment_data.leader_name": ""},
+      "evidence_source": "03_人员设备清单.xlsx",
+      "evidence_locator": "spreadsheet_cell:人员清单!B3",
+      "expected_conclusion": "人员设备清单中项目负责人姓名为空，不符合 SYN-TENDER-003 要求。",
+      "expected_suggestion": "在人员设备清单中补填项目负责人姓名。"
+    },
+    {
+      "issue_code": "SYN-EQ-001",
+      "rule_id": "SYN-EQ-001",
+      "rule_type": "cross_file_equal",
+      "severity": "high",
+      "affected_fields": ["bid_response.project_name", "personnel_equipment_data.project_name"],
+      "expected_values": {
+        "bid_response.project_name": "",
+        "personnel_equipment_data.project_name": "东海新区综合交通枢纽第三方检测服务"
+      },
+      "evidence_source": "02_合成投标响应.pdf 和 03_人员设备清单.xlsx",
+      "evidence_locator": "pdf_page:1 + spreadsheet_cell:项目概况!B3",
+      "expected_conclusion": "投标响应项目名称为空，而人员设备清单项目名称缺少「工程」二字，两处不一致。",
+      "expected_suggestion": "核对投标响应和人员设备清单中的项目名称，确保两处完全一致后重新提交。"
+    },
+    {
+      "issue_code": "SYN-EQ-002",
+      "rule_id": "SYN-EQ-002",
+      "rule_type": "cross_file_equal",
+      "severity": "high",
+      "affected_fields": ["bid_response.leader_cert_number", "personnel_equipment_data.leader_cert_number"],
+      "expected_values": {
+        "bid_response.leader_cert_number": "SYN-JC-24018",
+        "personnel_equipment_data.leader_cert_number": "SYN-JC-24081"
+      },
+      "evidence_source": "02_合成投标响应.pdf 和 03_人员设备清单.xlsx",
+      "evidence_locator": "pdf_page:1 + spreadsheet_cell:人员清单!D3",
+      "expected_conclusion": "投标响应证书编号 SYN-JC-24018 与人员清单 SYN-JC-24081 不一致。",
+      "expected_suggestion": "人工核对原始证书与投标响应中的证书编号，确认正确值后统一修改。"
+    },
+    {
+      "issue_code": "SYN-NUM-001",
+      "rule_id": "SYN-NUM-001",
+      "rule_type": "numeric_threshold",
+      "severity": "medium",
+      "affected_fields": ["personnel_equipment_data.total_personnel"],
+      "expected_values": {"personnel_equipment_data.total_personnel": 4},
+      "evidence_source": "03_人员设备清单.xlsx",
+      "evidence_locator": "spreadsheet_cell:人员清单!B8",
+      "expected_conclusion": "拟投入人员 4 人，低于 SYN-TENDER-007 最低 5 人要求。",
+      "expected_suggestion": "补充人员配置至满足最低数量要求，或提供人员不足的合理解释与替代方案。"
+    },
+    {
+      "issue_code": "SYN-NUM-002",
+      "rule_id": "SYN-NUM-002",
+      "rule_type": "numeric_threshold",
+      "severity": "high",
+      "affected_fields": ["bid_response.total_price"],
+      "expected_values": {"bid_response.total_price": 2150000},
+      "evidence_source": "02_合成投标响应.pdf",
+      "evidence_locator": "pdf_page:1",
+      "expected_conclusion": "投标报价 2,150,000 元超过预算上限 2,000,000 元。",
+      "expected_suggestion": "调整报价方案使其不超过预算上限，或提供成本构成说明供招标方审核。"
+    },
+    {
+      "issue_code": "SYN-NUM-003",
+      "rule_id": "SYN-NUM-003",
+      "rule_type": "numeric_threshold",
+      "severity": "medium",
+      "affected_fields": ["personnel_equipment_data.total_equipment"],
+      "expected_values": {"personnel_equipment_data.total_equipment": 3},
+      "evidence_source": "03_人员设备清单.xlsx",
+      "evidence_locator": "spreadsheet_cell:设备清单!D7",
+      "expected_conclusion": "主要检测设备 3 台，低于 SYN-TENDER-013 最低 4 台要求。",
+      "expected_suggestion": "补充检测设备配置至满足最低数量要求，或提供设备不足的合理解释。"
+    },
+    {
+      "issue_code": "SYN-DATE-001",
+      "rule_id": "SYN-DATE-001",
+      "rule_type": "date_order",
+      "severity": "high",
+      "affected_fields": ["qualification_attachment.expiry_date"],
+      "expected_values": {"qualification_attachment.expiry_date": "2027-06-30"},
+      "evidence_source": "04_合成资质附件.pdf",
+      "evidence_locator": "pdf_page:1",
+      "expected_conclusion": "资质有效期 2027-06-30 早于服务结束日期 2027-12-31。",
+      "expected_suggestion": "更新即将到期的资质证书，或在投标文件中说明续期计划和时间安排。"
+    },
+    {
+      "issue_code": "SYN-DATE-002",
+      "rule_id": "SYN-DATE-002",
+      "rule_type": "date_order",
+      "severity": "medium",
+      "affected_fields": ["bid_response.submission_date"],
+      "expected_values": {"bid_response.submission_date": "2026-10-02"},
+      "evidence_source": "02_合成投标响应.pdf",
+      "evidence_locator": "pdf_page:1",
+      "expected_conclusion": "投标签署日期 2026-10-02 晚于截标日期 2026-09-30。",
+      "expected_suggestion": "确认投标文件的签署日期，若超期需联系招标方说明情况。"
+    },
+    {
+      "issue_code": "SYN-DATE-003",
+      "rule_id": "SYN-DATE-003",
+      "rule_type": "date_order",
+      "severity": "medium",
+      "affected_fields": ["personnel_equipment_data.earliest_calibration_expiry"],
+      "expected_values": {"personnel_equipment_data.earliest_calibration_expiry": "2026-12-31"},
+      "evidence_source": "03_人员设备清单.xlsx",
+      "evidence_locator": "spreadsheet_cell:设备清单!F4",
+      "expected_conclusion": "设备校准有效期 2026-12-31 早于服务结束日期 2027-12-31。",
+      "expected_suggestion": "更新即将到期的设备校准证书，或在投标文件中说明校准计划和时间安排。"
+    },
+    {
+      "issue_code": "SYN-EVD-001",
+      "rule_id": "SYN-EVD-001",
+      "rule_type": "evidence_required",
+      "severity": "medium",
+      "affected_fields": ["personnel_equipment_data.leader_name"],
+      "expected_values": {"personnel_equipment_data.leader_name": ""},
+      "evidence_source": "03_人员设备清单.xlsx",
+      "evidence_locator": "spreadsheet_cell:人员清单!B3",
+      "expected_conclusion": "人员设备清单中项目负责人姓名为空，无法提供有效证据定位。",
+      "expected_suggestion": "为项目负责人相关字段补充证据定位，标注来源文件的页码或单元格位置。"
+    },
+    {
+      "issue_code": "SYN-EVD-002",
+      "rule_id": "SYN-EVD-002",
+      "rule_type": "evidence_required",
+      "severity": "medium",
+      "affected_fields": ["qualification_attachment.cert_number"],
+      "expected_values": {"qualification_attachment.cert_number": "SYN-CMA-2026-014"},
+      "evidence_source": "04_合成资质附件.pdf",
+      "evidence_locator": "pdf_page:2 (扫描图片，无文本层)",
+      "expected_conclusion": "资质证书编号位于扫描页，无机器可提取文本层，需人工复核。",
+      "expected_suggestion": "为资质证书编号字段补充证据定位，标注来源文件的页码或行号。扫描页证书编号需人工核验。"
+    }
+  ],
+  "review_brief": {
+    "raw_requirements": "重点检查项目负责人、人员和设备数量、设备校准有效期及资质有效期，同时核对总报价是否超过预算。所有高风险问题必须给出证据位置；扫描证书无法可靠识别时必须提示人工复核，不得猜测证书编号。",
+    "interpreted": {
+      "objectives": [
+        "人员一致性审查",
+        "设备投入审查",
+        "资质有效期审查",
+        "报价阈值审查"
+      ],
+      "required_check_types": [
+        "required_field",
+        "cross_file_equal",
+        "numeric_threshold",
+        "date_order",
+        "document_presence",
+        "evidence_required"
+      ],
+      "excluded_check_types": [],
+      "excluded_scopes": [],
+      "priority_fields": [
+        "bid_response.leader_name",
+        "personnel_equipment_data.total_personnel",
+        "personnel_equipment_data.total_equipment",
+        "personnel_equipment_data.earliest_calibration_expiry",
+        "qualification_attachment.expiry_date"
+      ],
+      "output_requirements": [
+        "high_risk_requires_evidence",
+        "group_by_severity"
+      ],
+      "clarification_questions": [],
+      "unsupported_requests": []
+    }
+  }
+}

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { fetchMyUsage } from "../api/operations";
 import {
   createWorkspace,
   deleteWorkspace,
   fetchWorkspaces,
-  restoreWorkspace,
   updateWorkspace,
 } from "../api/workspaces";
 import {
@@ -24,7 +23,35 @@ import {
 import { useFeedback } from "../context/FeedbackContext";
 import { formatDate, mapApiError, quotaState } from "../utils/ui";
 
-export default function WorkspaceList() {
+const LABELS = {
+  engineering: {
+    title: "engineering",
+    eyebrow: "工程投标审查",
+    description: "每个审查项目独立管理招标要求、投标响应、人员设备清单和资质附件。",
+    createLabel: "新建审查项目",
+    emptyTitle: "创建第一个审查项目",
+    emptyDesc: "上传招标要求、投标文件、人员设备清单和资质附件，系统帮助核对一致性。",
+    detailPath: (id) => `/engineering/projects/${id}`,
+    formNameLabel: "项目名称",
+    formDescLabel: "项目说明",
+    workspaceType: "engineering",
+  },
+  general: {
+    title: "general",
+    eyebrow: "通用文档分析（旧版）",
+    description: "保留原有多模态文档与数据分析能力，不再横向扩展。",
+    createLabel: "创建工作区",
+    emptyTitle: "创建第一个工作区",
+    emptyDesc: "工作区会把资料、任务和报告组织在同一个上下文中。",
+    detailPath: (id) => `/general/workspaces/${id}`,
+    formNameLabel: "工作区名称",
+    formDescLabel: "描述（可选）",
+    workspaceType: "general",
+  },
+};
+
+export default function WorkspaceList({ type = "general" }) {
+  const labels = LABELS[type] || LABELS.general;
   const [items, setItems] = useState([]);
   const [usage, setUsage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,12 +61,15 @@ export default function WorkspaceList() {
   const [dialog, setDialog] = useState(null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const { confirm, toast } = useFeedback();
+  const navigate = useNavigate();
 
   async function load() {
     try {
       const [workspaceData, usageData] = await Promise.all([
-        fetchWorkspaces(true),
+        fetchWorkspaces(true, labels.workspaceType),
         fetchMyUsage().catch(() => null),
       ]);
       setItems(workspaceData);
@@ -52,17 +82,23 @@ export default function WorkspaceList() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [type]);
 
   async function handleCreate(event) {
     event.preventDefault();
     setIsSaving(true);
     try {
-      const created = await createWorkspace(form);
+      const created = await createWorkspace({
+        ...form,
+        workspace_type: labels.workspaceType,
+      });
       setItems((current) => [created, ...current]);
       setForm({ name: "", description: "" });
       setDialog(null);
-      toast("工作区已创建");
+      toast(labels.workspaceType === "engineering" ? "审查项目已创建" : "工作区已创建");
+      if (labels.workspaceType === "engineering") {
+        navigate(labels.detailPath(created.id));
+      }
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -85,40 +121,40 @@ export default function WorkspaceList() {
   }
 
   async function removeItem(item) {
-    const accepted = await confirm({
-      title: `软删除“${item.name}”？`,
-      description: "工作区会从默认列表隐藏，文件、任务和报告不会立刻物理删除，并可在已删除筛选中恢复。",
-      confirmLabel: "软删除",
-    });
-    if (!accepted) return;
-    try {
-      await deleteWorkspace(item.id);
-      setItems((current) => current.map((entry) =>
-        entry.id === item.id ? { ...entry, is_deleted: true } : entry));
-      toast("工作区已软删除");
-    } catch (requestError) {
-      setError(requestError.message);
-    }
+    setDeleteTarget(item);
+    setDeleteConfirmName('');
   }
 
-  async function restoreItem(item) {
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    if (deleteConfirmName !== deleteTarget.name) return;
+    setIsSaving(true);
     try {
-      const restored = await restoreWorkspace(item.id);
-      setItems((current) => current.map((entry) => entry.id === item.id ? restored : entry));
-      toast("工作区已恢复");
+      const result = await deleteWorkspace(deleteTarget.id, deleteTarget.name);
+      setItems((current) => current.filter((entry) => entry.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      setDeleteConfirmName('');
+      const warnings = result.storage_cleanup_warnings || [];
+      if (warnings.length > 0) {
+        toast('业务数据已删除，但部分磁盘资产清理失败。');
+      } else {
+        toast('已永久删除');
+      }
     } catch (requestError) {
       setError(requestError.message);
+    } finally {
+      setIsSaving(false);
     }
   }
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("zh-CN");
+    const query = search.trim().toLocaleLowerCase('zh-CN');
     return items.filter((item) => {
-      const statusMatches = statusFilter === "all"
-        || (statusFilter === "deleted" ? item.is_deleted : !item.is_deleted && item.status === statusFilter);
+      const statusMatches = statusFilter === 'all'
+        || (!item.is_deleted && item.status === statusFilter);
       const queryMatches = !query
-        || item.name.toLocaleLowerCase("zh-CN").includes(query)
-        || (item.description || "").toLocaleLowerCase("zh-CN").includes(query);
+        || item.name.toLocaleLowerCase('zh-CN').includes(query)
+        || (item.description || '').toLocaleLowerCase('zh-CN').includes(query);
       return statusMatches && queryMatches;
     });
   }, [items, search, statusFilter]);
@@ -128,17 +164,17 @@ export default function WorkspaceList() {
   return (
     <section className="page-section">
       <PageHeader
-        eyebrow="资料与任务的安全边界"
-        title="工作区"
-        description="每个工作区独立管理文件理解、分析计划、执行事件和报告版本。"
+        eyebrow={labels.eyebrow}
+        title={labels.title}
+        description={labels.description}
         actions={<Button onClick={() => {
           setForm({ name: "", description: "" });
           setDialog({ type: "create" });
-        }}>创建工作区</Button>}
+        }}>{labels.createLabel}</Button>}
       />
       {workspaceQuota?.warning && (
         <Alert title="工作区配额接近上限" tone={workspaceQuota.tone}>
-          当前 {usage.usage.workspaces} / {usage.limits.workspaces}。可归档不再使用的工作区，软删除不会立即释放文件存储。
+          当前 {usage.usage.workspaces} / {usage.limits.workspaces}。可归档不再使用的工作区，或永久删除以释放存储。
         </Alert>
       )}
       {error && <Alert title="工作区操作未完成" tone="danger">
@@ -153,7 +189,6 @@ export default function WorkspaceList() {
           <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="active">使用中</option>
             <option value="archived">已归档</option>
-            <option value="deleted">已删除</option>
             <option value="all">全部</option>
           </Select>
         </FormField>
@@ -165,8 +200,8 @@ export default function WorkspaceList() {
           <article className="workspace-card" key={item.id}>
             <div className="section-heading">
               <h3>{item.name}</h3>
-              <Badge tone={item.is_deleted ? "danger" : item.status === "archived" ? "warning" : "success"}>
-                {item.is_deleted ? "已删除" : item.status === "archived" ? "已归档" : "使用中"}
+              <Badge tone={item.status === "archived" ? "warning" : "success"}>
+                {item.status === "archived" ? "已归档" : "使用中"}
               </Badge>
             </div>
             <p>{item.description || "暂无描述"}</p>
@@ -175,7 +210,9 @@ export default function WorkspaceList() {
               <br />最近更新 {formatDate(item.updated_at)}
             </div>
             <div className="row-actions">
-              {!item.is_deleted && <Link className="button-link" to={`/workspaces/${item.id}`}>打开工作区</Link>}
+              {!item.is_deleted && <Link className="button-link" to={labels.detailPath(item.id)}>
+                {type === "engineering" ? "打开项目" : "打开工作区"}
+              </Link>}
               {!item.is_deleted && (
                 <Button variant="secondary" onClick={() => {
                   setForm({ name: item.name, description: item.description || "" });
@@ -190,10 +227,7 @@ export default function WorkspaceList() {
                 )}>{item.status === "active" ? "归档" : "恢复使用"}</Button>
               )}
               {!item.is_deleted && (
-                <Button variant="danger" onClick={() => removeItem(item)}>软删除</Button>
-              )}
-              {item.is_deleted && (
-                <Button variant="secondary" onClick={() => restoreItem(item)}>恢复</Button>
+                <Button variant="danger" onClick={() => removeItem(item)}>永久删除</Button>
               )}
             </div>
           </article>
@@ -201,16 +235,18 @@ export default function WorkspaceList() {
       </div>
       {!isLoading && filtered.length === 0 && (
         <EmptyState
-          title={items.length ? "没有匹配的工作区" : "创建第一个工作区"}
-          description={items.length ? "调整搜索词或状态筛选。" : "工作区会把资料、任务和报告组织在同一个上下文中。"}
-          action={!items.length && <Button onClick={() => setDialog({ type: "create" })}>创建工作区</Button>}
+          title={items.length ? "没有匹配的项目" : labels.emptyTitle}
+          description={items.length ? "调整搜索词或状态筛选。" : labels.emptyDesc}
+          action={!items.length && <Button onClick={() => setDialog({ type: "create" })}>{labels.createLabel}</Button>}
         />
       )}
       <Dialog
         open={Boolean(dialog)}
         busy={isSaving}
         onClose={() => setDialog(null)}
-        title={dialog?.type === "edit" ? "编辑工作区" : "创建工作区"}
+        title={dialog?.type === "edit"
+          ? (type === "engineering" ? "编辑审查项目" : "编辑工作区")
+          : labels.createLabel}
         description="名称用于导航和报告上下文，描述可以说明资料范围或分析目标。"
         footer={(
           <>
@@ -229,15 +265,44 @@ export default function WorkspaceList() {
             handleCreate(event);
           }
         }}>
-          <FormField label="工作区名称" required>
+          <FormField label={labels.formNameLabel} required>
             <Input required autoFocus maxLength="255" value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })} />
           </FormField>
-          <FormField label="描述（可选）" hint={`${form.description.length} / 2000`}>
+          <FormField label={labels.formDescLabel} hint={`${form.description.length} / 2000`}>
             <Textarea maxLength="2000" value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })} />
           </FormField>
         </form>
+      </Dialog>
+      <Dialog
+        open={Boolean(deleteTarget)}
+        busy={isSaving}
+        onClose={() => { if (!isSaving) { setDeleteTarget(null); setDeleteConfirmName(""); } }}
+        title={`永久删除"${deleteTarget?.name || ""}"？`}
+        description="项目及其关联业务数据将从当前系统永久删除，无法通过产品界面恢复。"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => { setDeleteTarget(null); setDeleteConfirmName(""); }} disabled={isSaving}>取消</Button>
+            <Button variant="danger" onClick={confirmDelete} loading={isSaving}
+              disabled={deleteConfirmName !== deleteTarget?.name}>
+              确认永久删除
+            </Button>
+          </>
+        )}
+      >
+        <p className="muted">
+          {type === "engineering" ? "项目" : "工作区"}包含文件 {" "}
+          {deleteTarget?.file_count ?? 0} 个、任务 {deleteTarget?.task_count ?? 0} 个。
+        </p>
+        <FormField label={`输入完整${type === "engineering" ? "项目" : "工作区"}名称以确认`} required>
+          <Input
+            autoFocus
+            value={deleteConfirmName}
+            onChange={(event) => setDeleteConfirmName(event.target.value)}
+            placeholder={deleteTarget?.name || ""}
+          />
+        </FormField>
       </Dialog>
     </section>
   );

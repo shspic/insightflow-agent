@@ -117,15 +117,23 @@ export function Dialog({
   const ref = useRef(null);
   const titleId = useId();
   const descriptionId = useId();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   useEffect(() => {
     if (!open) return undefined;
     const prior = document.activeElement;
-    const focusable = ref.current?.querySelector(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    focusable?.focus();
+    // 只有 dialog 内没有已聚焦元素时，才聚焦第一个可聚焦元素；
+    // 避免覆盖 React autoFocus 已设置的焦点（如表单输入框）
+    if (!ref.current?.contains(document.activeElement)) {
+      const focusable = ref.current?.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      focusable?.focus();
+    }
     const handleKey = (event) => {
-      if (event.key === "Escape" && !busy) onClose?.();
+      if (event.key === "Escape" && !busyRef.current) onCloseRef.current?.();
       if (event.key === "Tab" && ref.current) {
         const items = [...ref.current.querySelectorAll(
           'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
@@ -147,7 +155,7 @@ export function Dialog({
       document.removeEventListener("keydown", handleKey);
       prior?.focus?.();
     };
-  }, [open, onClose, busy]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="ui-modal-backdrop" role="presentation" onMouseDown={(event) => {

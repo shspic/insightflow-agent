@@ -14,7 +14,10 @@ from app.models.file_chunk import FileChunk
 from app.services.vector_service import VectorSearchError, search_chunks_by_tfidf
 
 SUPPORTED_RAG_TYPES = {"pdf"}
-SUPPORTED_RETRIEVAL_MODES = {"auto", "vector", "keyword"}
+SUPPORTED_RETRIEVAL_MODES = {"auto", "tfidf", "vector", "keyword"}
+
+# "vector" 仅为旧参数兼容，实际算法与 "tfidf" 相同，不是真实 Embedding 向量检索。
+_DEPRECATED_RETRIEVAL_ALIASES = {"vector": "tfidf"}
 
 
 class RagServiceError(Exception):
@@ -123,7 +126,7 @@ def search_pdf_chunks(
             results=results,
         )
 
-    if final_mode == "vector":
+    if final_mode == "tfidf":
         try:
             results = search_chunks_by_tfidf(
                 query=normalized_query,
@@ -132,15 +135,15 @@ def search_pdf_chunks(
                 top_k=final_top_k,
             )
         except VectorSearchError as exc:
-            raise RagServiceError(f"向量检索失败：{exc.message}") from exc
+            raise RagServiceError(f"TF-IDF 检索失败：{exc.message}") from exc
         except Exception as exc:
-            raise RagServiceError(f"向量检索失败：{exc}") from exc
+            raise RagServiceError(f"TF-IDF 检索失败：{exc}") from exc
 
         return _build_search_response(
             file_record=file_record,
             query=normalized_query,
             top_k=final_top_k,
-            retrieval_mode="vector",
+            retrieval_mode="tfidf",
             fallback_used=False,
             results=results,
         )
@@ -156,7 +159,7 @@ def search_pdf_chunks(
             file_record=file_record,
             query=normalized_query,
             top_k=final_top_k,
-            retrieval_mode="vector",
+            retrieval_mode="tfidf",
             fallback_used=False,
             results=results,
         )
@@ -170,7 +173,7 @@ def search_pdf_chunks(
             fallback_used=True,
             results=results,
         )
-        response["message"] = f"向量检索失败，已回退关键词检索：{exc}"
+        response["message"] = f"TF-IDF 检索失败，已回退关键词检索：{exc}"
         return response
 
 
@@ -353,7 +356,9 @@ def _normalize_top_k(top_k: int | None) -> int:
 def _normalize_retrieval_mode(retrieval_mode: str | None) -> str:
     mode = (retrieval_mode or settings.rag_retrieval_mode or "auto").strip().lower()
     if mode not in SUPPORTED_RETRIEVAL_MODES:
-        raise RagServiceError("检索模式不支持，请使用 auto、vector 或 keyword")
+        raise RagServiceError("检索模式不支持，请使用 auto、tfidf 或 keyword（vector 为旧参数兼容，实际使用 tfidf）")
+    if mode in _DEPRECATED_RETRIEVAL_ALIASES:
+        return _DEPRECATED_RETRIEVAL_ALIASES[mode]
     return mode
 
 

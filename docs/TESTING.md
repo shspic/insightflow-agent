@@ -15,7 +15,7 @@
 - `test_alembic_migrations.py`：验证 Alembic 迁移可升级、回退、再升级。
 - `test_v2_auth.py`：验证注册、登录、退出、Session、CSRF、密码修改和强制改密。
 - `test_v2_admin.py`：验证管理员 CLI 初始化、邀请码管理、密码重置、用户状态。
-- `test_v2_workspaces.py`：验证工作区 CRUD、软删除/恢复、工作区级数据隔离。
+- `test_v2_workspaces.py`：验证工作区 CRUD、永久删除、归档、工作区级数据隔离。
 - `test_v2_file_understanding.py`：验证五类文件解析、Profile、角色/标签建议。
 - `test_v2_relations_context.py`：验证文件关系候选、确认/拒绝/修改、Workspace Context。
 - `test_v2_file_api_security.py`：验证文件上传限制、类型校验、大小/数量配额和归属校验。

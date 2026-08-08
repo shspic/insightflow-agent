@@ -1,0 +1,224 @@
+[
+  {
+    "query_id": "Q028",
+    "split": "test",
+    "category": "personnel",
+    "retrieval_mode": "keyword",
+    "failure_type": "recall_at_5_miss",
+    "recall@5": 0.0,
+    "mrr": 0.1,
+    "relevant_chunk_ids": [
+      "C0014"
+    ],
+    "retrieved_chunk_ids": [
+      "C0017",
+      "C0002",
+      "C0003",
+      "C0009",
+      "C0016"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q041",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "keyword",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0010",
+      "C0002",
+      "C0008",
+      "C0011",
+      "C0017"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q042",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "keyword",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0017",
+      "C0002",
+      "C0003",
+      "C0008",
+      "C0004"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q044",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "keyword",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0017",
+      "C0010",
+      "C0008",
+      "C0004",
+      "C0002"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q028",
+    "split": "test",
+    "category": "personnel",
+    "retrieval_mode": "tfidf",
+    "failure_type": "recall_at_5_miss",
+    "recall@5": 0.0,
+    "mrr": 0.1111,
+    "relevant_chunk_ids": [
+      "C0014"
+    ],
+    "retrieved_chunk_ids": [
+      "C0002",
+      "C0003",
+      "C0016",
+      "C0009",
+      "C0005"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q041",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "tfidf",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0010",
+      "C0005",
+      "C0008",
+      "C0002",
+      "C0017"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q042",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "tfidf",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0017",
+      "C0008",
+      "C0002",
+      "C0004",
+      "C0010"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q044",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "tfidf",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0010",
+      "C0017",
+      "C0008",
+      "C0005",
+      "C0004"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q028",
+    "split": "test",
+    "category": "personnel",
+    "retrieval_mode": "bm25",
+    "failure_type": "recall_at_5_miss",
+    "recall@5": 0.0,
+    "mrr": 0.125,
+    "relevant_chunk_ids": [
+      "C0014"
+    ],
+    "retrieved_chunk_ids": [
+      "C0002",
+      "C0016",
+      "C0017",
+      "C0003",
+      "C0009"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q041",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "bm25",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0010",
+      "C0005",
+      "C0008",
+      "C0002",
+      "C0009"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q042",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "bm25",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0017",
+      "C0008",
+      "C0010",
+      "C0002",
+      "C0005"
+    ],
+    "manual_failure_category": null
+  },
+  {
+    "query_id": "Q044",
+    "split": "test",
+    "category": "no_answer",
+    "retrieval_mode": "bm25",
+    "failure_type": "no_answer_false_positive",
+    "recall@5": 0.0,
+    "mrr": 0.0,
+    "relevant_chunk_ids": [],
+    "retrieved_chunk_ids": [
+      "C0017",
+      "C0010",
+      "C0008",
+      "C0005",
+      "C0009"
+    ],
+    "manual_failure_category": null
+  }
+]

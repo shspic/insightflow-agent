@@ -24,7 +24,9 @@ SAFE_TEST_ENV = {
     "RAG_TOP_K": "5",
     "RAG_CHUNK_SIZE": "800",
     "RAG_CHUNK_OVERLAP": "100",
-    "UPLOAD_DIR": "./storage/uploads",
+    # 测试上传目录：所有测试阶段（v2/v3/4A-4C）生成的真实上传文件
+    # 均写入 backend/storage/test_uploads，不再污染默认 backend/storage/uploads
+    "UPLOAD_DIR": "./storage/test_uploads",
     "CHART_DIR": "./storage/charts",
     "REPORT_DIR": "./storage/reports",
     "CORS_ORIGINS": "http://localhost:5173",
