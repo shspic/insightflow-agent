@@ -9,7 +9,9 @@ export const createReviewBrief = (workspaceId, payload) =>
   });
 
 export const fetchCurrentReviewBrief = (workspaceId) =>
-  apiRequest(`${workspaceReviewBase(workspaceId)}/review-briefs/current`);
+  apiRequest(`${workspaceReviewBase(workspaceId)}/review-briefs/current`, {
+    suppressDevError: true,
+  });
 
 export const fetchReviewBrief = (workspaceId, briefId) =>
   apiRequest(`${workspaceReviewBase(workspaceId)}/review-briefs/${briefId}`);

@@ -70,19 +70,20 @@ function getErrorMessage(data, status) {
 }
 
 export async function apiRequest(path, options = {}) {
-  const method = (options.method || "GET").toUpperCase();
+  const { suppressDevError = false, ...requestOptions } = options;
+  const method = (requestOptions.method || "GET").toUpperCase();
   const needsCsrf = MUTATING_METHODS.has(method);
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const headers = new Headers(options.headers || {});
+    const headers = new Headers(requestOptions.headers || {});
     if (needsCsrf) {
       headers.set("X-CSRF-Token", await ensureCsrfToken({ forceRefresh: attempt === 1 }));
     }
-    if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    if (requestOptions.body && !(requestOptions.body instanceof FormData) && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
     const response = await fetch(`${V2_API_BASE_URL}${path}`, {
-      ...options,
+      ...requestOptions,
       method,
       headers,
       credentials: "include",
@@ -119,7 +120,7 @@ export async function apiRequest(path, options = {}) {
     if (code === "PASSWORD_CHANGE_REQUIRED") {
       window.dispatchEvent(new CustomEvent("auth:password-change-required"));
     }
-    if (import.meta.env?.DEV && response.status !== 401) {
+    if (import.meta.env?.DEV && response.status !== 401 && !suppressDevError) {
       console.error("API 请求失败", { path, status: response.status, data });
     }
     throw error;

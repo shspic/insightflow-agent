@@ -2146,6 +2146,12 @@ progress::-webkit-progress-value {
   max-width: 100%;
 }
 
+.engineering-project-page > *,
+.engineering-stack > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .engineering-section-heading {
   display: flex;
   align-items: flex-start;

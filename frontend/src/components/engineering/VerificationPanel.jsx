@@ -4,6 +4,7 @@ import {
   createSupervisorRun,
   createVerificationCandidateDecision,
   createVerificationRun,
+  fetchSupervisorRun,
   fetchSupervisorRuns,
   fetchSupervisorSteps,
   fetchVerificationCandidateDecisions,
