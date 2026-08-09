@@ -88,6 +88,14 @@ class Settings:
     auth_rate_window_seconds: int = _parse_int(_get_env("AUTH_RATE_WINDOW_SECONDS", "900"), 900)
     auth_block_seconds: int = _parse_int(_get_env("AUTH_BLOCK_SECONDS", "900"), 900)
     enable_legacy_v1_api: bool = _parse_bool(_get_env("ENABLE_LEGACY_V1_API", "true"))
+    # 阶段 5A-1：Review Tools MCP 配置（默认关闭；仅绑定 127.0.0.1）
+    engineering_mcp_enabled: bool = _parse_bool(_get_env("ENGINEERING_MCP_ENABLED", "false"))
+    engineering_mcp_url: str = _get_env("ENGINEERING_MCP_URL", "http://127.0.0.1:8765/mcp")
+    engineering_mcp_timeout_seconds: float = _parse_float(
+        _get_env("ENGINEERING_MCP_TIMEOUT_SECONDS", "15"),
+        15.0,
+    )
+    engineering_mcp_internal_token: str = _get_env("ENGINEERING_MCP_INTERNAL_TOKEN", "")
     upload_max_file_size_bytes: int = _parse_int(
         _get_env("UPLOAD_MAX_FILE_SIZE_BYTES", "20971520"),
         20 * 1024 * 1024,

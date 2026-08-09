@@ -61,6 +61,32 @@ def load_rule_pack(pack_id: str) -> ReviewRulePack:
     return pack
 
 
+def load_rule_pack_from_snapshot(
+    snapshot_json: str, expected_hash: str | None = None
+) -> ReviewRulePack:
+    """从 ReviewRun 固化的规则快照解析并严格校验规则包（阶段 5A-1）。
+
+    历史 Run 的事实来源必须是其不可变快照，而不是磁盘上最新规则文件。
+    - 快照 JSON 损坏或校验失败 → RuleLoadError
+    - expected_hash 提供时校验 sha256(snapshot_json) 一致，不一致 → RuleLoadError
+    - 不做任何对磁盘规则文件的回退
+    """
+    if expected_hash is not None:
+        actual = hashlib.sha256(snapshot_json.encode("utf-8")).hexdigest()
+        if actual != expected_hash:
+            raise RuleLoadError("规则快照哈希不一致")
+
+    try:
+        data = json.loads(snapshot_json)
+        pack = ReviewRulePack.model_validate(data)
+    except Exception as exc:
+        raise RuleLoadError(f"规则快照解析失败: {exc}") from exc
+
+    for rule in pack.rules:
+        _validate_rule_parameters(rule.type, rule.parameters, rule.rule_id)
+    return pack
+
+
 def _validate_rule_parameters(rule_type: str, parameters: dict, rule_id: str) -> None:
     """对每条规则的 parameters 做类型专属校验。"""
     if rule_type == "required_field":

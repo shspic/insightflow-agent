@@ -18,3 +18,5 @@ sentence-transformers==5.7.0
 sqlalchemy
 torch==2.13.0
 uvicorn[standard]
+# 阶段 5A-1：Review Tools MCP（官方 Python SDK 当前稳定版 2.0.0，PyPI 2026-07-28）
+mcp==2.0.0
