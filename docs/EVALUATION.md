@@ -89,3 +89,16 @@ Agent 工作流可以从以下角度评估：
 - 对 OCR 增加样例图片和人工标注文本。
 - 对 Agent 分类和路由增加回归测试。
 - 记录线上演示错误案例，用于后续迭代。
+
+## 8. V3 真实评测结果（Stage 6A）
+
+工程审查主线已建立冻结评测集（44 条查询，development 20 / validation 8 / test 16）与真实评测脚本：
+
+- 真实 DeepSeek（planner=deepseek、无 fallback）+ 真实 BGE + 真实 Streamable HTTP MCP + 四节点 Supervisor；
+- 检索指标（真实 BGE 混合检索）：overall recall@3=0.7632、recall@5=0.8553、mrr=0.7210；development recall@3=0.8333、validation 0.6429、test 0.7308；
+- Supervisor 业务指标：字段抽取 F1=0.8696、问题识别 F1=1.0、引用定位 0.5833、content_hash 复算 14/14、无证据结论率 0.0；
+- 质量门：四节点全 success、gate passed、Markdown+PDF 双资产、DB/磁盘 SHA 一致、Finding/Evidence/历史报告不被修改；
+- MCP 局部重试：真实故障注入，local_retry_success_rate=1.0；
+- 结果文件：`examples/engineering_review_v1/eval_results/stage6a/`（dataset_freeze.json / split_mapping.json / 各 split 报告 / retry_report.json）。
+
+评测脚本：`scripts/verify_stage6a_real_evaluation.py`（黄金案例）、`scripts/verify_stage6a_retry_evaluation.py`（局部重试）。
