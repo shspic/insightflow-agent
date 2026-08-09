@@ -602,14 +602,27 @@ class TestGenerateSecrets:
         )
         return template
 
+    @staticmethod
+    def _decode(data: bytes) -> str:
+        """跨平台解码子进程输出：先 UTF-8 后 GBK（Windows 控制台默认编码）。"""
+        for encoding in ("utf-8", "gbk"):
+            try:
+                return data.decode(encoding)
+            except UnicodeDecodeError:
+                continue
+        return data.decode("utf-8", errors="replace")
+
     def _run(self, template: Path, output: Path, password_file: Path):
-        return subprocess.run(
+        result = subprocess.run(
             [sys.executable, str(GENERATE_SECRETS),
              "--template", str(template),
              "--output", str(output),
              "--admin-password-file", str(password_file)],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, timeout=60,
         )
+        result.stdout = self._decode(result.stdout)
+        result.stderr = self._decode(result.stderr)
+        return result
 
     def test_two_keys_generated_distinct_and_secret(self, tmp_path):
         output = tmp_path / "env.production"

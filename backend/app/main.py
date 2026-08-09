@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.files import router as files_router
 from app.api.health import router as health_router
+from app.api.public_site import router as public_site_router
 from app.api.reports import router as reports_router
 from app.api.tasks import router as tasks_router
 from app.api.v2.auth import router as v2_auth_router
@@ -47,6 +48,7 @@ async def security_headers(request, call_next):
     return response
 
 app.include_router(health_router)
+app.include_router(public_site_router)
 app.include_router(v2_auth_router)
 app.include_router(v2_admin_router)
 app.include_router(v2_workspaces_router)

@@ -64,6 +64,7 @@ pip install -r requirements.txt                  # 固定版本依赖
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 # 独立 Worker（通用主线任务需要）：python -m app.workers.task_worker
 # 健康检查：GET http://127.0.0.1:8000/api/health
+# 大陆公众站公开信息（法律页/页脚数据源，无认证）：GET http://127.0.0.1:8000/api/public/site
 
 # 前端
 cd frontend

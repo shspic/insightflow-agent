@@ -11,6 +11,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         fonts-noto-cjk \
+        fonts-wqy-zenhei \
         libfreetype6 \
         libglib2.0-0 \
         libgl1 \

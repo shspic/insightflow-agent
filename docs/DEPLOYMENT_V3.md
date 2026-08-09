@@ -69,6 +69,25 @@ CI 中不写真实 Key，使用 GitHub Secrets 占位（见 CI 工作流注释�
   capability token 由服务端签发，不对外暴露；
   `ENGINEERING_MCP_ALLOW_CONTAINER_BIND=true` 仅生产 mcp 容器显式启用容器内部绑定（默认关闭，只允许 localhost）。
 
+## 5b. 大陆公众站合规配置（阶段 6D-2）
+
+- **公开上线门禁**：`PUBLIC_LAUNCH_ENABLED=true` 时，部署门禁（`validate_production_security`）
+  要求以下必填项完整且不使用 `replace_` 占位符：
+  `SITE_OPERATOR_NAME`、`SITE_CONTACT_EMAIL`、`ICP_FILING_NUMBER`、
+  `PRIVACY_POLICY_VERSION`、`TERMS_VERSION`、`AI_MODEL_DISPLAY_NAME`、`AI_ASSISTED_NOTICE`；
+  ICP 备案号格式校验（省简称+ICP备+编号），ICP 链接必须指向 `https://beian.miit.gov.cn/`
+  （《非经营性互联网信息服务备案管理办法》第十三条）。
+- **公安联网备案**：`PUBLIC_SECURITY_FILING_NUMBER` 允许留空，页脚显示
+  "公安联网备案办理中（法定办理期限内）"明确状态；填写则校验格式
+  （省简称+公网安备+编号+号），链接指向 `http://www.beian.gov.cn/portal/index.do`。
+- **AI 标识**：`AI_ASSISTED_NOTICE`（默认"AI 辅助生成，须人工复核"）用于智能核验页、
+  报告页与全站页脚；Markdown/PDF 报告包含可见 AI 辅助生成声明（不承诺结果完全准确，
+  候选证据须人工确认）。`AI_MODEL_FILING_NUMBER`（生成式 AI 服务备案号）可留空=办理中。
+  依据《人工智能生成合成内容标识办法》（国信办通字〔2025〕2 号）。
+- **private/prelaunch 模式**（`PUBLIC_LAUNCH_ENABLED=false`）：全部公开字段允许为空，
+  前端不显示运营与备案信息；AI 提示与法律页面模板始终可用。
+- 本配置不构成完整法律合规意见；备案号须在工信部/公安备案平台真实办理后填写。
+
 ## 6. 前端 API 地址配置
 
 - 构建期注入：`VITE_API_BASE_URL=https://api.example.com`（`frontend/Dockerfile` 的 build ARG）；

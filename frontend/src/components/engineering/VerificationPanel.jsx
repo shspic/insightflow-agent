@@ -13,6 +13,7 @@ import {
   fetchVerificationRuns,
   fetchVerificationToolCalls,
 } from "../../api/engineeringReviews";
+import { fetchPublicSite } from "../../api/site";
 import {
   Alert,
   Badge,
@@ -92,6 +93,20 @@ export default function VerificationPanel({ workspaceId, runs, activeRun, onSele
   const [supervisorError, setSupervisorError] = useState(null);
   const [launchSupervisorResult, setLaunchSupervisorResult] = useState(null);
   const [loadingSupervisorDetail, setLoadingSupervisorDetail] = useState(false);
+  // 阶段 6D-2：AI 辅助生成固定提示（来自公开配置，默认"AI 辅助生成，须人工复核"）
+  const [aiNotice, setAiNotice] = useState("AI 辅助生成，须人工复核");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicSite()
+      .then((data) => {
+        if (!cancelled && data.ai_assisted_notice) setAiNotice(data.ai_assisted_notice);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 默认选择当前 active Run；仅完成态 Run 可以启动核验
   const effectiveRunId = selectedRunId ?? (
@@ -313,6 +328,10 @@ export default function VerificationPanel({ workspaceId, runs, activeRun, onSele
         title="智能核验"
         description="Verification Agent 对已完成审查的问题补充检索候选证据；是否采纳完全由人工决定。"
       />
+      <Alert title={aiNotice} tone="warning">
+        智能核验由人工智能模型辅助生成/规划，结果与候选证据须人工复核后采信；
+        本系统不承诺结果完全准确，候选证据只有人工接受后才成为正式 Evidence。
+      </Alert>
       <Alert title="候选证据边界" tone="info">
         检索结果只是候选证据。只有人工接受后才会成为正式 Evidence；
         接受候选不会自动确认问题、降低风险或修改结论。

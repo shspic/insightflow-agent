@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { downloadResource } from "../api/client";
+import { fetchPublicSite } from "../api/site";
 import {
   createReportFeedback,
   deleteReportVersion,
@@ -56,7 +57,21 @@ export default function ReportCenter({ workspaceId, taskId }) {
   const [isLoading, setIsLoading] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [assetOpen, setAssetOpen] = useState(null);
+  // 阶段 6D-2：AI 辅助生成固定提示（来自公开配置）
+  const [aiNotice, setAiNotice] = useState("AI 辅助生成，须人工复核");
   const { confirm, toast } = useFeedback();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicSite()
+      .then((data) => {
+        if (!cancelled && data.ai_assisted_notice) setAiNotice(data.ai_assisted_notice);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const orderedReports = useMemo(() => sortReportVersions(reports), [reports]);
   const selected = useMemo(
     () => orderedReports.find((item) => item.id === selectedId) || orderedReports[0],
@@ -190,6 +205,11 @@ export default function ReportCenter({ workspaceId, taskId }) {
         </div>
       </div>
       {error && <Alert title="报告操作未完成" tone="danger">{error}</Alert>}
+      <Alert title={aiNotice} tone="warning">
+        本报告由系统在人工智能模型辅助下生成，须人工复核后再行使用；
+        报告不承诺结果完全准确，导出文件中的相关内容仅作为线索，
+        必须经具备相应权限的专业人员确认后方可采信。
+      </Alert>
       <div className="report-layout">
         <aside className="report-sidebar" aria-label="报告目录与版本">
           <Card>

@@ -12,6 +12,9 @@ const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const Register = lazy(() => import("./pages/Register"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
+const LegalPrivacy = lazy(() => import("./pages/LegalPrivacy"));
+const LegalTerms = lazy(() => import("./pages/LegalTerms"));
+const LegalAiDisclosure = lazy(() => import("./pages/LegalAiDisclosure"));
 const WorkspaceDetail = lazy(() => import("./pages/WorkspaceDetail"));
 const EngineeringProjectDetail = lazy(() => import("./pages/EngineeringProjectDetail"));
 const WorkspaceList = lazy(() => import("./pages/WorkspaceList"));
@@ -38,6 +41,10 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/password-reset" element={<PasswordReset />} />
+              {/* 大陆公众站法律页面（公开路由，无需登录） */}
+              <Route path="/legal/privacy" element={<LegalPrivacy />} />
+              <Route path="/legal/terms" element={<LegalTerms />} />
+              <Route path="/legal/ai-disclosure" element={<LegalAiDisclosure />} />
               <Route element={<RequireSession allowPasswordChange />}>
                 <Route path="/change-password" element={<ChangePassword />} />
               </Route>

@@ -34,6 +34,24 @@ REPORT_DECLARATION = (
     "不构成自动合规判断或投标有效性认定，最终由专业人员确认。"
 )
 
+# 阶段 6D-2：AI 辅助生成标识（《人工智能生成合成内容标识办法》显式标识）。
+# 渲染时从配置读取模型显示名与固定提示文案；声明不承诺结果完全准确，
+# 明确候选证据须人工确认。历史报告资产不因配置变化被改写。
+AI_DISCLOSURE_LINES = (
+    "**AI 辅助生成声明：** 本报告由系统在人工智能模型辅助下生成/规划，"
+    "须人工复核后再行使用；报告不承诺结果完全准确，"
+    "报告中的检索结果与候选证据仅作为线索，"
+    "必须经具备相应权限的专业人员确认后方可采信。"
+)
+
+
+def ai_disclosure_markdown() -> str:
+    """渲染 AI 辅助生成声明（含配置的模型显示名）。"""
+    model = settings.ai_model_display_name.strip()
+    if model:
+        return f"{AI_DISCLOSURE_LINES} 参与生成/规划的模型：{model}。"
+    return AI_DISCLOSURE_LINES
+
 SEVERITY_LABELS = {"high": "高风险", "medium": "中风险", "low": "低风险"}
 STATUS_LABELS = {
     "pending_review": "待复核",
@@ -782,6 +800,8 @@ def render_review_report_markdown(
         "## 1. 报告声明",
         "",
         REPORT_DECLARATION,
+        "",
+        ai_disclosure_markdown(),
         "",
         "## 2. 项目与审查运行信息",
         "",

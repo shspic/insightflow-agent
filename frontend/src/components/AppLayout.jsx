@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import SiteFooter from "./SiteFooter";
 import { Button, Dropdown, IconButton, Select, Tooltip } from "./common";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -112,6 +113,7 @@ export default function AppLayout() {
         <main id="main-content" className="app-content" tabIndex="-1">
           <Outlet />
         </main>
+        <SiteFooter />
       </div>
     </div>
   );

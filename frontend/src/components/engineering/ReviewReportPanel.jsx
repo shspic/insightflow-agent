@@ -5,6 +5,7 @@ import {
   fetchReviewReports,
   generateReviewReport,
 } from "../../api/engineeringReviews";
+import { fetchPublicSite } from "../../api/site";
 import {
   Alert,
   Button,
@@ -115,6 +116,20 @@ function ReportVersionList({ reports, selectedReportId, onSelect }) {
 }
 
 function ReportDetail({ report }) {
+  // 阶段 6D-2：AI 辅助生成固定提示（来自公开配置）
+  const [aiNotice, setAiNotice] = useState("AI 辅助生成，须人工复核");
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicSite()
+      .then((data) => {
+        if (!cancelled && data.ai_assisted_notice) setAiNotice(data.ai_assisted_notice);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const severityCounts = {
     high: report.high_count ?? 0,
     medium: report.medium_count ?? 0,
@@ -194,6 +209,13 @@ function ReportDetail({ report }) {
 
       <Alert title="产品边界" tone="info">
         {PRODUCT_BOUNDARY}
+      </Alert>
+
+      <Alert title={aiNotice} tone="warning">
+        本报告由系统在人工智能模型辅助下生成/规划，须人工复核后再行使用；
+        报告不承诺结果完全准确，检索结果与候选证据仅作为线索，
+        必须经具备相应权限的专业人员确认后方可采信。
+        下载的 Markdown / PDF 文件均包含上述可见 AI 辅助生成声明（报告"报告声明"一节）。
       </Alert>
     </div>
   );
