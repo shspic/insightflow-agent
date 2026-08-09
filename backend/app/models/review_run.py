@@ -48,6 +48,9 @@ class ReviewRun(Base):
     review_brief_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     review_brief_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     rule_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    # input snapshot：pipeline 在真实字段抽取完成后自动生成规范 JSON 并计算哈希；
+    # Quality Gate 复算校验，评测脚本禁止手工写入。
+    input_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     input_snapshot_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     model_provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
     model_name: Mapped[str | None] = mapped_column(String(120), nullable=True)

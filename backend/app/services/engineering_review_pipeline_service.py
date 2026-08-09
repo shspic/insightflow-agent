@@ -31,6 +31,12 @@ from app.schemas.review import (
     StructuredFieldValue,
     StructuredReviewInput,
 )
+from app.services.evidence_provenance import (
+    FIELD_LOCATOR,
+    validate_pdf_page,
+    validate_spreadsheet_cell,
+    validate_text_chunk_index,
+)
 from app.services.review_action_service import (
     ReviewServiceError,
     create_evidence,
@@ -110,24 +116,35 @@ def run_engineering_review(
         fail_review_run(db, run, "REVIEW_EXTRACTION_FAILED", str(exc))
         raise PipelineError("REVIEW_EXTRACTION_FAILED", str(exc))
 
-    # 5. 创建 Evidence
+    # 5. 创建 Evidence（来源哈希 + 真实 locator 校验，失败时 fail run）
     start_review_run(db, run)
     try:
         evidence_records, evidence_index = _persist_evidence(db, run, workspace.id, owner_user_id, extraction.evidence_meta)
+    except PipelineError as exc:
+        fail_review_run(db, run, exc.code, exc.message)
+        raise
     except Exception as exc:
         fail_review_run(db, run, "REVIEW_EVIDENCE_ERROR", f"Evidence 创建失败: {exc}")
         raise PipelineError("REVIEW_EVIDENCE_ERROR", f"Evidence 创建失败: {exc}")
 
-    # 6. 执行规则
+    # 6. 结构化输入快照：真实字段抽取完成后自动持久化规范 JSON + SHA-256，
+    #    随后 Quality Gate 会复算校验；评测脚本禁止手工写入。
     doc_roles = {role: [files_by_role[role]["file"].id] for role in files_by_role}
     structured_input = StructuredReviewInput(fields=extraction.fields, document_roles=doc_roles)
+    try:
+        _persist_input_snapshot(db, run, structured_input)
+    except Exception as exc:
+        fail_review_run(db, run, "REVIEW_ENGINE_ERROR", f"结构化输入快照持久化失败: {exc}")
+        raise PipelineError("REVIEW_ENGINE_ERROR", f"结构化输入快照持久化失败: {exc}")
+
+    # 7. 执行规则
     try:
         rule_results = execute_all_rules(rule_pack.rules, structured_input)
     except Exception as exc:
         fail_review_run(db, run, "REVIEW_ENGINE_ERROR", f"规则引擎执行异常: {exc}")
         raise PipelineError("REVIEW_ENGINE_ERROR", str(exc))
 
-    # 7. 生成 Finding（精确证据绑定，异常时 fail run）
+    # 8. 生成 Finding（精确证据绑定，异常时 fail run）
     finding_count = 0
     failed_ids = []
     rule_def_map = {r.rule_id: r for r in rule_pack.rules}
@@ -146,7 +163,7 @@ def run_engineering_review(
             fail_review_run(db, run, "REVIEW_ENGINE_ERROR", f"Finding 创建失败 [{rule_id}]: {exc}")
             raise PipelineError("REVIEW_ENGINE_ERROR", f"Finding 创建失败 [{rule_id}]: {exc}")
 
-    # 8. 计算通过规则
+    # 9. 计算通过规则
     all_ids = {r.rule_id for r in rule_pack.rules}
     passed_ids = sorted(all_ids - set(failed_ids))
 
@@ -377,7 +394,8 @@ def _extract_qualification(result: ExtractionResult, f: File):
 def _extract_clarification(result: ExtractionResult, f: File):
     if not f.file_type or f.file_type.lower() not in ("md", "markdown"):
         return
-    result.evidence_meta.append((EvidenceCreate(file_id=f.id, locator_type="text_chunk", chunk_id=1,
+    # chunk_id 与 Corpus text_chunk_index 统一为 0-based
+    result.evidence_meta.append((EvidenceCreate(file_id=f.id, locator_type="text_chunk", chunk_id=0,
         quote="项目澄清文件已确认", parser_name=PARSER_NAME, parser_version=PARSER_VERSION), "clarification_document", "presence"))
 
 
@@ -700,11 +718,24 @@ def _persist_evidence(
     db: Session, run: ReviewRun, workspace_id: int, owner_user_id: int,
     evidence_meta: list[tuple[EvidenceCreate, str, str]],
 ) -> tuple[list[Evidence], dict[str, list[int]]]:
-    """持久化 Evidence 并建立精确索引。"""
+    """持久化 Evidence 并建立精确索引。
+
+    契约（阶段 6A）：
+    - 每条确定性管道 Evidence：provenance_type=field_locator；
+    - 创建前按真实文件校验 locator（PDF page / Excel sheet+cell / text chunk 编号）；
+    - 创建后必须携带 source_file_hash，缺失即失败（来源不可锚定）。
+    """
     records = []
     evidence_index: dict[str, list[int]] = {}
     for ev_create, field_marker, ev_role in evidence_meta:
-        record = create_evidence(db, review_run_id=run.id, workspace_id=workspace_id, owner_user_id=owner_user_id, evidence=ev_create)
+        _validate_locator_exists(db, ev_create)
+        ev_typed = ev_create.model_copy(update={"provenance_type": FIELD_LOCATOR})
+        record = create_evidence(db, review_run_id=run.id, workspace_id=workspace_id, owner_user_id=owner_user_id, evidence=ev_typed)
+        if record.source_file_hash is None:
+            raise PipelineError(
+                "REVIEW_EVIDENCE_PROVENANCE_UNAVAILABLE",
+                f"Evidence 来源文件哈希缺失（file_id={ev_create.file_id}），无法锚定来源",
+            )
         records.append(record)
         # 按角色索引
         if ev_role == "field_value":
@@ -719,3 +750,42 @@ def _persist_evidence(
             evidence_index[key] = []
         evidence_index[key].append(record.id)
     return records, evidence_index
+
+
+def _validate_locator_exists(db: Session, ev_create: EvidenceCreate) -> None:
+    """创建前按真实文件校验定位存在（PDF page / Excel sheet+cell / text chunk 编号）。
+
+    定位不存在 → REVIEW_EVIDENCE_LOCATOR_INVALID（运行失败，不产生无锚证据）。
+    """
+    from app.models.file import File
+
+    file_record = db.query(File).filter(File.id == ev_create.file_id).first()
+    if file_record is None:
+        raise PipelineError("REVIEW_EVIDENCE_LOCATOR_INVALID",
+                            f"证据定位文件不存在（file_id={ev_create.file_id}）")
+    path = file_record.file_path
+    if ev_create.locator_type == "pdf_page":
+        if not validate_pdf_page(path, ev_create.page_number):
+            raise PipelineError("REVIEW_EVIDENCE_LOCATOR_INVALID",
+                                f"证据定位无效：PDF page {ev_create.page_number} 不存在")
+    elif ev_create.locator_type == "spreadsheet_cell":
+        if not validate_spreadsheet_cell(path, ev_create.sheet_name, ev_create.cell_range):
+            raise PipelineError("REVIEW_EVIDENCE_LOCATOR_INVALID",
+                                "证据定位无效：Excel sheet/cell 不存在")
+    elif ev_create.locator_type == "text_chunk":
+        if not validate_text_chunk_index(path, ev_create.chunk_id):
+            raise PipelineError("REVIEW_EVIDENCE_LOCATOR_INVALID",
+                                f"证据定位无效：text chunk {ev_create.chunk_id} 不存在")
+
+
+def _persist_input_snapshot(db: Session, run: ReviewRun, structured_input: StructuredReviewInput) -> None:
+    """把真实抽取的结构化输入持久化为规范 JSON + SHA-256（sort_keys）。
+
+    快照在规则执行前写入，Quality Gate 复算校验；评测脚本禁止直接写这两个字段。
+    """
+    payload = structured_input.model_dump()
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    run.input_snapshot_json = serialized
+    run.input_snapshot_hash = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    db.commit()
+    db.refresh(run)

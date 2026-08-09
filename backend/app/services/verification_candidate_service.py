@@ -36,6 +36,7 @@ from app.services.engineering_retrieval_service import (
     build_workspace_corpus,
     get_index_status,
 )
+from app.services.evidence_provenance import CORPUS_CHUNK
 from app.services.review_action_service import create_evidence
 
 COMPLETED_VERIFICATION_STATUSES = ("completed", "completed_with_warnings")
@@ -387,9 +388,9 @@ def _revalidate_candidate(
 
 
 def _evidence_chunk_id_for(chunk: CorpusChunk) -> int:
-    """text_chunk 定位使用真实 text_chunk_index；不得从字符串 chunk_id 猜数字。"""
+    """text_chunk 定位使用真实 text_chunk_index（0-based，与 Corpus 编号契约一致）。"""
     value = chunk.text_chunk_index
-    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise CandidateDecisionError(
             "VERIFICATION_CANDIDATE_INVALID",
             "无法从当前语料获得可靠的 text_chunk_index，已拒绝采纳",
@@ -565,7 +566,9 @@ def create_candidate_decision(
         candidate=candidate,
     )
 
-    # 构造 EvidenceCreate（text_chunk 使用真实 text_chunk_index）
+    # 构造 EvidenceCreate（text_chunk 使用真实 text_chunk_index，0-based）；
+    # 检索候选来源固定为 corpus_chunk：保存 candidate 对应的真实
+    # chunk_id/content_hash（服务端从当前真实 Corpus 重定位取得，不信任客户端）。
     evidence_input = EvidenceCreate(
         file_id=chunk.file_id,
         locator_type=chunk.locator_type,
@@ -580,6 +583,9 @@ def create_candidate_decision(
         quote=quote,
         parser_name=chunk.parser_name,
         parser_version=chunk.parser_version,
+        provenance_type=CORPUS_CHUNK,
+        source_chunk_id=chunk.chunk_id,
+        source_chunk_hash=chunk.content_hash,
     )
 
     from app.services.review_engine_service import _compute_evidence_hash

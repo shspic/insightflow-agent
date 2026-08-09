@@ -128,10 +128,25 @@ def _fresh_run(db, d, *, evidence_json="[1]", rule_version="1", rule_id="SYN-NUM
                     review_brief_snapshot_json=brief_snap)
     db.add(run); db.commit()
     run_id = run.id
+    # 阶段 6A 契约：Evidence 必须携带来源完整性字段。
+    # content_hash = 证据记录规范哈希（7 字段公式，与 create_evidence 一致）；
+    # source_file_hash = 真实来源文件字节 SHA-256；provenance=field_locator。
+    from app.services.review_engine_service import _compute_evidence_hash
+    from app.services.evidence_provenance import FIELD_LOCATOR, compute_file_sha256_safe
+
+    target_md = Path(settings.upload_dir) / "f2.md"
+    ev_file_id = d["file_ids"]["personnel_equipment_data"]
+    ev_data = {
+        "file_id": ev_file_id, "locator_type": "text_chunk",
+        "page_number": None, "sheet_name": None, "cell_range": None,
+        "chunk_id": 0, "quote": "人员数量 4",
+    }
     ev = Evidence(review_run_id=run_id, workspace_id=d["workspace"], owner_user_id=d["user"],
-                  file_id=d["file_ids"]["personnel_equipment_data"], locator_type="text_chunk",
+                  file_id=ev_file_id, locator_type="text_chunk",
                   chunk_id=0, quote="人员数量 4",
-                  content_hash=hashlib.sha256("角色 personnel_equipment_data 材料".encode()).hexdigest(),
+                  content_hash=_compute_evidence_hash(ev_data),
+                  provenance_type=FIELD_LOCATOR,
+                  source_file_hash=compute_file_sha256_safe(str(target_md)),
                   parser_name="p", parser_version="1")
     db.add(ev); db.commit()
     ev_id = ev.id
@@ -562,7 +577,7 @@ class TestQualityGateBlocks:
             stale_check = [c for c in result["quality_gate"]["checks"]
                            if c["check_code"] == "EVIDENCE_STALE"]
             assert stale_check
-            assert "当前内容哈希与证据不一致" in stale_check[0]["safe_message"]
+            assert "来源文件内容已变化" in stale_check[0]["safe_message"]
         finally:
             target.write_text(self.ORIGINAL_F2, encoding="utf-8")
         db.close()

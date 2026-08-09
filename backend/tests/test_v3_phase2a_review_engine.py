@@ -669,9 +669,14 @@ class TestEvidenceRealValidation:
             EvidenceCreate(file_id=1, locator_type="pdf_page", page_number=0,
                            quote="test", parser_name="p", parser_version="1")
 
-    def test_locator_chunk_id_zero_rejected(self):
-        with pytest.raises(ValueError, match="≥ 1"):
-            EvidenceCreate(file_id=1, locator_type="text_chunk", chunk_id=0,
+    def test_locator_chunk_id_zero_legal(self):
+        """阶段 6A 契约：text_chunk 编号统一 0-based，chunk_id=0 必须合法。"""
+        ev = EvidenceCreate(file_id=1, locator_type="text_chunk", chunk_id=0,
+                            quote="test", parser_name="p", parser_version="1")
+        assert ev.chunk_id == 0
+        # 负数仍然拒绝
+        with pytest.raises(ValueError, match="≥ 0"):
+            EvidenceCreate(file_id=1, locator_type="text_chunk", chunk_id=-1,
                            quote="test", parser_name="p", parser_version="1")
 
     def test_locator_empty_sheet_rejected(self):

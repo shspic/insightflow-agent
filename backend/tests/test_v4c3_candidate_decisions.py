@@ -872,7 +872,8 @@ class TestServerRevalidation:
         corpus, _ = build_workspace_corpus(db_session, ws_id, owner_id)
         chunk = next(c for c in corpus if c.chunk_id == cand["chunk_id"])
         assert ev["chunk_id"] == chunk.text_chunk_index
-        assert isinstance(ev["chunk_id"], int) and ev["chunk_id"] >= 1
+        # 0-based 契约：text_chunk_index 从 0 开始，0 是合法值
+        assert isinstance(ev["chunk_id"], int) and ev["chunk_id"] >= 0
 
     def _add_text_chunk_candidate(self, client, db_session, ws_id, rid, vrid, h):
         from app.agents.engineering_tool_registry import (

@@ -35,6 +35,10 @@ from app.services.engineering_retrieval_service import (
     build_workspace_corpus,
     get_index_status,
 )
+from app.services.evidence_provenance import (
+    CORPUS_CHUNK,
+    compute_file_sha256_safe,
+)
 from app.services.engineering_verification_service import (
     MCP_PREFLIGHT_VERSION,
     MCP_TOOL_CONTRACT_VERSION,
@@ -52,7 +56,9 @@ from app.services.review_rule_service import (
 )
 
 GRAPH_VERSION = "5b.1"
-QUALITY_GATE_VERSION = "1.0"
+# 2.0：Evidence 来源完整性（provenance/文件哈希/chunk 哈希）与
+# input snapshot 契约校验（阶段 6A 补修）；版本变化使旧结果不参与幂等复用。
+QUALITY_GATE_VERSION = "2.0"
 MAX_STEP_RETRIES_DEFAULT = 1
 
 SUPERVISOR_NODE_ORDER = ("extraction", "verification", "quality_review", "reporting")
@@ -66,9 +72,14 @@ NEEDS_HUMAN_STATUSES = ("needs_human", "failed")
 GATE_EVIDENCE_MISSING = "EVIDENCE_MISSING"
 GATE_EVIDENCE_INVALID = "EVIDENCE_INVALID"
 GATE_EVIDENCE_STALE = "EVIDENCE_STALE"
+# 历史 Evidence 缺来源完整性字段（provenance_type/source_file_hash）：
+# 独立稳定错误，进入 needs_human，禁止静默放行。
+GATE_EVIDENCE_PROVENANCE_MISSING = "EVIDENCE_PROVENANCE_MISSING"
 GATE_RULE_NOT_FOUND = "RULE_NOT_FOUND"
 GATE_RULE_VERSION_MISMATCH = "RULE_VERSION_MISMATCH"
 GATE_RULE_INPUT_MISSING = "RULE_INPUT_MISSING"
+# input snapshot 契约：快照存在但哈希不一致 / 无法解析 / 缺少规则所需输入。
+GATE_INPUT_SNAPSHOT_MISMATCH = "INPUT_SNAPSHOT_MISMATCH"
 GATE_NUMERIC_PROVENANCE_MISSING = "NUMERIC_PROVENANCE_MISSING"
 GATE_PERMANENT = "PERMANENT_VALIDATION_ERROR"
 
@@ -567,49 +578,102 @@ def _run_quality_gate(
     warnings: list[str] = []
     related_file_ids: list[int] = []
 
-    # 当前 Workspace Corpus 定位索引（复用检索服务，懒构建一次）；
-    # 构建失败返回 None → 所有证据保守判定 STALE（无法核对当前语料）。
-    corpus_locator_index = None
+    # 当前 Workspace Corpus 的 chunk_id → CorpusChunk 索引（复用检索服务，懒构建一次）；
+    # 仅 corpus_chunk provenance 需要；构建失败 → 按 STALE 处理。
+    chunk_id_index: dict[str, Any] | None = None
+    file_hash_cache: dict[int, str | None] = {}
 
-    def _stale_reason(ev: Evidence) -> str | None:
-        """Evidence 在当前 Corpus 中精确定位；返回 None 表示未过期，否则返回安全原因。"""
-        nonlocal corpus_locator_index
-        if corpus_locator_index is None:
-            try:
-                chunks, _warnings = build_workspace_corpus(
-                    db, run.workspace_id, run.owner_user_id)
-                index: dict[tuple, list[Any]] = {}
-                for c in chunks:
-                    if c.locator_type == "pdf_page":
-                        key = (c.file_id, "pdf_page", c.page_number)
-                    elif c.locator_type == "spreadsheet_cell":
-                        key = (c.file_id, "spreadsheet_cell", c.sheet_name, c.cell_range)
-                    elif c.locator_type == "text_chunk":
-                        key = (c.file_id, "text_chunk", c.text_chunk_index)
-                    else:
-                        continue
-                    index.setdefault(key, []).append(c)
-                corpus_locator_index = index
-            except Exception:
-                corpus_locator_index = None
-        if corpus_locator_index is None:
-            return "无法核对当前语料，视为过期"
+    def _current_file_hash(file_id: int) -> str | None:
+        """当前安全文件字节 SHA-256（每个文件只读一次）。"""
+        if file_id in file_hash_cache:
+            return file_hash_cache[file_id]
+        file_record = db.scalar(select(File).where(File.id == file_id))
+        value = (
+            compute_file_sha256_safe(file_record.file_path)
+            if file_record is not None
+            else None
+        )
+        file_hash_cache[file_id] = value
+        return value
 
+    def _ensure_corpus_index() -> bool:
+        """构建 chunk_id → CorpusChunk 索引；失败返回 False（调用方按 STALE 处理）。"""
+        nonlocal chunk_id_index
+        if chunk_id_index is not None:
+            return True
+        try:
+            chunks, _warnings = build_workspace_corpus(
+                db, run.workspace_id, run.owner_user_id)
+            by_chunk_id: dict[str, Any] = {}
+            for c in chunks:
+                by_chunk_id[c.chunk_id] = c
+            chunk_id_index = by_chunk_id
+            return True
+        except Exception:
+            chunk_id_index = None
+            return False
+
+    def _stale_check(ev: Evidence) -> tuple[str, str] | None:
+        """Evidence 来源完整性检查。
+
+        1. 复算 Evidence.content_hash（记录自身哈希）→ 被篡改则 STALE；
+        2. 来源字段缺失（历史证据）→ EVIDENCE_PROVENANCE_MISSING；
+        3. 当前安全文件 SHA 与 source_file_hash 比对；
+        4. field_locator 按真实 locator 校验（PDF page / Excel sheet+cell /
+           text chunk 编号）；corpus_chunk 重新定位 chunk 并核对 source_chunk_hash。
+        返回 (错误码, 安全消息) 或 None（未过期）。消息不含磁盘路径。
+        """
+        from app.services.evidence_provenance import (
+            validate_pdf_page,
+            validate_spreadsheet_cell,
+            validate_text_chunk_index,
+        )
+        from app.services.review_engine_service import _compute_evidence_hash
+
+        record_hash = _compute_evidence_hash({
+            "file_id": ev.file_id, "locator_type": ev.locator_type,
+            "page_number": ev.page_number, "sheet_name": ev.sheet_name,
+            "cell_range": ev.cell_range, "chunk_id": ev.chunk_id,
+            "quote": ev.quote,
+        })
+        if record_hash != ev.content_hash:
+            return GATE_EVIDENCE_STALE, "证据记录哈希不一致，记录可能被篡改"
+
+        if ev.provenance_type is None or not ev.source_file_hash:
+            return GATE_EVIDENCE_PROVENANCE_MISSING, "历史证据缺少来源完整性字段"
+
+        current_file_hash = _current_file_hash(ev.file_id)
+        if current_file_hash is None:
+            return GATE_EVIDENCE_STALE, "来源文件不可用，无法核对"
+        if current_file_hash != ev.source_file_hash:
+            return GATE_EVIDENCE_STALE, "来源文件内容已变化"
+
+        if ev.provenance_type == CORPUS_CHUNK:
+            if not _ensure_corpus_index():
+                return GATE_EVIDENCE_STALE, "无法核对当前语料，视为过期"
+            chunk = (chunk_id_index or {}).get(ev.source_chunk_id or "")
+            if chunk is None:
+                return GATE_EVIDENCE_STALE, "来源文本块在当前语料中不存在"
+            if chunk.content_hash != ev.source_chunk_hash:
+                return GATE_EVIDENCE_STALE, "来源文本块哈希不一致"
+            return None
+
+        # field_locator：按真实文件校验 locator（与 pipeline 创建时同一套校验）。
+        # 单格定位（如 "B3"）不等于 Corpus 分块区间（如 "A1:F50"），
+        # 不能用语料块键比对；直接校验 page/sheet+cell/chunk 编号存在。
+        file_record = db.scalar(select(File).where(File.id == ev.file_id))
+        path = file_record.file_path if file_record is not None else ""
         if ev.locator_type == "pdf_page":
-            key = (ev.file_id, "pdf_page", ev.page_number)
+            if not validate_pdf_page(path, ev.page_number):
+                return GATE_EVIDENCE_STALE, "定位在当前语料中不存在"
         elif ev.locator_type == "spreadsheet_cell":
-            key = (ev.file_id, "spreadsheet_cell", ev.sheet_name, ev.cell_range)
+            if not validate_spreadsheet_cell(path, ev.sheet_name, ev.cell_range):
+                return GATE_EVIDENCE_STALE, "定位在当前语料中不存在"
         elif ev.locator_type == "text_chunk":
-            key = (ev.file_id, "text_chunk", ev.chunk_id)
+            if not validate_text_chunk_index(path, ev.chunk_id):
+                return GATE_EVIDENCE_STALE, "定位在当前语料中不存在"
         else:
-            return "定位类型无效"
-        matches = corpus_locator_index.get(key) or []
-        if not matches:
-            return "定位在当前语料中不存在"
-        if len(matches) > 1:
-            return "定位在当前语料中不再唯一"
-        if matches[0].content_hash != ev.content_hash:
-            return "当前内容哈希与证据不一致"
+            return GATE_EVIDENCE_STALE, "定位类型无效"
         return None
 
     for f in findings:
@@ -670,13 +734,15 @@ def _run_quality_gate(
                 errors.append(GATE_EVIDENCE_INVALID)
                 valid_evidence = False
                 continue
-            # EVIDENCE_STALE：与当前 Corpus 精确定位并核对内容哈希
-            stale = _stale_reason(ev)
+            # EVIDENCE_STALE / EVIDENCE_PROVENANCE_MISSING：
+            # 记录哈希复算 + 来源文件哈希 + 真实 locator / chunk 核对
+            stale = _stale_check(ev)
             if stale is not None:
-                checks.append(_gate_check(GATE_EVIDENCE_STALE, f.id, eid,
+                code, safe_msg = stale
+                checks.append(_gate_check(code, f.id, eid,
                                           retryable=False,
-                                          msg=f"{safe_msg} 证据 {eid} {stale}"))
-                errors.append(GATE_EVIDENCE_STALE)
+                                          msg=f"{safe_msg} 证据 {eid}"))
+                errors.append(code)
                 valid_evidence = False
                 continue
             # 只有完全有效的 Evidence 才计入 related_file_ids
@@ -686,14 +752,17 @@ def _run_quality_gate(
             need_more_info.append(f.id)
             continue
 
-        # 规则声明了必需的结构化输入，但 ReviewRun 没有输入快照 → 阻断
-        if rule.inputs and not run.input_snapshot_hash:
-            checks.append(_gate_check(GATE_RULE_INPUT_MISSING, f.id, ev_ids[0],
-                                      retryable=False,
-                                      msg=f"{safe_msg} 规则所需结构化输入缺失"))
-            errors.append(GATE_RULE_INPUT_MISSING)
-            need_more_info.append(f.id)
-            continue
+        # input snapshot 契约：存在、SHA-256 一致、规则必需输入在场
+        if rule.inputs:
+            snap_err = _input_snapshot_error(run, rule)
+            if snap_err is not None:
+                code, safe_msg = snap_err
+                checks.append(_gate_check(code, f.id, ev_ids[0],
+                                          retryable=False,
+                                          msg=f"{safe_msg} 规则 {rule.rule_id}"))
+                errors.append(code)
+                need_more_info.append(f.id)
+                continue
 
         # 数字结论来源：规则类型为 numeric_threshold 且无可靠计算来源 → 阻断
         if rule.type == "numeric_threshold" and not _has_numeric_provenance(f, ev_ids):
@@ -736,6 +805,35 @@ def _run_quality_gate(
         "errors": errors,
         "warnings": warnings,
     }
+
+
+def _input_snapshot_error(run: ReviewRun, rule) -> tuple[str, str] | None:
+    """input snapshot 契约校验。
+
+    1. snapshot 必须存在（json + hash）；
+    2. SHA-256(快照 JSON) 必须与 input_snapshot_hash 一致；
+    3. 规则声明的必需输入字段必须存在于快照中。
+    返回 (错误码, 安全消息)；通过返回 None。错误信息不含磁盘路径。
+    """
+    if not run.input_snapshot_hash or not run.input_snapshot_json:
+        return GATE_RULE_INPUT_MISSING, "规则所需结构化输入缺失"
+    actual = hashlib.sha256(run.input_snapshot_json.encode("utf-8")).hexdigest()
+    if actual != run.input_snapshot_hash:
+        return GATE_INPUT_SNAPSHOT_MISMATCH, "结构化输入快照哈希不一致"
+    try:
+        snapshot = json.loads(run.input_snapshot_json)
+    except json.JSONDecodeError:
+        return GATE_INPUT_SNAPSHOT_MISMATCH, "结构化输入快照无法解析"
+    if not isinstance(snapshot, dict):
+        return GATE_INPUT_SNAPSHOT_MISMATCH, "结构化输入快照结构非法"
+    fields = snapshot.get("fields")
+    if not isinstance(fields, dict):
+        return GATE_INPUT_SNAPSHOT_MISMATCH, "结构化输入快照缺少字段表"
+    required = rule.inputs.get("fields") or []
+    missing = [p for p in required if p not in fields]
+    if missing:
+        return GATE_INPUT_SNAPSHOT_MISMATCH, "结构化输入快照缺少规则所需字段"
+    return None
 
 
 def _has_numeric_provenance(finding: ReviewFinding, ev_ids: list[int]) -> bool:

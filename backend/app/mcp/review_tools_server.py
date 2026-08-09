@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from typing import Any
 
@@ -49,6 +50,42 @@ from app.services.review_rule_service import RuleLoadError, load_rule_pack_from_
 ALLOWED_MCP_TOOL_NAMES = frozenset(
     {"search_review_rules", "run_bid_consistency_checks"}
 )
+
+
+class FaultInjector:
+    """受控瞬时故障注入（仅真实评测脚本显式启用，默认完全关闭）。
+
+    阶段 6A 局部重试真实评测：对指定工具的前 N 次调用返回
+    ENGINEERING_MCP_UNAVAILABLE（可重试错误码），随后恢复正常。
+    环境变量：ENGINEERING_MCP_FAULT_TOOL（工具名）、
+    ENGINEERING_MCP_FAULT_FIRST_N（前 N 次调用失败，默认 1）。
+    未设置环境变量时行为与不注入完全一致，不影响正常部署。
+    """
+
+    def __init__(self) -> None:
+        self._tool = os.environ.get("ENGINEERING_MCP_FAULT_TOOL", "")
+        self._remaining = 0
+        if self._tool:
+            raw = os.environ.get("ENGINEERING_MCP_FAULT_FIRST_N", "1")
+            try:
+                self._remaining = max(1, int(raw))
+            except ValueError:
+                self._remaining = 1
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self._tool)
+
+    def should_fail(self, tool_name: str) -> bool:
+        if not self._tool or tool_name != self._tool:
+            return False
+        if self._remaining <= 0:
+            return False
+        self._remaining -= 1
+        return True
+
+
+_FAULT_INJECTOR = FaultInjector()
 
 TOOL_DESCRIPTIONS: dict[str, str] = {
     "search_review_rules": "在当前工程审查规则包中检索与问题相关的规则",
@@ -378,6 +415,13 @@ def build_review_tools_mcp_server() -> MCPServer:
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         del ctx
+        if _FAULT_INJECTOR.should_fail("search_review_rules"):
+            return {"schema_version": "1.0", "tool_name": "search_review_rules",
+                    "status": "error", "error_code": MCPErrorCode.UNAVAILABLE,
+                    "message": "MCP 服务不可用，请稍后重试",
+                    "request_id": request_id, "latency_ms": 0,
+                    "rule_pack_id": "", "rule_pack_version": "",
+                    "results": [], "warnings": []}
         payload = SearchReviewRulesInput(
             workspace_id=workspace_id,
             review_run_id=review_run_id,
@@ -416,6 +460,12 @@ def build_review_tools_mcp_server() -> MCPServer:
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         del ctx
+        if _FAULT_INJECTOR.should_fail("run_bid_consistency_checks"):
+            return {"schema_version": "1.0", "tool_name": "run_bid_consistency_checks",
+                    "status": "error", "error_code": MCPErrorCode.UNAVAILABLE,
+                    "message": "MCP 服务不可用，请稍后重试",
+                    "request_id": request_id, "latency_ms": 0,
+                    "review_run_id": review_run_id, "checks": [], "warnings": []}
         payload = RunBidConsistencyChecksInput(
             workspace_id=workspace_id,
             review_run_id=review_run_id,

@@ -161,6 +161,7 @@ def create_evidence(
     commit=False 时只 flush 不提交，由调用方把 Evidence 与其他写入
     放进同一个事务（阶段 4C-3 候选采纳闭环使用）；默认保持旧行为。
     """
+    from app.services.evidence_provenance import compute_file_sha256_safe
     from app.services.review_engine_service import _compute_evidence_hash
 
     # 1. 校验 ReviewRun
@@ -199,6 +200,10 @@ def create_evidence(
         raise ReviewServiceError(f"文件 {evidence.file_id} 未关联到工作区 {workspace_id}")
 
     # 计算哈希并持久化
+    # content_hash：证据记录规范哈希（保持既有公式不变）；
+    # source_file_hash：来源文件字节 SHA-256，由服务端根据安全解析后的
+    # 当前文件计算，禁止信任客户端传入。文件不可安全读取时保持 NULL，
+    # 由 Quality Gate 按 EVIDENCE_PROVENANCE_MISSING 阻断。
     evidence_data = {
         "file_id": evidence.file_id,
         "locator_type": evidence.locator_type,
@@ -209,6 +214,7 @@ def create_evidence(
         "quote": evidence.quote,
     }
     content_hash = _compute_evidence_hash(evidence_data)
+    source_file_hash = compute_file_sha256_safe(file_record.file_path)
 
     record = Evidence(
         review_run_id=review_run_id,
@@ -222,6 +228,10 @@ def create_evidence(
         chunk_id=evidence.chunk_id,
         quote=evidence.quote,
         content_hash=content_hash,
+        provenance_type=evidence.provenance_type,
+        source_file_hash=source_file_hash,
+        source_chunk_id=evidence.source_chunk_id if evidence.provenance_type == "corpus_chunk" else None,
+        source_chunk_hash=evidence.source_chunk_hash if evidence.provenance_type == "corpus_chunk" else None,
         parser_name=evidence.parser_name,
         parser_version=evidence.parser_version,
     )

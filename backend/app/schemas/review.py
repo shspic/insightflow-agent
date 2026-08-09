@@ -122,7 +122,12 @@ class StructuredReviewInput(BaseModel):
 
 
 class EvidenceCreate(BaseModel):
-    """创建单条证据的输入。"""
+    """创建单条证据的输入。
+
+    来源完整性字段（provenance_type / source_chunk_*）仅由服务端代码填写；
+    source_file_hash 由 create_evidence 按安全解析后的当前文件计算，
+    任何 API 客户端传入的来源哈希都不会被信任。
+    """
 
     file_id: int
     locator_type: Literal["pdf_page", "spreadsheet_cell", "text_chunk"]
@@ -133,6 +138,9 @@ class EvidenceCreate(BaseModel):
     quote: str = Field(min_length=1, max_length=2000)
     parser_name: str = Field(min_length=1, max_length=120)
     parser_version: str = Field(min_length=1, max_length=50)
+    provenance_type: Literal["field_locator", "corpus_chunk"] | None = None
+    source_chunk_id: str | None = Field(default=None, max_length=120)
+    source_chunk_hash: str | None = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def check_locator_fields(self) -> EvidenceCreate:
@@ -150,8 +158,11 @@ class EvidenceCreate(BaseModel):
         if lt == "text_chunk":
             if self.chunk_id is None:
                 raise ValueError("text_chunk 定位必须提供 chunk_id")
-            if self.chunk_id < 1:
-                raise ValueError("chunk_id 必须 ≥ 1")
+            if self.chunk_id < 0:
+                raise ValueError("chunk_id 必须 ≥ 0（0-based text_chunk_index）")
+        if self.provenance_type == "corpus_chunk":
+            if not self.source_chunk_id or not self.source_chunk_hash:
+                raise ValueError("corpus_chunk 来源必须提供 source_chunk_id 和 source_chunk_hash")
         return self
 
 
@@ -168,6 +179,10 @@ class EvidenceResponse(BaseModel):
     chunk_id: int | None
     quote: str
     content_hash: str
+    provenance_type: str | None
+    source_file_hash: str | None
+    source_chunk_id: str | None
+    source_chunk_hash: str | None
     parser_name: str
     parser_version: str
     created_at: datetime

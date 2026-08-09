@@ -16,8 +16,9 @@ PREVIOUS_REVISION = V2_02_REVISION
 V2_03_REVISION = "20260723_0004"
 V2_04_REVISION = "20260724_0005"
 V2_05_REVISION = "20260724_0006"
-HEAD_REVISION = "20260810_0013"
+HEAD_REVISION = "20260812_0014"
 PREV_5B_REVISION = "20260808_0012"
+PREV_6A_REVISION = "20260810_0013"
 V2_TABLES = {
     "users",
     "auth_sessions",
@@ -104,6 +105,15 @@ def test_alembic_upgrade_head_creates_v2_schema(tmp_path: Path, monkeypatch) -> 
     assert {"owner_user_id"}.issubset(_column_names(inspector, "files"))
     assert {"mime_type", "size_bytes"}.issubset(_column_names(inspector, "files"))
     assert "csrf_token_hash" in _column_names(inspector, "auth_sessions")
+    # 阶段 6A：Evidence 来源完整性字段 + ReviewRun.input_snapshot_json
+    assert {
+        "provenance_type",
+        "source_file_hash",
+        "source_chunk_id",
+        "source_chunk_hash",
+    }.issubset(_column_names(inspector, "evidences"))
+    assert "input_snapshot_json" in _column_names(inspector, "review_runs")
+    assert "input_snapshot_hash" in _column_names(inspector, "review_runs")
     assert {
         "source_type",
         "section_path",
@@ -1037,6 +1047,99 @@ def test_v5b_supervisor_migration_roundtrip_and_cascade(
     with reupgraded_engine.connect() as connection:
         assert connection.execute(text("SELECT COUNT(*) FROM review_supervisor_runs")).scalar_one() == 0
         assert connection.execute(text("SELECT COUNT(*) FROM review_supervisor_steps")).scalar_one() == 0
+    reupgraded_engine.dispose()
+
+
+def test_v6a_provenance_input_snapshot_migration_roundtrip(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """0014 增加 Evidence 来源完整性字段 + ReviewRun.input_snapshot_json。
+
+    upgrade→downgrade→upgrade 全程不丢失已有行；降级后新列消失、
+    既有数据原样保留；再次升级后列恢复且历史行保持 NULL（不改写历史）。
+    """
+    database_path = tmp_path / "v6a-provenance-roundtrip.db"
+    alembic_config = _build_alembic_config(database_path, monkeypatch)
+    command.upgrade(alembic_config, PREV_6A_REVISION)
+
+    engine = create_engine(_sqlite_url(database_path))
+    now = "2026-08-12 00:00:00"
+    rule_snapshot = '{"pack_id":"test","rules":[],"version":"1"}'
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users (id, username, password_hash, role, status, must_change_password, created_at, updated_at) "
+                "VALUES (1, 'v6a-migration', 'hash', 'user', 'active', 0, :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO workspaces (id, owner_user_id, name, workspace_type, review_template_key, status, created_at, updated_at) "
+                "VALUES (1, 1, '工程', 'engineering', 'engineering_bid_review_v1', 'active', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO files (id, owner_user_id, filename, file_type, file_path, status, created_at, updated_at) "
+                "VALUES (1, 1, 'f.pdf', 'pdf', 'storage/uploads/f.pdf', 'ready', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO review_runs (id, workspace_id, owner_user_id, review_template_key, status, "
+                "rule_pack_id, rule_pack_version, rule_pack_hash, rule_snapshot_json, review_brief_version, "
+                "review_brief_hash, review_brief_snapshot_json, created_at, updated_at) "
+                "VALUES (1, 1, 1, 'engineering_bid_review_v1', 'completed', 'test', '1', :hash, :rules, "
+                "1, :hash, :brief, :now, :now)"
+            ),
+            {"hash": "a" * 64, "rules": rule_snapshot, "brief": "{}", "now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO evidences (id, review_run_id, workspace_id, owner_user_id, file_id, "
+                "locator_type, quote, content_hash, parser_name, parser_version, created_at) "
+                "VALUES (1, 1, 1, 1, 1, 'pdf_page', '历史证据', :hash, 'p', '1', :now)"
+            ),
+            {"hash": "b" * 64, "now": now},
+        )
+    engine.dispose()
+
+    # upgrade 到 0014：新列出现，历史行 provenance 字段保持 NULL
+    command.upgrade(alembic_config, HEAD_REVISION)
+    upgraded_engine = create_engine(_sqlite_url(database_path))
+    upgraded_inspector = inspect(upgraded_engine)
+    ev_columns = _column_names(upgraded_inspector, "evidences")
+    assert {"provenance_type", "source_file_hash", "source_chunk_id", "source_chunk_hash"}.issubset(ev_columns)
+    assert "input_snapshot_json" in _column_names(upgraded_inspector, "review_runs")
+    with upgraded_engine.connect() as connection:
+        assert connection.execute(text("SELECT provenance_type FROM evidences WHERE id = 1")).scalar_one() is None
+        assert connection.execute(text("SELECT source_file_hash FROM evidences WHERE id = 1")).scalar_one() is None
+        assert connection.execute(text("SELECT input_snapshot_json FROM review_runs WHERE id = 1")).scalar_one() is None
+    upgraded_engine.dispose()
+
+    # downgrade 到 0013：新列消失，既有数据保留
+    command.downgrade(alembic_config, PREV_6A_REVISION)
+    downgraded_engine = create_engine(_sqlite_url(database_path))
+    downgraded_inspector = inspect(downgraded_engine)
+    assert "provenance_type" not in _column_names(downgraded_inspector, "evidences")
+    assert "input_snapshot_json" not in _column_names(downgraded_inspector, "review_runs")
+    with downgraded_engine.connect() as connection:
+        assert connection.execute(text("SELECT content_hash FROM evidences WHERE id = 1")).scalar_one() == "b" * 64
+        assert connection.execute(text("SELECT COUNT(*) FROM evidences")).scalar_one() == 1
+    downgraded_engine.dispose()
+
+    # 再次 upgrade：列恢复，历史行仍为 NULL
+    command.upgrade(alembic_config, HEAD_REVISION)
+    reupgraded_engine = create_engine(_sqlite_url(database_path))
+    reupgraded_inspector = inspect(reupgraded_engine)
+    assert "provenance_type" in _column_names(reupgraded_inspector, "evidences")
+    assert "input_snapshot_json" in _column_names(reupgraded_inspector, "review_runs")
+    with reupgraded_engine.connect() as connection:
+        assert connection.execute(text("SELECT provenance_type FROM evidences WHERE id = 1")).scalar_one() is None
+        assert connection.execute(text("SELECT COUNT(*) FROM evidences")).scalar_one() == 1
     reupgraded_engine.dispose()
 
 

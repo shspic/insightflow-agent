@@ -1,0 +1,143 @@
+{
+ "meta": {
+  "dataset_name": "engineering-review-v1",
+  "dataset_version": "1.1.0",
+  "case_id": "SYN-ENG-2026-001",
+  "files": {
+   "01_合成招标要求.pdf": {
+    "sha256": "fc9cde98c2c95eab3719bca176cdbf17328ef18b19783b70fb9536ca7b5db6a9",
+    "size_bytes": 12394
+   },
+   "02_合成投标响应.pdf": {
+    "sha256": "9715dd74a638c30cf539fa56d0a0f1548308ed845a0a0adf6966a3525d443079",
+    "size_bytes": 12715
+   },
+   "03_人员设备清单.xlsx": {
+    "sha256": "12c9b8ddec25d814d36939347f57a9b5306c11c9e7aba012b1a12e6d26d30c27",
+    "size_bytes": 31385
+   },
+   "04_合成资质附件.pdf": {
+    "sha256": "f2f73f3b47ca01ae6a4131069846a2ae9c197245813ae89e3a254f1ed3583c7b",
+    "size_bytes": 4187878
+   },
+   "05_项目澄清.md": {
+    "sha256": "ec454cc78881e3dffb36bedc5bef800f7da65758f47c7802c2117dfadd2a6ce8",
+    "size_bytes": 1247
+   }
+  },
+  "manifest.json": {
+   "sha256": "b986177c483736fb8ec89bc9fbbf69dd1d662aa99fa6c401af9b010c873d9cf9",
+   "size_bytes": 2434
+  },
+  "ground_truth.json": {
+   "sha256": "20d941669911f169867776593e7e903d8cb37d06cc0be166ef13c64e42a0249b",
+   "size_bytes": 11154
+  },
+  "retrieval_queries.json": {
+   "sha256": "d3b1cc8768e6d0a715f4fbe97332c36e05f04041818592632148df3a40041cac",
+   "size_bytes": 11165
+  },
+  "review_brief.json": {
+   "sha256": "59e7b7f43bc39cea93d6c1e1f9bf18ec8967936068824081cbc6bd950d8da80b",
+   "size_bytes": 1344
+  },
+  "rule_pack": {
+   "path": "backend/app/review_rules/engineering_bid_review_v1.yaml",
+   "sha256": "bdb63c023f944393c878bd1c69bc53f9d87b344fbb33ec7d0db0c4d0878ba53a"
+  },
+  "evaluation_code_sha256": "037e8595786f49fe45f70d0e99e6f6f9f06f3f22324ff82a4172fbc66e9b2c55",
+  "splits": {
+   "development": 20,
+   "validation": 8,
+   "test": 16
+  },
+  "evaluation_split_version": "1.0.0",
+  "split_mapping": {
+   "file_name": "split_mapping.json",
+   "sha256": "1e635f6f57ec1f304f20e4bc2980790d2e4258a434cb577dd020a64578ea7f32",
+   "development_query_ids": [
+    "Q001",
+    "Q002",
+    "Q003",
+    "Q004",
+    "Q005",
+    "Q006",
+    "Q007",
+    "Q008",
+    "Q009",
+    "Q010",
+    "Q011",
+    "Q013",
+    "Q015",
+    "Q017",
+    "Q019",
+    "Q023",
+    "Q024",
+    "Q025",
+    "Q040",
+    "Q043"
+   ],
+   "validation_query_ids": [
+    "Q012",
+    "Q014",
+    "Q016",
+    "Q018",
+    "Q020",
+    "Q021",
+    "Q022",
+    "Q039"
+   ],
+   "test_query_ids": [
+    "Q026",
+    "Q027",
+    "Q028",
+    "Q029",
+    "Q030",
+    "Q031",
+    "Q032",
+    "Q033",
+    "Q034",
+    "Q035",
+    "Q036",
+    "Q037",
+    "Q038",
+    "Q041",
+    "Q042",
+    "Q044"
+   ]
+  },
+  "git_commit": "d56cf6d4922edebd45a544bbc647efdda373bcc2",
+  "git_branch": "codex/stage-6a",
+  "git_dirty": true,
+  "python_version": "3.14.4",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "evaluated_at": "2026-08-09T16:57:03",
+  "embedding": {
+   "model_repo_id": "BAAI/bge-small-zh-v1.5",
+   "model_revision": "7999e1d3359715c523056ef9478215996d62a620"
+  },
+  "llm": {
+   "model": "deepseek-v4-pro",
+   "provider": "deepseek"
+  },
+  "supervisor_latency_ms": 19882.674699882045
+ },
+ "metrics": {
+  "answerable": {
+   "answerable_count": 38,
+   "recall@3_mean": 0.7632,
+   "recall@5_mean": 0.8553,
+   "mrr_mean": 0.721,
+   "count": 38,
+   "mean_ms": 16.0492,
+   "p50_ms": 15.56,
+   "p95_ms": 19.23
+  },
+  "no_answer": {
+   "no_answer_count": 6,
+   "false_positive_count": 6,
+   "false_positive_rate": 1.0
+  }
+ },
+ "failures_count": 15
+}
