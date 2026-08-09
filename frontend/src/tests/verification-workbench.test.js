@@ -62,3 +62,52 @@ test("候选证据边界说明固定展示", () => {
   assert.ok(source.includes("检索结果只是候选证据"), "缺少候选边界说明");
   assert.ok(source.includes("接受候选不会自动确认问题、降低风险或修改结论"), "缺少边界说明第二句");
 });
+
+test("MCP 工具中文名称展示", () => {
+  const source = readSource("components/engineering/VerificationPanel.jsx");
+  assert.ok(source.includes('search_review_rules: "MCP 规则检索"'), "缺少 search_review_rules 中文名");
+  assert.ok(source.includes('run_bid_consistency_checks: "MCP 一致性检查"'), "缺少 run_bid_consistency_checks 中文名");
+});
+
+test("检索/MCP/总调用数分离展示", () => {
+  const source = readSource("components/engineering/VerificationPanel.jsx");
+  assert.ok(source.includes("检索预算"), "缺少检索预算展示");
+  assert.ok(source.includes("MCP 调用"), "缺少 MCP 调用数展示");
+  assert.ok(source.includes("总调用"), "缺少总调用数展示");
+  assert.ok(source.includes("retrieval_tool_call_count"), "缺少检索调用计数字段");
+  assert.ok(source.includes("mcp_tool_call_count"), "缺少 MCP 调用计数字段");
+});
+
+test("MCP retry 链逐行展示不合并", () => {
+  const source = readSource("components/engineering/VerificationPanel.jsx");
+  assert.ok(source.includes("attempt_number"), "工具表保留 attempt 列");
+  assert.ok(source.includes("retry_of_id"), "工具表保留 retry_of 列");
+});
+
+test("MCP 关闭时不显示伪成功", () => {
+  const source = readSource("components/engineering/VerificationPanel.jsx");
+  assert.ok(source.includes("MCP 未启用：未执行 MCP 核验"), "缺少 MCP 关闭提示");
+  assert.ok(!source.includes("已使用 MCP") && !source.includes("MCP 已连接"), "不得显示 MCP 已使用");
+});
+
+test("general 页面不引入 Verification MCP", () => {
+  const detail = readSource("pages/WorkspaceDetail.jsx");
+  assert.ok(!detail.includes("VerificationPanel"), "general 页面不得引入 VerificationPanel");
+});
+
+test("MCP 警告展示与恢复建议", () => {
+  const source = readSource("components/engineering/VerificationPanel.jsx");
+  assert.ok(source.includes("ENGINEERING_MCP_UNAVAILABLE"), "缺少 UNAVAILABLE 错误提示");
+  assert.ok(source.includes("ENGINEERING_MCP_TIMEOUT"), "缺少 TIMEOUT 错误提示");
+  assert.ok(source.includes("ENGINEERING_MCP_DISCOVERY_ERROR"), "缺少 DISCOVERY 错误提示");
+  assert.ok(source.includes("核验上下文不完整"), "缺少核验上下文不完整提示");
+  assert.ok(source.includes("可稍后重试"), "缺少恢复建议");
+});
+
+test("核验详情遍历 detail.warnings 独立展示", () => {
+  const source = readSource("components/engineering/VerificationPanel.jsx");
+  assert.ok(source.includes("detail.warnings"), "组件必须读取 detail.warnings");
+  assert.ok(source.includes("detail.warnings.map"), "组件必须遍历 detail.warnings");
+  assert.ok(source.includes("detail.warnings.length > 0"), "warnings 为空时不渲染");
+  assert.ok(source.includes("核验警告"), "独立警告区标题");
+});

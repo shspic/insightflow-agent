@@ -35,6 +35,8 @@ import { formatDate } from "../../utils/ui";
 const TOOL_NAME_LABELS = {
   engineering_hybrid_retrieval: "混合检索",
   engineering_retrieval_index_prepare: "索引准备",
+  search_review_rules: "MCP 规则检索",
+  run_bid_consistency_checks: "MCP 一致性检查",
 };
 
 export default function VerificationPanel({ workspaceId, runs, activeRun, onSelectRun }) {
@@ -332,7 +334,19 @@ export default function VerificationPanel({ workspaceId, runs, activeRun, onSele
               <div><dt>Prompt 版本</dt><dd>{detail.prompt_version || "—"}</dd></div>
               <div><dt>Token 用量</dt><dd>{detail.token_usage ? JSON.stringify(detail.token_usage) : "—"}</dd></div>
               <div><dt>input_state_hash</dt><dd><code className="hash-text">{shortHash(detail.input_state_hash)}</code></dd></div>
-              <div><dt>工具预算</dt><dd>{detail.tool_calls_used} / {detail.tool_budget}</dd></div>
+              {detail.warnings && detail.warnings.length > 0 && (
+                <Alert title="核验警告" tone="warning">
+                  <ul>
+                    {detail.warnings.map((w, i) => (
+                      <li key={`warn-${i}`}>{w}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
+              <div><dt>检索预算</dt><dd>{detail.retrieval_tool_call_count ?? detail.tool_calls_used} / {detail.retrieval_budget ?? detail.tool_budget}</dd></div>
+              <div><dt>MCP 调用</dt><dd>{detail.mcp_tool_call_count ?? 0}（重试 {detail.mcp_retry_count ?? 0}）</dd></div>
+              <div><dt>总调用</dt><dd>{detail.total_tool_call_count ?? detail.tool_calls_used}</dd></div>
+              {detail.mcp_enabled === false && <div className="muted">MCP 未启用：未执行 MCP 核验</div>}
               <div><dt>成功 / 失败 / 重试</dt><dd>{detail.success_count} / {detail.failed_count} / {detail.retry_count}</dd></div>
               <div><dt>候选数</dt><dd>{detail.candidate_count}</dd></div>
               <div><dt>警告数</dt><dd>{detail.warning_count}</dd></div>
@@ -439,6 +453,13 @@ function toolErrorHint(errorCode) {
     ENGINEERING_RETRIEVAL_INDEX_STALE: "材料已变化，系统已通过索引重建后重试",
     ENGINEERING_RETRIEVAL_MODEL_UNAVAILABLE: "Embedding 模型不可用，请稍后重新运行核验",
     ENGINEERING_VERIFICATION_BUDGET_EXCEEDED: "工具预算耗尽，可提高预算后重新运行",
+    ENGINEERING_MCP_UNAVAILABLE: "MCP 服务不可用，核验上下文不完整；可稍后重试，候选检索不受影响",
+    ENGINEERING_MCP_TIMEOUT: "MCP 服务响应超时，已重试；核验上下文可能不完整",
+    ENGINEERING_MCP_DISCOVERY_ERROR: "MCP 工具发现失败，核验上下文不完整",
+    ENGINEERING_MCP_TOOL_NOT_ALLOWED: "MCP 工具未授权，核验上下文不完整",
+    ENGINEERING_MCP_REQUEST_INVALID: "MCP 请求参数不合法，核验上下文不完整",
+    ENGINEERING_MCP_RESPONSE_INVALID: "MCP 响应不合法，核验上下文不完整",
+    ENGINEERING_MCP_TOOL_ERROR: "MCP 工具执行失败，核验上下文不完整",
   };
   return hints[errorCode] || "可按错误码排查后重新运行核验";
 }

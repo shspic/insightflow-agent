@@ -572,6 +572,7 @@ def api_create_verification_run(
             review_run_id=run_id,
             use_deepseek=use_deepseek,
             max_tool_calls=max_tool_calls,
+            actor_user_id=user.id,  # 阶段 5A-2：MCP 调用者身份
         )
     except VerificationServiceError as e:
         raise _verification_error(e) from e
