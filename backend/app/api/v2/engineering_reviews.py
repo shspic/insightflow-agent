@@ -20,6 +20,7 @@ from app.schemas.review import (
     InterpretedIntent,
     ReviewBriefCreate,
     ReviewRulePack,
+    SupervisorRunCreate,
 )
 from app.services.review_action_service import (
     ReviewServiceError,
@@ -44,6 +45,13 @@ from app.services.engineering_review_pipeline_service import (
     PipelineError,
     run_engineering_review,
     _restore_rule_pack,
+)
+from app.services.engineering_supervisor_service import (
+    SupervisorServiceError,
+    get_supervisor_run,
+    list_supervisor_runs,
+    list_supervisor_steps,
+    run_supervisor,
 )
 from app.services.engineering_verification_service import (
     VerificationServiceError,
@@ -742,3 +750,108 @@ def api_list_candidate_decisions(
         )
     except CandidateDecisionError as e:
         raise _candidate_error(e) from e
+
+
+# ── Supervisor（阶段 5B）───────────────────────────────────────────
+
+
+def _supervisor_error(exc: SupervisorServiceError) -> HTTPException:
+    return HTTPException(
+        status_code=exc.status_code,
+        detail={"error_code": exc.code, "message": exc.message},
+    )
+
+
+@router.post(
+    "/review-runs/{run_id}/supervisor-runs",
+    status_code=status.HTTP_201_CREATED,
+)
+def api_create_supervisor_run(
+    workspace_id: int,
+    run_id: int,
+    payload: SupervisorRunCreate,
+    user: User = Depends(require_password_changed_csrf),
+    db: Session = Depends(get_db),
+):
+    """运行工程 Supervisor 状态机。
+
+    新建返回 201+reused=false；相同稳定输入复用返回 200+reused=true。
+    needs_human/failed 运行不伪装成功复用。
+    请求体使用严格 Pydantic Schema（extra=forbid、严格 bool/int 校验）。
+    """
+    _eng_ws(db, workspace_id, user.id)
+    _run_or_404(db, run_id, workspace_id, user.id)
+
+    try:
+        result, reused = run_supervisor(
+            db,
+            workspace_id=workspace_id,
+            owner_user_id=user.id,
+            review_run_id=run_id,
+            actor_user_id=user.id,
+            use_deepseek=payload.use_deepseek,
+            max_verification_tool_calls=payload.max_verification_tool_calls,
+            max_step_retries=payload.max_step_retries,
+            generate_report=payload.generate_report,
+        )
+    except SupervisorServiceError as e:
+        raise _supervisor_error(e) from e
+
+    if reused:
+        return Response(
+            content=json.dumps(result, ensure_ascii=False),
+            status_code=200,
+            media_type="application/json",
+        )
+    return result
+
+
+@router.get("/review-runs/{run_id}/supervisor-runs")
+def api_list_supervisor_runs(
+    workspace_id: int,
+    run_id: int,
+    user: User = Depends(require_password_changed),
+    db: Session = Depends(get_db),
+):
+    _eng_ws(db, workspace_id, user.id)
+    _run_or_404(db, run_id, workspace_id, user.id)
+    try:
+        return list_supervisor_runs(db, workspace_id, user.id, run_id)
+    except SupervisorServiceError as e:
+        raise _supervisor_error(e) from e
+
+
+@router.get("/review-runs/{run_id}/supervisor-runs/{supervisor_run_id}")
+def api_get_supervisor_run(
+    workspace_id: int,
+    run_id: int,
+    supervisor_run_id: int,
+    user: User = Depends(require_password_changed),
+    db: Session = Depends(get_db),
+):
+    _eng_ws(db, workspace_id, user.id)
+    _run_or_404(db, run_id, workspace_id, user.id)
+    try:
+        return get_supervisor_run(
+            db, workspace_id, user.id, run_id, supervisor_run_id
+        )
+    except SupervisorServiceError as e:
+        raise _supervisor_error(e) from e
+
+
+@router.get("/review-runs/{run_id}/supervisor-runs/{supervisor_run_id}/steps")
+def api_list_supervisor_steps(
+    workspace_id: int,
+    run_id: int,
+    supervisor_run_id: int,
+    user: User = Depends(require_password_changed),
+    db: Session = Depends(get_db),
+):
+    _eng_ws(db, workspace_id, user.id)
+    _run_or_404(db, run_id, workspace_id, user.id)
+    try:
+        return list_supervisor_steps(
+            db, workspace_id, user.id, run_id, supervisor_run_id
+        )
+    except SupervisorServiceError as e:
+        raise _supervisor_error(e) from e

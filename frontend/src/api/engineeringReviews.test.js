@@ -6,6 +6,7 @@ import {
   createReviewBrief,
   createReviewFindingAction,
   createReviewRun,
+  createSupervisorRun,
   createVerificationCandidateDecision,
   createVerificationRun,
   downloadReviewReportAsset,
@@ -20,6 +21,9 @@ import {
   fetchReviewReports,
   fetchReviewRun,
   fetchReviewRuns,
+  fetchSupervisorRun,
+  fetchSupervisorRuns,
+  fetchSupervisorSteps,
   fetchVerificationCandidateDecisions,
   fetchVerificationCandidates,
   fetchVerificationRun,
@@ -382,5 +386,68 @@ test("createVerificationCandidateDecision 透传 201/200/409 语义", async () =
       tool_call_id: 11, candidate_rank: 1, decision: "reject",
     }),
     (error) => error.status === 409 && error.code === "VERIFICATION_CANDIDATE_DECISION_CONFLICT",
+  );
+});
+
+// ── Engineering Supervisor API（阶段 5B）────────────────────────────
+
+test("Supervisor 四个 API client 的 method/path/body", async () => {
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url.endsWith("/auth/csrf")) return jsonResponse(200, { csrf_token: "v-token" });
+    return jsonResponse(200, { ok: true });
+  };
+
+  const payload = {
+    use_deepseek: true,
+    max_verification_tool_calls: 4,
+    max_step_retries: 2,
+    generate_report: true,
+  };
+  await createSupervisorRun(7, 9, payload);
+  await fetchSupervisorRuns(7, 9);
+  await fetchSupervisorRun(7, 9, 31);
+  await fetchSupervisorSteps(7, 9, 31);
+
+  const base = "/api/v2/workspaces/7/review-runs/9/supervisor-runs";
+  assert.deepStrictEqual(requests.map((r) => [r.options.method || "GET", r.url]), [
+    ["GET", "/api/v2/auth/csrf"],
+    ["POST", base],
+    ["GET", base],
+    ["GET", base + "/31"],
+    ["GET", base + "/31/steps"],
+  ]);
+  assert.deepStrictEqual(JSON.parse(requests[1].options.body), payload);
+});
+
+test("createSupervisorRun 透传 201 reused=false 与 200 reused=true", async () => {
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("/auth/csrf")) return jsonResponse(200, { csrf_token: "t" });
+    return jsonResponse(201, { supervisor_run_id: 8, reused: false, status: "ready_to_report" });
+  };
+  const created = await createSupervisorRun(7, 9, { use_deepseek: false, generate_report: false });
+  assert.strictEqual(created.reused, false);
+  assert.strictEqual(created.supervisor_run_id, 8);
+
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("/auth/csrf")) return jsonResponse(200, { csrf_token: "t" });
+    return jsonResponse(200, { supervisor_run_id: 8, reused: true, status: "ready_to_report" });
+  };
+  const reusedResult = await createSupervisorRun(7, 9, { use_deepseek: false, generate_report: false });
+  assert.strictEqual(reusedResult.reused, true);
+  assert.strictEqual(reusedResult.supervisor_run_id, 8);
+});
+
+test("Supervisor API 错误透传 error_code/message", async () => {
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("/auth/csrf")) return jsonResponse(200, { csrf_token: "t" });
+    return jsonResponse(422, {
+      detail: { error_code: "SUPERVISOR_RUN_NOT_COMPLETED", message: "ReviewRun 必须为 completed" },
+    });
+  };
+  await assert.rejects(
+    createSupervisorRun(7, 9, { use_deepseek: false }),
+    (error) => error.status === 422 && error.code === "SUPERVISOR_RUN_NOT_COMPLETED",
   );
 });

@@ -294,3 +294,84 @@ export function formatCandidateLocator(candidate) {
   if (candidate.locator_type === "text_chunk") return "文本块";
   return candidate.locator_type || "未知定位";
 }
+
+// ── Engineering Supervisor（阶段 5B）─────────────────────────────────
+
+export const SUPERVISOR_STATUS = {
+  planning: ["规划中", "info"],
+  running: ["执行中", "info"],
+  ready_to_report: ["可生成报告", "success"],
+  completed: ["已完成", "success"],
+  completed_with_warnings: ["已完成（有警告）", "warning"],
+  needs_human: ["需人工介入", "danger"],
+  failed: ["失败", "danger"],
+};
+
+export const SUPERVISOR_NODE_LABELS = {
+  extraction: "Extraction · 材料与快照就绪检查",
+  verification: "Verification · 智能核验",
+  quality_review: "Quality Review · 确定性质量门",
+  reporting: "Reporting · 报告生成",
+};
+
+// 固定边界文案：Quality Review 是确定性质量门；
+// 候选证据不会自动成为正式证据；质量门失败不会生成报告。
+export const SUPERVISOR_BOUNDARY_TEXT = {
+  qualityGateDeterministic: "Quality Review 是确定性质量门，不调用模型、不自动放行。",
+  evidenceNotAutomatic: "候选证据不会自动成为正式 Evidence；只有人工接受后才会进入正式证据链。",
+  gateFailNoReport: "质量门失败不会生成报告；Supervisor 会停在 needs_human 等待人工处理。",
+};
+
+export const SUPERVISOR_ERROR_SUGGESTIONS = {
+  VERIFICATION_MCP_FAILED: "MCP 服务不可用，核验上下文不完整；请检查 MCP 服务后重试。",
+  VERIFICATION_FAILED: "Verification 多次失败；请检查 MCP 服务与材料状态后重试。",
+  REPORTING_FAILED: "报告生成失败；请检查工作区报告目录与快照完整性后重试。",
+  EVIDENCE_MISSING: "Finding 缺少正式证据；请先通过智能核验接受候选证据或补充材料。",
+  EVIDENCE_INVALID: "Evidence 归属异常或文件不在工作区；请检查材料与证据定位。",
+  EVIDENCE_STALE: "证据已过期；请重新运行智能核验后再决策。",
+  RULE_NOT_FOUND: "Finding 引用的规则不在 Run 快照中；请重新执行审查。",
+  RULE_VERSION_MISMATCH: "Finding 规则版本与 Run 快照不一致；请重新执行审查。",
+  RULE_INPUT_MISSING: "规则所需结构化输入缺失；请补充输入快照后重试。",
+  NUMERIC_PROVENANCE_MISSING: "数字结论缺少可靠计算来源；请重新执行审查生成。",
+  PERMANENT_VALIDATION_ERROR: "质量门无法完成校验；请检查材料后重试。",
+  SUPERVISOR_INTERNAL_ERROR: "Supervisor 内部执行失败；请稍后重试，持续失败时检查服务端日志。",
+};
+
+export function getSupervisorErrorSuggestion(errorCode) {
+  return SUPERVISOR_ERROR_SUGGESTIONS[errorCode] || "请按错误信息修正后重试。";
+}
+
+export const GATE_CHECK_CODE_LABELS = {
+  OK: "通过",
+  EVIDENCE_MISSING: "缺少正式证据",
+  EVIDENCE_INVALID: "证据归属/定位无效",
+  EVIDENCE_STALE: "证据已过期",
+  RULE_NOT_FOUND: "规则不存在",
+  RULE_VERSION_MISMATCH: "规则版本不符",
+  RULE_INPUT_MISSING: "结构化输入缺失",
+  NUMERIC_PROVENANCE_MISSING: "数字来源缺失",
+  PERMANENT_VALIDATION_ERROR: "永久校验错误",
+};
+
+export function sortSupervisorSteps(steps = []) {
+  return [...steps].sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+}
+
+// 四节点时间线：按固定顺序分组，组内 attempt 升序；retry_of 链保留可见
+export function normalizeSupervisorTimeline(steps = []) {
+  const order = ["extraction", "verification", "quality_review", "reporting"];
+  const groups = new Map();
+  sortSupervisorSteps(steps).forEach((step) => {
+    if (!groups.has(step.node_name)) groups.set(step.node_name, []);
+    groups.get(step.node_name).push(step);
+  });
+  return order.filter((node) => groups.has(node)).map((node) => {
+    const attempts = groups.get(node).sort((a, b) => a.attempt_number - b.attempt_number);
+    return {
+      node,
+      label: SUPERVISOR_NODE_LABELS[node] || node,
+      attempts,
+      last: attempts[attempts.length - 1],
+    };
+  });
+}

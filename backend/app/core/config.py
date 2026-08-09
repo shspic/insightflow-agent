@@ -90,6 +90,8 @@ class Settings:
     enable_legacy_v1_api: bool = _parse_bool(_get_env("ENABLE_LEGACY_V1_API", "true"))
     # 阶段 5A-1：Review Tools MCP 配置（默认关闭；仅绑定 127.0.0.1）
     engineering_mcp_enabled: bool = _parse_bool(_get_env("ENGINEERING_MCP_ENABLED", "false"))
+    # 工程检索索引根目录覆盖（测试/部署用；空=默认 backend/storage/retrieval/workspaces）
+    engineering_retrieval_index_root: str = _get_env("ENGINEERING_RETRIEVAL_INDEX_ROOT", "")
     engineering_mcp_url: str = _get_env("ENGINEERING_MCP_URL", "http://127.0.0.1:8765/mcp")
     engineering_mcp_timeout_seconds: float = _parse_float(
         _get_env("ENGINEERING_MCP_TIMEOUT_SECONDS", "15"),

@@ -9,19 +9,24 @@ import {
   formatCandidateLocator,
   formatEvidenceLocator,
   formatFileSize,
+  GATE_CHECK_CODE_LABELS,
   getCandidateErrorSuggestion,
   getMaterialRoleState,
   getReportErrorSuggestion,
   getReportGenerationState,
   getReviewNextStep,
+  getSupervisorErrorSuggestion,
   groupCandidatesByFinding,
   hasBothReportAssets,
   missingReportAssets,
   normalizePlanDecisions,
+  normalizeSupervisorTimeline,
   sortToolCallsByTime,
   selectFindingEvidences,
   REPORT_STATUS,
   REPORT_WARNING_CODES,
+  SUPERVISOR_BOUNDARY_TEXT,
+  SUPERVISOR_STATUS,
   shortHash,
   sortReviewReports,
 } from "./engineeringReview.js";
@@ -258,4 +263,52 @@ test("getCandidateErrorSuggestion 覆盖 stale 与 conflict 恢复建议", () =>
   assert.ok(getCandidateErrorSuggestion("VERIFICATION_CANDIDATE_DECISION_CONFLICT").includes("不可更改"));
   assert.ok(getCandidateErrorSuggestion("VERIFICATION_RUN_NOT_COMPLETED").includes("尚未完成"));
   assert.equal(getCandidateErrorSuggestion("UNKNOWN"), "请按错误信息修正后重试。");
+});
+
+// ── Engineering Supervisor 工具函数（阶段 5B）────────────────────────
+
+test("SUPERVISOR_STATUS 覆盖全部后端状态", () => {
+  for (const status of ["planning", "running", "ready_to_report", "completed",
+    "completed_with_warnings", "needs_human", "failed"]) {
+    assert.ok(SUPERVISOR_STATUS[status], `缺少 ${status}`);
+  }
+});
+
+test("三句固定边界文案必须存在且语义正确", () => {
+  assert.ok(SUPERVISOR_BOUNDARY_TEXT.qualityGateDeterministic.includes("Quality Review 是确定性质量门"));
+  assert.ok(SUPERVISOR_BOUNDARY_TEXT.evidenceNotAutomatic.includes("候选证据不会自动成为正式"));
+  assert.ok(SUPERVISOR_BOUNDARY_TEXT.gateFailNoReport.includes("质量门失败不会生成报告"));
+});
+
+test("normalizeSupervisorTimeline 按四节点顺序分组、attempt 升序、retry_of 保留", () => {
+  const steps = [
+    { id: 3, node_name: "verification", attempt_number: 2, retry_of_id: 2, status: "success" },
+    { id: 1, node_name: "extraction", attempt_number: 1, retry_of_id: null, status: "success" },
+    { id: 2, node_name: "verification", attempt_number: 1, retry_of_id: null, status: "failed" },
+    { id: 4, node_name: "quality_review", attempt_number: 1, retry_of_id: null, status: "success" },
+  ];
+  const timeline = normalizeSupervisorTimeline(steps);
+  assert.deepEqual(timeline.map((g) => g.node),
+    ["extraction", "verification", "quality_review"]);
+  assert.equal(timeline[1].attempts[0].attempt_number, 1);
+  assert.equal(timeline[1].attempts[1].attempt_number, 2);
+  assert.equal(timeline[1].attempts[1].retry_of_id, 2);
+  assert.equal(timeline[1].last.status, "success");
+});
+
+test("getSupervisorErrorSuggestion 覆盖 MCP/质量门/报告错误码", () => {
+  assert.ok(getSupervisorErrorSuggestion("VERIFICATION_MCP_FAILED").includes("MCP"));
+  assert.ok(getSupervisorErrorSuggestion("EVIDENCE_MISSING").includes("证据"));
+  assert.ok(getSupervisorErrorSuggestion("NUMERIC_PROVENANCE_MISSING").includes("计算来源"));
+  assert.ok(getSupervisorErrorSuggestion("RULE_INPUT_MISSING").includes("输入"));
+  assert.ok(getSupervisorErrorSuggestion("REPORTING_FAILED").includes("报告"));
+  assert.equal(getSupervisorErrorSuggestion("UNKNOWN_CODE"), "请按错误信息修正后重试。");
+});
+
+test("GATE_CHECK_CODE_LABELS 覆盖质量门全部检查码", () => {
+  for (const code of ["OK", "EVIDENCE_MISSING", "EVIDENCE_INVALID", "EVIDENCE_STALE",
+    "RULE_NOT_FOUND", "RULE_VERSION_MISMATCH", "RULE_INPUT_MISSING",
+    "NUMERIC_PROVENANCE_MISSING", "PERMANENT_VALIDATION_ERROR"]) {
+    assert.ok(GATE_CHECK_CODE_LABELS[code], `缺少 ${code}`);
+  }
 });

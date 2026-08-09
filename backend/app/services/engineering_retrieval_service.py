@@ -25,6 +25,7 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.file import File
 from app.models.file_chunk import FileChunk
 from app.models.file_profile import FileProfile
@@ -63,6 +64,15 @@ from app.services.engineering_corpus_adapter import build_corpus_from_files
 
 # ── 索引存储路径 ──────────────────────────────────────────────────────
 _INDEX_ROOT = Path(__file__).resolve().parents[2] / "storage" / "retrieval" / "workspaces"
+# 向后兼容的可配置根：ENGINEERING_RETRIEVAL_INDEX_ROOT 非空时覆盖（pytest/部署隔离用）。
+# 测试仍可直接 monkeypatch 模块变量 _INDEX_ROOT（既有模式不受影响）。
+if settings.engineering_retrieval_index_root:
+    _configured_root = Path(settings.engineering_retrieval_index_root)
+    _INDEX_ROOT = (
+        _configured_root
+        if _configured_root.is_absolute()
+        else Path(__file__).resolve().parents[2] / _configured_root
+    )
 
 
 def _index_dir(workspace_id: int) -> Path:

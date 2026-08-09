@@ -101,3 +101,23 @@ export const createVerificationCandidateDecision = (workspaceId, runId, verifica
 
 export const fetchVerificationCandidateDecisions = (workspaceId, runId, verificationRunId) =>
   apiRequest(`${verificationBase(workspaceId, runId, verificationRunId)}/candidate-decisions`);
+
+// ── Engineering Supervisor（阶段 5B）────────────────────────────────
+
+const supervisorBase = (workspaceId, runId, supervisorRunId) =>
+  `${workspaceReviewBase(workspaceId)}/review-runs/${runId}/supervisor-runs${supervisorRunId ? `/${supervisorRunId}` : ""}`;
+
+export const createSupervisorRun = (workspaceId, runId, payload) =>
+  apiRequest(supervisorBase(workspaceId, runId), {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const fetchSupervisorRuns = (workspaceId, runId) =>
+  apiRequest(supervisorBase(workspaceId, runId));
+
+export const fetchSupervisorRun = (workspaceId, runId, supervisorRunId) =>
+  apiRequest(supervisorBase(workspaceId, runId, supervisorRunId));
+
+export const fetchSupervisorSteps = (workspaceId, runId, supervisorRunId) =>
+  apiRequest(`${supervisorBase(workspaceId, runId, supervisorRunId)}/steps`);

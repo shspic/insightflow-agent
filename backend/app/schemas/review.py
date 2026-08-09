@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator, model_validator
 
 # ── 允许的检查类型与输出要求白名单 ─────────────────────────────────
 
@@ -319,3 +319,22 @@ class ReviewBriefResponse(BaseModel):
     created_at: datetime
     confirmed_at: datetime | None
     confirmed_by: int | None
+
+
+# ── Supervisor 启动（阶段 5B）──────────────────────────────────
+
+
+class SupervisorRunCreate(BaseModel):
+    """Supervisor 启动请求：严格类型，拒绝未知字段。
+
+    - 字符串 "false"/"true"、整数 1/0 冒充 bool → 422
+    - 浮点冒充整数 → 422
+    - 未知字段 → 422
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    use_deepseek: StrictBool = False
+    generate_report: StrictBool = False
+    max_verification_tool_calls: StrictInt = Field(default=5, ge=1, le=5)
+    max_step_retries: StrictInt = Field(default=1, ge=0, le=2)

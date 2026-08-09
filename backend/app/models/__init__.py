@@ -20,6 +20,8 @@ from app.models.review_report import ReviewReport
 from app.models.review_report_asset import ReviewReportAsset
 from app.models.review_verification_run import ReviewVerificationRun
 from app.models.review_tool_call import ReviewToolCall
+from app.models.review_supervisor_run import ReviewSupervisorRun
+from app.models.review_supervisor_step import ReviewSupervisorStep
 from app.models.review_candidate_decision import ReviewCandidateDecision
 from app.models.evidence import Evidence
 from app.models.user_feedback import UserFeedback
@@ -63,6 +65,8 @@ __all__ = [
     "ReviewReport",
     "ReviewVerificationRun",
     "ReviewToolCall",
+    "ReviewSupervisorRun",
+    "ReviewSupervisorStep",
     "ReviewReportAsset",
     "Evidence",
     "UserFeedback",

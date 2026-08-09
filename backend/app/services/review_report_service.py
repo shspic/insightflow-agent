@@ -653,7 +653,8 @@ def _validate_evidence_locator(evidence: Evidence) -> None:
     elif evidence.locator_type == "spreadsheet_cell":
         valid = bool(evidence.sheet_name and evidence.cell_range)
     elif evidence.locator_type == "text_chunk":
-        valid = isinstance(evidence.chunk_id, int) and evidence.chunk_id > 0
+        # chunk_id 是 0-based 的 text_chunk_index，0 是合法值，不能用 truthy 判断
+        valid = isinstance(evidence.chunk_id, int) and evidence.chunk_id >= 0
     if not valid:
         raise ReviewReportError(
             "REVIEW_REPORT_EVIDENCE_INTEGRITY_ERROR",

@@ -16,7 +16,8 @@ PREVIOUS_REVISION = V2_02_REVISION
 V2_03_REVISION = "20260723_0004"
 V2_04_REVISION = "20260724_0005"
 V2_05_REVISION = "20260724_0006"
-HEAD_REVISION = "20260808_0012"
+HEAD_REVISION = "20260810_0013"
+PREV_5B_REVISION = "20260808_0012"
 V2_TABLES = {
     "users",
     "auth_sessions",
@@ -57,6 +58,7 @@ V3_2A_TABLES = {
 }
 V3_3B_TABLES = {"review_reports", "review_report_assets"}
 V4C2_TABLES = {"review_verification_runs", "review_tool_calls"}
+V5B_TABLES = {"review_supervisor_runs", "review_supervisor_steps"}
 V4C3_TABLES = {"review_candidate_decisions"}
 
 
@@ -72,6 +74,7 @@ def test_alembic_upgrade_head_creates_v2_schema(tmp_path: Path, monkeypatch) -> 
     assert V3_2A_TABLES.issubset(inspector.get_table_names())
     assert V3_3B_TABLES.issubset(inspector.get_table_names())
     assert V4C2_TABLES.issubset(inspector.get_table_names())
+    assert V5B_TABLES.issubset(inspector.get_table_names())
     assert V4C3_TABLES.issubset(inspector.get_table_names())
     assert {
         "workspace_id",
@@ -918,6 +921,122 @@ def test_v4c2_verification_migration_roundtrip_and_cascade(
     with reupgraded_engine.connect() as connection:
         assert connection.execute(text("SELECT COUNT(*) FROM review_verification_runs")).scalar_one() == 0
         assert connection.execute(text("SELECT COUNT(*) FROM review_tool_calls")).scalar_one() == 0
+    reupgraded_engine.dispose()
+
+
+
+def test_v5b_supervisor_migration_roundtrip_and_cascade(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """0013 增加 Supervisor 两张表；降级/再次升级不影响既有数据；
+    级联删除（workspace 删除 → supervisor run/step 一并清除）。"""
+    database_path = tmp_path / "v5b-supervisor-roundtrip.db"
+    alembic_config = _build_alembic_config(database_path, monkeypatch)
+    command.upgrade(alembic_config, "20260808_0012")
+
+    engine = create_engine(_sqlite_url(database_path))
+    now = "2026-08-10 00:00:00"
+    rule_snapshot = '{"pack_id":"test","rules":[],"version":"1"}'
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users (id, username, password_hash, role, status, must_change_password, created_at, updated_at) "
+                "VALUES (1, 'v5b-migration', 'hash', 'user', 'active', 0, :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO workspaces (id, owner_user_id, name, workspace_type, review_template_key, status, created_at, updated_at) "
+                "VALUES (1, 1, '工程', 'engineering', 'engineering_bid_review_v1', 'active', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO review_runs (id, workspace_id, owner_user_id, review_template_key, status, "
+                "rule_pack_id, rule_pack_version, rule_pack_hash, rule_snapshot_json, review_brief_version, "
+                "review_brief_hash, review_brief_snapshot_json, created_at, updated_at) "
+                "VALUES (1, 1, 1, 'engineering_bid_review_v1', 'completed', 'test', '1', :hash, :rules, "
+                "1, :hash, :brief, :now, :now)"
+            ),
+            {"hash": "a" * 64, "rules": rule_snapshot, "brief": "{}", "now": now},
+        )
+    engine.dispose()
+
+    command.upgrade(alembic_config, HEAD_REVISION)
+    upgraded_engine = create_engine(_sqlite_url(database_path))
+    upgraded_inspector = inspect(upgraded_engine)
+    assert V5B_TABLES.issubset(upgraded_inspector.get_table_names())
+    run_columns = _column_names(upgraded_inspector, "review_supervisor_runs")
+    assert {
+        "workspace_id", "owner_user_id", "review_run_id", "status",
+        "input_state_hash", "graph_version", "quality_gate_version",
+        "current_step", "max_step_retries", "retry_count",
+        "verification_run_id", "report_id", "quality_gate_json",
+        "clarification_json", "error_code", "error_message",
+        "started_at", "completed_at", "created_at",
+    }.issubset(run_columns)
+    step_columns = _column_names(upgraded_inspector, "review_supervisor_steps")
+    assert {
+        "supervisor_run_id", "workspace_id", "owner_user_id", "review_run_id",
+        "step_id", "node_name", "attempt_number", "retry_of_id", "status",
+        "input_json", "output_json", "reused", "error_code", "error_message",
+        "latency_ms", "created_at", "completed_at",
+    }.issubset(step_columns)
+    with upgraded_engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO review_supervisor_runs (id, workspace_id, owner_user_id, review_run_id, status, "
+                "input_state_hash, graph_version, quality_gate_version, max_step_retries, retry_count, created_at) "
+                "VALUES (1, 1, 1, 1, 'completed', :hash, '5b.1', '1.0', 1, 0, :now)"
+            ),
+            {"hash": "c" * 64, "now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO review_supervisor_steps (id, supervisor_run_id, workspace_id, owner_user_id, review_run_id, "
+                "step_id, node_name, attempt_number, status, created_at) "
+                "VALUES (1, 1, 1, 1, 1, 'extraction', 'extraction', 1, 'success', :now)"
+            ),
+            {"now": now},
+        )
+    upgraded_engine.dispose()
+
+    command.downgrade(alembic_config, PREV_5B_REVISION)
+    downgraded_engine = create_engine(_sqlite_url(database_path))
+    downgraded_inspector = inspect(downgraded_engine)
+    assert V5B_TABLES.isdisjoint(downgraded_inspector.get_table_names())
+    with downgraded_engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM review_runs")).scalar_one() == 1
+    downgraded_engine.dispose()
+
+    command.upgrade(alembic_config, HEAD_REVISION)
+    reupgraded_engine = create_engine(_sqlite_url(database_path))
+    reupgraded_inspector = inspect(reupgraded_engine)
+    assert V5B_TABLES.issubset(reupgraded_inspector.get_table_names())
+    with reupgraded_engine.begin() as connection:
+        connection.execute(text("PRAGMA foreign_keys = ON"))
+        connection.execute(
+            text(
+                "INSERT INTO review_supervisor_runs (id, workspace_id, owner_user_id, review_run_id, status, "
+                "input_state_hash, graph_version, quality_gate_version, max_step_retries, retry_count, created_at) "
+                "VALUES (1, 1, 1, 1, 'completed', :hash, '5b.1', '1.0', 1, 0, :now)"
+            ),
+            {"hash": "c" * 64, "now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO review_supervisor_steps (id, supervisor_run_id, workspace_id, owner_user_id, review_run_id, "
+                "step_id, node_name, attempt_number, status, created_at) "
+                "VALUES (1, 1, 1, 1, 1, 'extraction', 'extraction', 1, 'success', :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(text("DELETE FROM workspaces WHERE id = 1"))
+    with reupgraded_engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM review_supervisor_runs")).scalar_one() == 0
+        assert connection.execute(text("SELECT COUNT(*) FROM review_supervisor_steps")).scalar_one() == 0
     reupgraded_engine.dispose()
 
 
