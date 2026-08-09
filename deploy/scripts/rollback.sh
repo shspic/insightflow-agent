@@ -19,8 +19,9 @@ if [[ "${mode}" == "--code-only" ]]; then
   }
   export INSIGHTFLOW_BACKEND_IMAGE="${backend_image}"
   export INSIGHTFLOW_WEB_IMAGE="${web_image}"
-  compose up -d backend worker
+  compose up -d backend mcp worker
   wait_readiness 45
+  wait_mcp_healthy 45
   compose up -d web
   operation_log deploy "仅代码回滚 backend=${backend_image} web=${web_image}"
   echo "仅代码回滚完成；前提是当前数据库与旧代码兼容。"
@@ -46,7 +47,7 @@ backup_dir="${root}/backups/${backup_name}"
 }
 
 compose exec -T backend python -m app.maintenance.backup --verify "/app/backups/${backup_name}"
-compose stop worker backend
+compose stop worker backend mcp
 
 safety_dir="${root}/backups/rollback-safety-$(date -u +%Y%m%dT%H%M%SZ)"
 install -d -m 0700 "${safety_dir}"
@@ -75,8 +76,9 @@ PY
 chown -R 10001:10001 "${root}/data" "${root}/storage"
 export INSIGHTFLOW_BACKEND_IMAGE="${backend_image}"
 export INSIGHTFLOW_WEB_IMAGE="${web_image}"
-compose up -d backend worker
+compose up -d backend mcp worker
 wait_readiness 45
+wait_mcp_healthy 45
 compose up -d web
 operation_log deploy "数据库与 storage 恢复回滚 backup=${backup_name}"
 echo "完整恢复回滚完成。升级前现场保存在 ${safety_dir}，未被删除。"

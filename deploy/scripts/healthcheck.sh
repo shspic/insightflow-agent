@@ -19,7 +19,7 @@ check() {
 }
 
 running_services="$(compose ps --status running --services 2>/dev/null || true)"
-for service in backend worker web; do
+for service in backend worker mcp web; do
   if grep -qx "${service}" <<<"${running_services}"; then
     echo "[正常] 容器运行：${service}"
   else
@@ -32,11 +32,15 @@ check "API liveness" compose exec -T backend python -c \
   "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=5)"
 check "API readiness" compose exec -T backend python -c \
   "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready',timeout=5)); raise SystemExit(0 if d['status'] in {'ready','degraded'} else 1)"
+check "API readiness MCP 视图" compose exec -T backend python -c \
+  "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready',timeout=5)); m=d.get('checks',{}).get('mcp'); raise SystemExit(0 if (m is None or m.get('status')=='ok') else 1)"
 check "Alembic 当前为 head" compose exec -T backend python -c \
   "from app.db.session import SessionLocal; from app.services.health_service import database_revisions; d=SessionLocal(); c,h=database_revisions(d); d.close(); raise SystemExit(0 if c==h else 1)"
 check "storage 可写" compose exec -T backend python -c \
   "from app.services.health_service import _storage_check; raise SystemExit(0 if _storage_check()['status']=='ok' else 1)"
 check "Worker 心跳" compose exec -T worker python -m app.workers.healthcheck
+check "MCP 工具发现" compose exec -T mcp python -m app.mcp.healthcheck \
+  --url http://127.0.0.1:8765/mcp
 check "Nginx 配置" compose exec -T web nginx -t
 
 disk_percent="$(df -P "${root}" | awk 'NR==2 {gsub(/%/,\"\",$5); print $5}')"

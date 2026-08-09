@@ -35,8 +35,9 @@ compose run --rm --no-deps backend alembic upgrade head
 echo "现在通过现有安全 CLI 创建管理员；密码不会写入部署日志。"
 compose run --rm --no-deps backend python -m app.cli.create_admin
 
-compose up -d backend worker
+compose up -d backend mcp worker
 wait_readiness 45
+wait_mcp_healthy 45
 compose up -d web
 compose exec -T web nginx -t
 

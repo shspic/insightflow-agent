@@ -51,6 +51,27 @@ ALLOWED_MCP_TOOL_NAMES = frozenset(
     {"search_review_rules", "run_bid_consistency_checks"}
 )
 
+# 阶段 6D-1：绑定与 Host 校验的明确允许列表（禁止 * 全通配）
+# - 默认只允许 localhost 系绑定与 Host 头
+# - 只有显式启用"容器内部绑定"（ENGINEERING_MCP_ALLOW_CONTAINER_BIND=true）
+#   才额外允许 Docker 内部网络主机名 mcp（docker-compose.prod.yml 服务名）
+LOCALHOST_BIND_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+MCP_CONTAINER_INTERNAL_HOST = "mcp"
+_MCP_ALLOWED_HOSTS_LOCALHOST = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+_MCP_ALLOWED_ORIGINS_LOCALHOST = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+
+
+def build_transport_security(allow_container_bind: bool = False) -> TransportSecuritySettings:
+    """构建传输安全设置：Host/Origin 只使用明确允许列表，不用 * 全通配。"""
+    allowed_hosts = list(_MCP_ALLOWED_HOSTS_LOCALHOST)
+    if allow_container_bind:
+        allowed_hosts.append(f"{MCP_CONTAINER_INTERNAL_HOST}:*")
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=list(_MCP_ALLOWED_ORIGINS_LOCALHOST),
+    )
+
 
 class FaultInjector:
     """受控瞬时故障注入（仅真实评测脚本显式启用，默认完全关闭）。
@@ -497,22 +518,28 @@ def run_review_tools_server(
     host: str = "127.0.0.1",
     port: int = 8765,
     streamable_http_path: str = "/mcp",
+    allow_container_bind: bool = False,
 ) -> None:
     """使用官方 Streamable HTTP 传输运行 MCP Server（阻塞）。
 
-    - 只绑定 host（默认 127.0.0.1，禁止 0.0.0.0 默认）
-    - 官方 DNS rebinding 防护（allowed_hosts/origins 限 localhost）
+    - 默认只绑定 localhost（127.0.0.1/localhost/::1），禁止危险绑定
+    - 仅显式启用 allow_container_bind 时允许 0.0.0.0（Docker 内部网络监听）
+    - 官方 DNS rebinding 防护（Host/Origin 明确允许列表，无 * 全通配）
     - 官方 Bearer token 认证（InternalTokenVerifier）
     - json_response=True：请求以单一 JSON 响应返回（便于测试与审计）
     """
-    if host == "0.0.0.0":
-        raise ValueError("MCP Server 禁止绑定 0.0.0.0，请使用 127.0.0.1")
+    if allow_container_bind:
+        if host != "0.0.0.0" and host not in LOCALHOST_BIND_HOSTS:
+            raise ValueError(
+                "容器内部绑定模式仅允许 0.0.0.0 或 localhost 系绑定地址"
+            )
+    elif host not in LOCALHOST_BIND_HOSTS:
+        raise ValueError(
+            "MCP Server 仅允许绑定 localhost（127.0.0.1/localhost/::1）；"
+            "容器内部绑定需显式启用 ENGINEERING_MCP_ALLOW_CONTAINER_BIND"
+        )
 
-    security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=["127.0.0.1:*", "localhost:*", "[::1]:*"],
-        allowed_origins=["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"],
-    )
+    security = build_transport_security(allow_container_bind=allow_container_bind)
     server = build_review_tools_mcp_server()
     server.run(
         transport="streamable-http",

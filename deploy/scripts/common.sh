@@ -81,3 +81,18 @@ wait_readiness() {
   echo "readiness 在等待窗口内未通过" >&2
   return 1
 }
+
+# 等待 MCP 容器真实可用（内部工具发现；不使用真实用户 capability token）
+wait_mcp_healthy() {
+  local attempts="${1:-30}"
+  local index
+  for ((index = 1; index <= attempts; index++)); do
+    if compose exec -T mcp python -m app.mcp.healthcheck \
+      --url http://127.0.0.1:8765/mcp >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "MCP 健康检查在等待窗口内未通过" >&2
+  return 1
+}

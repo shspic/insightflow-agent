@@ -36,11 +36,17 @@ def main() -> int:
 
     output.parent.mkdir(parents=True, exist_ok=True)
     password_file.parent.mkdir(parents=True, exist_ok=True)
+    # 两个密钥独立随机生成且互不相同（MCP token 是独立 HMAC 签名密钥）
+    auth_key = secrets.token_urlsafe(48)
+    mcp_token = secrets.token_urlsafe(48)
+    while mcp_token == auth_key:
+        mcp_token = secrets.token_urlsafe(48)
     env_text = replace_line(
         template.read_text(encoding="utf-8"),
         "AUTH_SECRET_KEY",
-        secrets.token_urlsafe(48),
+        auth_key,
     )
+    env_text = replace_line(env_text, "ENGINEERING_MCP_INTERNAL_TOKEN", mcp_token)
     output.write_text(env_text, encoding="utf-8")
     password_file.write_text(f"If!{secrets.token_urlsafe(24)}\n", encoding="utf-8")
     output.chmod(stat.S_IRUSR | stat.S_IWUSR)

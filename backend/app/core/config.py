@@ -98,6 +98,10 @@ class Settings:
         15.0,
     )
     engineering_mcp_internal_token: str = _get_env("ENGINEERING_MCP_INTERNAL_TOKEN", "")
+    # 阶段 6D-1：仅生产 mcp 容器显式启用；默认关闭时 MCP 只绑定 localhost
+    engineering_mcp_allow_container_bind: bool = _parse_bool(
+        _get_env("ENGINEERING_MCP_ALLOW_CONTAINER_BIND", "false")
+    )
     upload_max_file_size_bytes: int = _parse_int(
         _get_env("UPLOAD_MAX_FILE_SIZE_BYTES", "20971520"),
         20 * 1024 * 1024,
@@ -329,3 +333,34 @@ def validate_production_security(current_settings: Settings = settings) -> None:
         or admin_password.lower() in {"admin", "password", "changeme", "admin123456"}
     ):
         raise RuntimeError("生产环境不能使用默认或弱管理员密码")
+    _validate_production_mcp(current_settings)
+
+
+# 生产 MCP 允许的受控内部地址（Docker 服务名或 localhost 系，禁止公网域名）
+_MCP_PRODUCTION_ALLOWED_HOSTS = frozenset({"mcp", "127.0.0.1", "localhost", "::1"})
+_MCP_EXAMPLE_TOKEN_PREFIXES = ("replace_", "change_me", "your_")
+
+
+def _validate_production_mcp(current_settings: Settings) -> None:
+    """生产 MCP 安全校验（ENABLED=false 时不检查，保持原行为兼容）。"""
+    if not current_settings.engineering_mcp_enabled:
+        return
+    token = current_settings.engineering_mcp_internal_token
+    if len(token) < 32:
+        raise RuntimeError("生产环境 ENGINEERING_MCP_INTERNAL_TOKEN 至少需要 32 个字符")
+    if token.lower().startswith(_MCP_EXAMPLE_TOKEN_PREFIXES):
+        raise RuntimeError("生产环境 ENGINEERING_MCP_INTERNAL_TOKEN 不能使用示例占位符")
+    if len(set(token)) < 12:
+        raise RuntimeError("生产环境 ENGINEERING_MCP_INTERNAL_TOKEN 必须具有足够随机性")
+    from urllib.parse import urlparse
+
+    parsed = urlparse(current_settings.engineering_mcp_url)
+    host = (parsed.hostname or "").lower()
+    if host == "mcp" and not current_settings.engineering_mcp_allow_container_bind:
+        raise RuntimeError(
+            "生产环境 ENGINEERING_MCP_URL 指向 mcp 容器时必须启用 ENGINEERING_MCP_ALLOW_CONTAINER_BIND"
+        )
+    if parsed.scheme != "http" or host not in _MCP_PRODUCTION_ALLOWED_HOSTS:
+        raise RuntimeError(
+            "生产环境 ENGINEERING_MCP_URL 必须指向受控内部地址（如 http://mcp:8765/mcp），禁止公网域名"
+        )

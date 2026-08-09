@@ -24,17 +24,22 @@ else
   compose build backend web
 fi
 
-compose stop worker backend
+compose stop worker backend mcp
 if ! compose run --rm --no-deps backend alembic upgrade head; then
-  operation_log deploy "升级迁移失败 version=${version}；backend/worker 保持停止"
+  operation_log deploy "升级迁移失败 version=${version}；backend/worker/mcp 保持停止"
   echo "Alembic 升级失败。请保持停写并按 rollback.sh 的备份恢复模式处理。" >&2
   exit 1
 fi
 
-compose up -d backend worker
+compose up -d backend mcp worker
 if ! wait_readiness 45; then
   operation_log deploy "升级 readiness 失败 version=${version}"
   echo "新版本 readiness 未通过；不要继续对外切换，按运行手册回滚。" >&2
+  exit 1
+fi
+if ! wait_mcp_healthy 45; then
+  operation_log deploy "升级 MCP 健康检查失败 version=${version}"
+  echo "新版本 MCP 未通过健康检查；不要继续对外切换，按运行手册回滚。" >&2
   exit 1
 fi
 compose up -d web

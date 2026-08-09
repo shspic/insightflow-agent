@@ -63,8 +63,11 @@ CI 中不写真实 Key，使用 GitHub Secrets 占位（见 CI 工作流注释�
   1. 构建期或部署后把模型缓存放入 `backend/data/model_cache`（挂载为 volume）；
   2. 或首次启动后由 `LocalEmbeddingProvider` 从 HuggingFace 下载（需要公网，超时按环境配置）；
   3. 离线部署：在构建机先下载模型，随镜像/挂载带入。
-- **MCP**：Review Tools MCP Server 随后端进程内启动（`run_review_tools_server`）；
-  `ENGINEERING_MCP_INTERNAL_TOKEN` 必须配置高熵密钥，capability token 由服务端签发，不对外暴露。
+- **MCP**：Review Tools MCP Server 以独立 `mcp` 容器运行（`docker-compose.prod.yml`，复用 backend 镜像）；
+  backend 经 Docker 内网 `http://mcp:8765/mcp` 访问，`8765` 不发布到宿主机（无 `ports`）；
+  `ENGINEERING_MCP_INTERNAL_TOKEN` 必须配置高熵密钥（`generate_secrets.py` 生成，与 `AUTH_SECRET_KEY` 独立且不同），
+  capability token 由服务端签发，不对外暴露；
+  `ENGINEERING_MCP_ALLOW_CONTAINER_BIND=true` 仅生产 mcp 容器显式启用容器内部绑定（默认关闭，只允许 localhost）。
 
 ## 6. 前端 API 地址配置
 
@@ -76,7 +79,9 @@ CI 中不写真实 Key，使用 GitHub Secrets 占位（见 CI 工作流注释�
 
 - `deploy/scripts/backup.sh`：SQLite（`sqlite3 .backup` 或文件拷贝）+ 目录打包，保留 `BACKUP_RETENTION_DAYS`；
 - 恢复：停止写、还原备份文件与目录、`alembic upgrade head`（或 `python -m app.db.init_db`）校验 revision；
-- 健康检查：`GET /api/health`；Nginx `nginx -t`；worker 有独立 healthcheck。
+- 健康检查：`GET /api/health`；Nginx `nginx -t`；worker 有独立 healthcheck；
+  MCP 容器有真实工具发现 healthcheck（`app.mcp.healthcheck`，不使用真实用户 token）；
+  backend readiness（`/api/health/ready`）在 MCP 启用时报告 MCP 状态，MCP 故障时降级为 `degraded` 而非 `ready`。
 
 ## 8. 健康检查与回滚
 
