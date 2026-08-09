@@ -6,7 +6,7 @@
 - deleted_counts 语义（含 review_report_assets）
 - 两阶段事务安全（真实 DELETE API + commit 失败注入）
 - 非法路径安全 warning（不静默跳过）
-- 真实 OSError 不泄露路径（只读文件触发 PermissionError）
+- 真实 OSError 不泄露路径（精确故障注入触发 PermissionError，跨平台）
 - 真实磁盘资产创建与删除断言（ReportAsset, ReviewReport Markdown/PDF）
 - 缺失文件幂等
 - 配额回收
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import stat as stat_module
+import os
 from datetime import date, datetime
 from pathlib import Path
 
@@ -872,7 +872,12 @@ class TestDiskAssets:
         assert r.json()["storage_cleanup_warnings"] == []
 
     def test_oserror_fixed_message_no_path_leak(self, client, db_session, tmp_path, monkeypatch):
-        """真实 PermissionError（含空格路径）不泄露路径，使用固定安全信息。"""
+        """真实 PermissionError（含空格路径）不泄露路径，使用固定安全信息。
+
+        使用精确故障注入（monkeypatch os.remove）触发 PermissionError，
+        不依赖 chmod 只读位的平台删除语义：Windows 只读文件 unlink 失败，
+        但 POSIX 下只读文件仍可删除，因此不能靠 chmod 触发失败。
+        """
         _add_user(db_session)
         h = _login(client)
         ws_id = _create_ws(client, h, "权限泄露测试")
@@ -894,6 +899,17 @@ class TestDiskAssets:
             _patched_resolve_report,
         )
 
+        # 精确故障注入：仅当删除目标是 locked_file 时抛 PermissionError，
+        # 其他路径仍调用原始 os.remove，保证删除流程其余部分正常执行。
+        original_remove = os.remove
+
+        def _failing_remove(path):
+            if os.path.normcase(os.path.abspath(path)) == os.path.normcase(str(locked_file.resolve())):
+                raise PermissionError(f"Permission denied: {path}")
+            return original_remove(path)
+
+        monkeypatch.setattr("app.services.workspace_service.os.remove", _failing_remove)
+
         # 创建 Task，report_path 指向带空格的文件
         rel_path = str(locked_file.relative_to(tmp_path))
         task = Task(
@@ -907,27 +923,21 @@ class TestDiskAssets:
         db_session.add(task)
         db_session.commit()
 
-        # 设为只读以触发真实 PermissionError
-        locked_file.chmod(stat_module.S_IREAD)
+        r = _del(client, ws_id, "权限泄露测试", h)
+        assert r.status_code == 200
+        warnings = r.json()["storage_cleanup_warnings"]
+        assert len(warnings) >= 1, f"应有至少 1 条 warning，实际: {warnings}"
 
-        try:
-            r = _del(client, ws_id, "权限泄露测试", h)
-            assert r.status_code == 200
-            warnings = r.json()["storage_cleanup_warnings"]
-            assert len(warnings) >= 1, f"应有至少 1 条 warning，实际: {warnings}"
-
-            for w in warnings:
-                # 不得泄露任何路径信息
-                assert "C:" not in w, f"warning 不应含盘符: {w}"
-                assert "Users" not in w, f"warning 不应含用户目录: {w}"
-                assert "Test User" not in w, f"warning 不应含目录名: {w}"
-                assert "Secret Project" not in w, f"warning 不应含目录名: {w}"
-                assert "private file" not in w, f"warning 不应含文件名: {w}"
-                assert "classified" not in w, f"warning 不应含文件内容: {w}"
-                # 应使用固定安全错误信息
-                assert "磁盘文件清理失败" in w, f"warning 应使用固定信息: {w}"
-        finally:
-            locked_file.chmod(stat_module.S_IWRITE)
+        for w in warnings:
+            # 不得泄露任何路径信息
+            assert "C:" not in w, f"warning 不应含盘符: {w}"
+            assert "Users" not in w, f"warning 不应含用户目录: {w}"
+            assert "Test User" not in w, f"warning 不应含目录名: {w}"
+            assert "Secret Project" not in w, f"warning 不应含目录名: {w}"
+            assert "private file" not in w, f"warning 不应含文件名: {w}"
+            assert "classified" not in w, f"warning 不应含文件内容: {w}"
+            # 应使用固定安全错误信息
+            assert "磁盘文件清理失败" in w, f"warning 应使用固定信息: {w}"
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -1,0 +1,4 @@
+# 冻结黄金材料按字节冻结：禁止 Git 换行转换。
+# 05_项目澄清.md 的 CRLF 字节是黄金数据的一部分（manifest sha256 基于 CRLF 计算），
+# 若允许 LF 归一化，Linux checkout 的字节与 manifest 不符，corpus 建立即失败。
+examples/engineering_review_v1/golden_case/05_项目澄清.md -text

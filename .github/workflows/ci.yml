@@ -27,6 +27,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: 安装中文字体（Matplotlib/PDF 中文渲染需要）
+        run: |
+          sudo apt-get update
+          # fonts-noto-cjk：Matplotlib 图表中文（OFC/CFF 轮廓可用）；
+          # fonts-wqy-zenhei：reportlab PDF 报告（Noto CJK 的 ttc 是 PostScript
+          # 轮廓，reportlab 无法加载；wqy-zenhei.ttc 为 TrueType 轮廓）。
+          sudo apt-get install -y --no-install-recommends fontconfig fonts-noto-cjk fonts-wqy-zenhei
+          fc-cache -f >/dev/null
+          # 明确验证中文字体可用：找不到时立即失败，不允许后续测试在缺字体下运行
+          fc-match "Noto Sans CJK SC" | grep -qi "noto" || { echo "Noto Sans CJK SC 字体不可用"; exit 1; }
+          fc-match "WenQuanYi Zen Hei" | grep -qi "wqy" || { echo "WenQuanYi Zen Hei 字体不可用"; exit 1; }
+
       - name: 安装后端依赖（固定版本）
         working-directory: backend
         run: pip install -r requirements.txt

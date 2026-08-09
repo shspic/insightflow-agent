@@ -1,17 +1,24 @@
 """阶段 6C 最终验收阻断补修契约测试（离线，纯文件断言）。
 
-覆盖四项契约（见验收清单）：
+覆盖契约（见验收清单）：
 - CI 前端启动、日志、artifact、cleanup 使用一致的 PID/日志路径
   （backend/.ci-smoke，禁止退回旧的 ../.ci-smoke）；
 - cleanup 后真实检查 5173/8000 端口释放，仍监听则 step 失败；
 - Dockerfile 在 USER insightflow 之前显式设置 entrypoint 可执行权限；
-- docker-entrypoint.sh 保持 LF 换行、shebang=#!/bin/sh。
+- docker-entrypoint.sh 保持 LF 换行、shebang=#!/bin/sh；
+- 冻结黄金材料 05_项目澄清.md 的 .gitattributes 设 -text（禁止换行转换），
+  文件字节必须与 manifest SHA-256 一致（跨平台 CI 防线）；
+- CI backend job 在 Alembic/pytest 前安装中文字体（fontconfig + fonts-noto-cjk）
+  并用 fc-match 显式验证。
 
 不读取数据库、不启动服务、不写默认 app.db/uploads/reports/retrieval。
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -22,6 +29,9 @@ REPO_ROOT = BACKEND_DIR.parent
 CI_YAML = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 DOCKERFILE = BACKEND_DIR / "Dockerfile"
 ENTRYPOINT = BACKEND_DIR / "docker-entrypoint.sh"
+GOLDEN_CASE_DIR = REPO_ROOT / "examples" / "engineering_review_v1" / "golden_case"
+GOLDEN_MD_REL = "examples/engineering_review_v1/golden_case/05_项目澄清.md"
+GOLDEN_MD_FILENAME = "05_项目澄清.md"
 
 SMOKE_START_STEP = "构建并启动隔离前端（preview）"
 SMOKE_CLEANUP_STEP = "停止冒烟进程并释放端口"
@@ -44,6 +54,16 @@ def _step(workflow: dict, step_name: str) -> dict:
         if isinstance(step, dict) and step.get("name") == step_name:
             return step
     raise AssertionError(f"未找到 step: {step_name}")
+
+
+@pytest.fixture(scope="module")
+def backend_job() -> dict:
+    """ci.yml 可解析且包含 backend job。"""
+    workflow = yaml.safe_load(CI_YAML.read_text(encoding="utf-8"))
+    assert isinstance(workflow, dict), "ci.yml 必须可解析为 YAML 对象"
+    job = workflow["jobs"].get("backend")
+    assert isinstance(job, dict), "必须存在 backend job"
+    return job
 
 
 class TestFrontendPathConsistency:
@@ -123,3 +143,75 @@ class TestEntrypointFileShape:
     def test_lf_line_endings_only(self):
         content = ENTRYPOINT.read_bytes()
         assert b"\r" not in content, "entrypoint 必须保持 LF 换行，禁止 CRLF"
+
+
+class TestGoldenFileLineEndings:
+    """冻结黄金材料按字节冻结：.gitattributes 设 -text，禁止 LF 归一化。
+
+    05_项目澄清.md 的 manifest SHA-256 基于 CRLF 字节计算；若删除 -text 规则，
+    Linux CI checkout 将得到 LF 字节导致 corpus setup 失败（Windows 本地因
+    core.autocrlf 转换可能暂时通过），因此必须同时断言属性规则与字节 SHA。
+    """
+
+    def test_gitattributes_declares_text_unset_for_golden_file(self):
+        attrs = (REPO_ROOT / ".gitattributes").read_text(encoding="utf-8")
+        assert GOLDEN_MD_FILENAME in attrs, ".gitattributes 必须包含黄金文件规则"
+        assert "-text" in attrs, ".gitattributes 必须设置 -text 禁止换行转换"
+
+    def test_golden_file_text_attr_is_unset(self):
+        result = subprocess.run(
+            ["git", "check-attr", "text", "--", str(REPO_ROOT / GOLDEN_MD_REL)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "text: unset" in result.stdout, (
+            f"黄金文件 text 属性必须为 unset，实际输出: {result.stdout.strip()}"
+        )
+
+    def test_golden_file_bytes_match_manifest(self):
+        """文件字节必须与 manifest SHA-256 一致，且保持 CRLF（跨平台防线）。"""
+        manifest = json.loads((GOLDEN_CASE_DIR / "manifest.json").read_text(encoding="utf-8"))
+        entry = next(f for f in manifest["files"] if f["filename"] == GOLDEN_MD_FILENAME)
+        data = (REPO_ROOT / GOLDEN_MD_REL).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == entry["sha256"], (
+            "黄金文件字节与 manifest 不一致：换行转换或内容漂移，corpus setup 将失败"
+        )
+        assert data.count(b"\r\n") > 0, "冻结材料必须保持 CRLF 原始字节"
+
+
+class TestCIFontInstall:
+    """CI backend job 必须在 Alembic/pytest 前安装中文字体并显式验证。"""
+
+    def test_font_step_runs_before_tests(self, backend_job):
+        names = [s.get("name", "") for s in backend_job["steps"] if isinstance(s, dict)]
+        font_idx = next(i for i, n in enumerate(names) if "中文字体" in n)
+        alembic_idx = next(i for i, n in enumerate(names) if "Alembic" in n)
+        pytest_idx = next(i for i, n in enumerate(names) if "完整后端测试" in n)
+        assert font_idx < alembic_idx < pytest_idx, (
+            "字体安装 step 必须在 Alembic 与完整 pytest 之前"
+        )
+
+    def test_font_step_installs_fonts_without_recommends(self, backend_job):
+        step = next(
+            s for s in backend_job["steps"]
+            if isinstance(s, dict) and "中文字体" in s.get("name", "")
+        )
+        run = step["run"]
+        assert "apt-get install" in run
+        assert "--no-install-recommends" in run
+        assert "fontconfig" in run
+        assert "fonts-noto-cjk" in run
+        # reportlab 无法加载 Noto CJK 的 PostScript 轮廓 ttc，必须有 TrueType 轮廓字体
+        assert "fonts-wqy-zenhei" in run, "必须安装 wqy-zenhei（reportlab PDF 报告需要 TrueType 轮廓）"
+
+    def test_font_step_refreshes_cache_and_verifies_fc_match(self, backend_job):
+        step = next(
+            s for s in backend_job["steps"]
+            if isinstance(s, dict) and "中文字体" in s.get("name", "")
+        )
+        run = step["run"]
+        assert "fc-cache" in run, "必须刷新字体缓存"
+        assert 'fc-match "Noto Sans CJK SC"' in run, "必须用 fc-match 验证中文字体"
+        assert 'fc-match "WenQuanYi Zen Hei"' in run, "必须用 fc-match 验证 wqy-zenhei"
+        assert "exit 1" in run, "字体不可用时必须立即失败"
