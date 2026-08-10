@@ -50,6 +50,14 @@ BUILT_IN_ROLES = {
     "unknown",
     "custom",
 }
+ENGINEERING_ROLES = frozenset({
+    "tender_requirement",
+    "bid_response",
+    "personnel_equipment_data",
+    "qualification_attachment",
+    "clarification_document",
+    "supplementary_attachment",
+})
 ROLE_TEXT_PATTERN = re.compile(r"^[\w\u4e00-\u9fff .·()（）/_-]{1,60}$")
 CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
 MARKDOWN_LINK_PATTERN = re.compile(r"!?\[[^\]]*]\(([^)]+)\)")
@@ -308,8 +316,12 @@ def update_profile_confirmation(
     if profile is None:
         raise FileUnderstandingError("文件尚无理解结果", "PROFILE_NOT_FOUND")
     association = _get_workspace_file(db, workspace_id, file_id)
+    # 获取 workspace 类型用于角色隔离校验
+    from app.models.workspace import Workspace as WSModel
+    ws = db.scalar(select(WSModel).where(WSModel.id == workspace_id))
+    ws_type = ws.workspace_type if ws else "general"
     if confirmed_role is not None:
-        normalized_role = _normalize_confirmed_role(confirmed_role, custom_role)
+        normalized_role = _normalize_confirmed_role(confirmed_role, custom_role, workspace_type=ws_type)
         association.user_confirmed_role = normalized_role
         profile.confirmed_role = normalized_role
     if user_tags is not None:
@@ -1419,10 +1431,16 @@ def _suggest_tags(
     return _normalize_tags(tags, max_count=12)
 
 
-def _normalize_confirmed_role(role: str, custom_role: str | None) -> str:
+def _normalize_confirmed_role(role: str, custom_role: str | None, *, workspace_type: str = "general") -> str:
     normalized = role.strip()
-    if normalized not in BUILT_IN_ROLES:
+    all_valid = BUILT_IN_ROLES | ENGINEERING_ROLES
+    if normalized not in all_valid:
         raise FileUnderstandingError("文件角色不在允许范围内", "INVALID_FILE_ROLE")
+    # general 工作区不能使用工程角色
+    if workspace_type != "engineering" and normalized in ENGINEERING_ROLES:
+        raise FileUnderstandingError(
+            "工程角色仅限 engineering 工作区使用", "ENGINEERING_ROLE_NOT_ALLOWED"
+        )
     if normalized != "custom":
         return normalized
     custom = (custom_role or "").strip()

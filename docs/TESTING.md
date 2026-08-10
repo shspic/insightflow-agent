@@ -2,11 +2,14 @@
 
 ## 1. 测试目标
 
-本项目当前测试目标是保证核心工程结构可用、API 接口正确、Agent 工作流可靠、数据库迁移可来回滚动、前端可完成生产构建。测试覆盖轻量 smoke test、服务层单元测试、认证/权限/文件/任务/报告集成测试和 deterministic 评估。
+本项目当前测试目标是保证核心工程结构可用、API 接口正确、Agent 工作流可靠、数据库迁移可来回滚动、前端可完成生产构建。测试覆盖轻量 smoke test、服务层单元测试、认证/权限/文件/任务/报告集成测试、工程审查契约专项和 deterministic 评估。
 
 ## 2. 后端测试范围
 
-后端测试位于 `backend/tests/`，共 17 个测试文件，90 条测试用例全部通过（`90 passed, 1708 warnings`）：
+后端测试位于 `backend/tests/`，共 30 个测试文件，**791 条测试用例全部通过**（实测于 6C 阶段基线；Alembic 迁移专项 16 项通过）：
+
+- V2 主线：健康检查、配置、数据库模型、认证、管理员、工作区、文件理解、关系上下文、文件安全、任务状态机、任务执行、多 Agent、报告交付、治理、部署、存储隔离；
+- V3 主线：检索基线（4A）、稠密混合检索（4B）、真实 API 集成（4C1）、LLM 契约（4C2）、Verification Agent（4C2）、候选决策（4C3）、工程检索 API（4C）、MCP 工具（5A1）、Verification MCP 集成（5A2）、DeepSeek 脚本契约（5B）、Supervisor 与质量门（5B）、Supervisor API（5B）、阶段 6A 端到端评测、6A 契约专项（Evidence 来源完整性 / input snapshot / validation split）。
 
 - `test_health.py`：验证 `/api/health` 返回 200。
 - `test_config.py`：验证配置模块可导入，默认配置存在，测试环境不使用真实 API Key。
@@ -15,7 +18,7 @@
 - `test_alembic_migrations.py`：验证 Alembic 迁移可升级、回退、再升级。
 - `test_v2_auth.py`：验证注册、登录、退出、Session、CSRF、密码修改和强制改密。
 - `test_v2_admin.py`：验证管理员 CLI 初始化、邀请码管理、密码重置、用户状态。
-- `test_v2_workspaces.py`：验证工作区 CRUD、软删除/恢复、工作区级数据隔离。
+- `test_v2_workspaces.py`：验证工作区 CRUD、永久删除、归档、工作区级数据隔离。
 - `test_v2_file_understanding.py`：验证五类文件解析、Profile、角色/标签建议。
 - `test_v2_relations_context.py`：验证文件关系候选、确认/拒绝/修改、Workspace Context。
 - `test_v2_file_api_security.py`：验证文件上传限制、类型校验、大小/数量配额和归属校验。

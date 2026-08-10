@@ -1,0 +1,1816 @@
+{
+  "meta": {
+    "dataset_name": "engineering-review-v1",
+    "dataset_version": "1.1.0",
+    "evaluated_at": "2026-08-07T10:13:40.605020+00:00",
+    "disclaimer": "合成演示数据，不作为真实招投标、工程、资质或法律判断依据。",
+    "query_file_sha256": "14b0695280a624cef8e4c9a01c70d49782f270580634ea19f91e7880c852e23d",
+    "corpus_sha256": "05da389fade896f65196ced5744623fd05d099f2432591ce867f93523dd31c8c",
+    "manifest_sha256": "b986177c483736fb8ec89bc9fbbf69dd1d662aa99fa6c401af9b010c873d9cf9",
+    "tokenizer": "v3_tokenizer",
+    "tokenizer_version": "1.0.0",
+    "chunking_version": "1.0.0",
+    "python_version": "3.14.4",
+    "git_commit": "a2c0bc169c107be9639ca99807fec6601f41d041",
+    "git_branch": "codex/stage-4b",
+    "git_dirty": true,
+    "evaluation_code_sha256": "32325b8bb5b944014fbe642754b8bcf6d5ffde7034a3cddfe65528889bd49499",
+    "evaluation_source_files": [
+      {
+        "path": "backend/app/evaluation/v3_corpus.py",
+        "sha256": "bf41e2843d900e92cde7ba2b77958715ca1200b2458a78a2e653b2eee5a0a9ff"
+      },
+      {
+        "path": "backend/app/evaluation/v3_dense_index.py",
+        "sha256": "b26cf8f811f01b7f5d67e43c73fdb40aabfe876da328fae71af834c9c21863d6"
+      },
+      {
+        "path": "backend/app/evaluation/v3_embedding.py",
+        "sha256": "e39f604304a58895dc01855307c58536e476253ce53756d47702591796d0c549"
+      },
+      {
+        "path": "backend/app/evaluation/v3_hybrid.py",
+        "sha256": "7decca6acb1245758521991304a11f82e06763f463abd1f6451adce24761d395"
+      },
+      {
+        "path": "backend/app/evaluation/v3_metrics.py",
+        "sha256": "b4d75374bec0092472898921bc5fe23f0d1c00f521a2040ed9dfd63a7ba0e3d2"
+      },
+      {
+        "path": "backend/app/evaluation/v3_query_set.py",
+        "sha256": "f1577f3ec79ecd98b872f2ff9f3c17e35bd55b032466a299e94ad19c0a34e555"
+      },
+      {
+        "path": "backend/app/evaluation/v3_retrieval.py",
+        "sha256": "3783a30ea47ceaf9ad2f9a50c5720fd2f0e1985bee6111b6a66ffa5db7a260c7"
+      },
+      {
+        "path": "backend/app/evaluation/v3_retrieval_runner.py",
+        "sha256": "8751a0e55a5b99cc65eb38d70e89e1bdbf97d14a3c37b4d24d218a93455f2dee"
+      },
+      {
+        "path": "backend/app/evaluation/v3_tokenizer.py",
+        "sha256": "ca73240c290e0912c5c5768508ba2261c7cdeebdbb1e01521e650a1396e4f70e"
+      }
+    ],
+    "stage": "4b",
+    "split": "test",
+    "retrieval_modes": [
+      "keyword",
+      "tfidf",
+      "bm25",
+      "dense",
+      "hybrid_rrf"
+    ],
+    "top_k": 20,
+    "query_count": 16,
+    "answerable_count": 13,
+    "no_answer_count": 3,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "embedding_provider": "sentence-transformers",
+    "model_repo_id": "BAAI/bge-small-zh-v1.5",
+    "model_revision": "7999e1d3359715c523056ef9478215996d62a620",
+    "model_dimension": 512,
+    "normalize_embeddings": true,
+    "query_instruction": "为这个句子生成表示以用于检索相关文章：",
+    "sentence_transformers_version": "5.7.0",
+    "torch_version": "2.13.0+cpu",
+    "numpy_version": "2.4.6",
+    "device": "cpu",
+    "index_file_sha256": "81b26a16cd8363ffde32c8efc887642aee941e13633d6c54f726d30011a29578",
+    "index_metadata_sha256": "225361e942a0191f41a6dbc1816dfe986e2dd5f41a47fbfbc3ef8b4dc132f119",
+    "index_reused": true,
+    "dense_index_build_time_ms": 0.0,
+    "dense_index_load_time_ms": 1.8,
+    "rrf_k": 60,
+    "fusion_sources": [
+      "bm25",
+      "dense"
+    ]
+  },
+  "corpus": {
+    "chunk_count": 17,
+    "sha256": "05da389fade896f65196ced5744623fd05d099f2432591ce867f93523dd31c8c",
+    "chunks": [
+      {
+        "chunk_id": "C0001",
+        "file_role": "tender_requirement",
+        "file_name": "01_合成招标要求.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 1,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 187,
+        "content_hash": "5fdee84267c92d4b6286dbf0e89eeb9bf3d9a4077e043a1b0296ce3025ccf226"
+      },
+      {
+        "chunk_id": "C0002",
+        "file_role": "tender_requirement",
+        "file_name": "01_合成招标要求.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 2,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 240,
+        "content_hash": "6a601ee6d2a73abe18adb90965fd975219d88b04f35ae54ee55193ab9d39d150"
+      },
+      {
+        "chunk_id": "C0003",
+        "file_role": "tender_requirement",
+        "file_name": "01_合成招标要求.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 3,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 206,
+        "content_hash": "dad52c0ba2d205290eedf54a9333567e64d58f7120100d74cb2c7b0f76fa11ca"
+      },
+      {
+        "chunk_id": "C0004",
+        "file_role": "tender_requirement",
+        "file_name": "01_合成招标要求.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 4,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 196,
+        "content_hash": "891a8a9d31e12a1c8e83ec7d97f1b96a5dbd238184738e66123be47ee4078bad"
+      },
+      {
+        "chunk_id": "C0005",
+        "file_role": "tender_requirement",
+        "file_name": "01_合成招标要求.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 5,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 147,
+        "content_hash": "2c48f927affd58a21609ace33d9b2016507de5914f3904f040022c9a288f0a8a"
+      },
+      {
+        "chunk_id": "C0006",
+        "file_role": "tender_requirement",
+        "file_name": "01_合成招标要求.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 6,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 91,
+        "content_hash": "718baa4201bcd753abb2e587f57d928ff795f5449ec629acf2940ed88e2e7cbc"
+      },
+      {
+        "chunk_id": "C0007",
+        "file_role": "bid_response",
+        "file_name": "02_合成投标响应.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 1,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 226,
+        "content_hash": "24183a973c29d7e02891dd972ad2d98e68c4b628547af189e944b3b4c5da9164"
+      },
+      {
+        "chunk_id": "C0008",
+        "file_role": "bid_response",
+        "file_name": "02_合成投标响应.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 2,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 183,
+        "content_hash": "c5b1dbd29193f5e2caed4f593cd74aec6fa0bc5a8aeb7d69e7e7d36271231e7b"
+      },
+      {
+        "chunk_id": "C0009",
+        "file_role": "bid_response",
+        "file_name": "02_合成投标响应.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 3,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 161,
+        "content_hash": "f935d68c6ff068b3ea0967f6e3974b65e90791920f6cf83169a65fb0f3fe8ff1"
+      },
+      {
+        "chunk_id": "C0010",
+        "file_role": "bid_response",
+        "file_name": "02_合成投标响应.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 4,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 171,
+        "content_hash": "16b6d48eeb38d716021e2162578d1850dcd822b2093c811e2f9bfd841c17a1fd"
+      },
+      {
+        "chunk_id": "C0011",
+        "file_role": "qualification_attachment",
+        "file_name": "04_合成资质附件.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 1,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 261,
+        "content_hash": "4c8c10ea147df2b1c301a9e858f1f1537bf4b04464474afbb03109d67ea8d5fe"
+      },
+      {
+        "chunk_id": "C0012",
+        "file_role": "qualification_attachment",
+        "file_name": "04_合成资质附件.pdf",
+        "locator_type": "pdf_page",
+        "page_number": 2,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 3,
+        "content_hash": "58c0e7476a0d98d74ec64f7d9241c9d5e7c0e0991739eb1cde0b4d173a988e14"
+      },
+      {
+        "chunk_id": "C0013",
+        "file_role": "personnel_equipment_data",
+        "file_name": "03_人员设备清单.xlsx",
+        "locator_type": "spreadsheet_cell",
+        "page_number": null,
+        "sheet_name": "项目概况",
+        "cell_range": "A1:D7",
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 157,
+        "content_hash": "16c2fb9a6ba3a353f9aac896b4741782c28f4c5e08e8df38b2795341c3f2d236"
+      },
+      {
+        "chunk_id": "C0014",
+        "file_role": "personnel_equipment_data",
+        "file_name": "03_人员设备清单.xlsx",
+        "locator_type": "spreadsheet_cell",
+        "page_number": null,
+        "sheet_name": "人员清单",
+        "cell_range": "A1:F8",
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 183,
+        "content_hash": "aee6bb9f6ef12db4498df5ad6cbc124ffc90020bd85890bb6f1bca9f970ae7b9"
+      },
+      {
+        "chunk_id": "C0015",
+        "file_role": "personnel_equipment_data",
+        "file_name": "03_人员设备清单.xlsx",
+        "locator_type": "spreadsheet_cell",
+        "page_number": null,
+        "sheet_name": "设备清单",
+        "cell_range": "A1:G7",
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 221,
+        "content_hash": "e6b8125274d194a5bf6b16d930d5af4e08af5b6b3e1cb5f6b5566178ab2bdc51"
+      },
+      {
+        "chunk_id": "C0016",
+        "file_role": "personnel_equipment_data",
+        "file_name": "03_人员设备清单.xlsx",
+        "locator_type": "spreadsheet_cell",
+        "page_number": null,
+        "sheet_name": "数据说明",
+        "cell_range": "A1:A9",
+        "text_chunk_index": null,
+        "section_title": null,
+        "text_length": 234,
+        "content_hash": "00e2ab6cf3c04a558253f77327576178760c323332fa83f62721f252710ee82f"
+      },
+      {
+        "chunk_id": "C0017",
+        "file_role": "clarification_document",
+        "file_name": "05_项目澄清.md",
+        "locator_type": "text_chunk",
+        "page_number": null,
+        "sheet_name": null,
+        "cell_range": null,
+        "text_chunk_index": 0,
+        "section_title": "项目澄清文件",
+        "text_length": 496,
+        "content_hash": "7ca6af752ed43bc93bfdd6e3089c04cd4f38b3617e5babeac7c23396314b7a36"
+      }
+    ]
+  },
+  "baselines": {
+    "keyword": {
+      "label": "关键词检索",
+      "answerable": {
+        "answerable_count": 13,
+        "recall@3_mean": 0.7692,
+        "recall@5_mean": 0.8077,
+        "mrr_mean": 0.5846,
+        "latency_mean_ms": 0.14,
+        "latency_p50_ms": 0.11,
+        "latency_p95_ms": 0.33
+      },
+      "no_answer": {
+        "no_answer_count": 3,
+        "abstained_count": 0,
+        "false_positive_count": 3,
+        "false_positive_rate": 1.0,
+        "top1_score_mean": 30.333333,
+        "result_count_mean": 16
+      },
+      "by_category": {
+        "clarification": {
+          "answerable_count": 2,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 0.22,
+          "latency_p50_ms": 0.22,
+          "latency_p95_ms": 0.33
+        },
+        "clause_ref": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 0.12,
+          "latency_p50_ms": 0.12,
+          "latency_p95_ms": 0.12
+        },
+        "cross_file": {
+          "answerable_count": 1,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.3333,
+          "latency_mean_ms": 0.18,
+          "latency_p50_ms": 0.18,
+          "latency_p95_ms": 0.18
+        },
+        "equipment": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.5,
+          "latency_mean_ms": 0.11,
+          "latency_p50_ms": 0.11,
+          "latency_p95_ms": 0.11
+        },
+        "numeric": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.6666,
+          "latency_mean_ms": 0.12,
+          "latency_p50_ms": 0.12,
+          "latency_p95_ms": 0.14
+        },
+        "personnel": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.3,
+          "latency_mean_ms": 0.15,
+          "latency_p50_ms": 0.15,
+          "latency_p95_ms": 0.19
+        },
+        "qualification": {
+          "answerable_count": 3,
+          "recall@3_mean": 0.8333,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.4444,
+          "latency_mean_ms": 0.13,
+          "latency_p50_ms": 0.1,
+          "latency_p95_ms": 0.21
+        },
+        "tender_spec": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.5,
+          "latency_mean_ms": 0.09,
+          "latency_p50_ms": 0.09,
+          "latency_p95_ms": 0.09
+        }
+      },
+      "per_query_answerable": [
+        {
+          "query_id": "Q026",
+          "latency_ms": 0.18,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q027",
+          "latency_ms": 0.09,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q028",
+          "latency_ms": 0.19,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.1
+        },
+        {
+          "query_id": "Q029",
+          "latency_ms": 0.14,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q030",
+          "latency_ms": 0.11,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q031",
+          "latency_ms": 0.21,
+          "recall@3": 0.5,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q032",
+          "latency_ms": 0.33,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q033",
+          "latency_ms": 0.11,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q034",
+          "latency_ms": 0.1,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q035",
+          "latency_ms": 0.12,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q036",
+          "latency_ms": 0.1,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q037",
+          "latency_ms": 0.11,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q038",
+          "latency_ms": 0.08,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        }
+      ],
+      "per_query_no_answer": [
+        {
+          "query_id": "Q041",
+          "latency_ms": 0.11,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 12.0,
+          "result_count": 16
+        },
+        {
+          "query_id": "Q042",
+          "latency_ms": 0.12,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 50.0,
+          "result_count": 16
+        },
+        {
+          "query_id": "Q044",
+          "latency_ms": 0.11,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 29.0,
+          "result_count": 16
+        }
+      ]
+    },
+    "tfidf": {
+      "label": "TF-IDF",
+      "answerable": {
+        "answerable_count": 13,
+        "recall@3_mean": 0.7308,
+        "recall@5_mean": 0.8077,
+        "mrr_mean": 0.7457,
+        "latency_mean_ms": 5.69,
+        "latency_p50_ms": 5.76,
+        "latency_p95_ms": 8.03
+      },
+      "no_answer": {
+        "no_answer_count": 3,
+        "abstained_count": 0,
+        "false_positive_count": 3,
+        "false_positive_rate": 1.0,
+        "top1_score_mean": 0.059745,
+        "result_count_mean": 16
+      },
+      "by_category": {
+        "clarification": {
+          "answerable_count": 2,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 6.49,
+          "latency_p50_ms": 6.49,
+          "latency_p95_ms": 6.79
+        },
+        "clause_ref": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 6.01,
+          "latency_p50_ms": 6.01,
+          "latency_p95_ms": 6.01
+        },
+        "cross_file": {
+          "answerable_count": 1,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.5,
+          "latency_mean_ms": 5.14,
+          "latency_p50_ms": 5.14,
+          "latency_p95_ms": 5.14
+        },
+        "equipment": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.5,
+          "latency_mean_ms": 5.76,
+          "latency_p50_ms": 5.76,
+          "latency_p95_ms": 5.76
+        },
+        "numeric": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.6666,
+          "latency_mean_ms": 5.02,
+          "latency_p50_ms": 5.02,
+          "latency_p95_ms": 6.07
+        },
+        "personnel": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.5555,
+          "latency_mean_ms": 5.33,
+          "latency_p50_ms": 5.33,
+          "latency_p95_ms": 5.64
+        },
+        "qualification": {
+          "answerable_count": 3,
+          "recall@3_mean": 0.6667,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.75,
+          "latency_mean_ms": 5.13,
+          "latency_p50_ms": 5.64,
+          "latency_p95_ms": 5.98
+        },
+        "tender_spec": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 8.03,
+          "latency_p50_ms": 8.03,
+          "latency_p95_ms": 8.03
+        }
+      },
+      "per_query_answerable": [
+        {
+          "query_id": "Q026",
+          "latency_ms": 5.14,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q027",
+          "latency_ms": 8.03,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q028",
+          "latency_ms": 5.03,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.1111
+        },
+        {
+          "query_id": "Q029",
+          "latency_ms": 3.96,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q030",
+          "latency_ms": 6.07,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q031",
+          "latency_ms": 5.98,
+          "recall@3": 0.0,
+          "recall@5": 1.0,
+          "mrr": 0.25
+        },
+        {
+          "query_id": "Q032",
+          "latency_ms": 6.79,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q033",
+          "latency_ms": 6.19,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q034",
+          "latency_ms": 3.77,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q035",
+          "latency_ms": 6.01,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q036",
+          "latency_ms": 5.64,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q037",
+          "latency_ms": 5.76,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q038",
+          "latency_ms": 5.64,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        }
+      ],
+      "per_query_no_answer": [
+        {
+          "query_id": "Q041",
+          "latency_ms": 5.3,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.051752,
+          "result_count": 16
+        },
+        {
+          "query_id": "Q042",
+          "latency_ms": 6.89,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.072608,
+          "result_count": 16
+        },
+        {
+          "query_id": "Q044",
+          "latency_ms": 5.59,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.054875,
+          "result_count": 16
+        }
+      ]
+    },
+    "bm25": {
+      "label": "Okapi BM25",
+      "answerable": {
+        "answerable_count": 13,
+        "recall@3_mean": 0.7308,
+        "recall@5_mean": 0.8077,
+        "mrr_mean": 0.7853,
+        "latency_mean_ms": 4.64,
+        "latency_p50_ms": 4.21,
+        "latency_p95_ms": 6.77
+      },
+      "no_answer": {
+        "no_answer_count": 3,
+        "abstained_count": 0,
+        "false_positive_count": 3,
+        "false_positive_rate": 1.0,
+        "top1_score_mean": 9.055804,
+        "result_count_mean": 16
+      },
+      "by_category": {
+        "clarification": {
+          "answerable_count": 2,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 4.16,
+          "latency_p50_ms": 4.16,
+          "latency_p95_ms": 4.27
+        },
+        "clause_ref": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 5.13,
+          "latency_p50_ms": 5.13,
+          "latency_p95_ms": 5.13
+        },
+        "cross_file": {
+          "answerable_count": 1,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 4.59,
+          "latency_p50_ms": 4.59,
+          "latency_p95_ms": 4.59
+        },
+        "equipment": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 4.21,
+          "latency_p50_ms": 4.21,
+          "latency_p95_ms": 4.21
+        },
+        "numeric": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.4166,
+          "latency_mean_ms": 5.16,
+          "latency_p50_ms": 5.16,
+          "latency_p95_ms": 6.32
+        },
+        "personnel": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.5625,
+          "latency_mean_ms": 4.29,
+          "latency_p50_ms": 4.29,
+          "latency_p95_ms": 4.48
+        },
+        "qualification": {
+          "answerable_count": 3,
+          "recall@3_mean": 0.6667,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.75,
+          "latency_mean_ms": 5.0,
+          "latency_p50_ms": 4.21,
+          "latency_p95_ms": 6.77
+        },
+        "tender_spec": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 4.17,
+          "latency_p50_ms": 4.17,
+          "latency_p95_ms": 4.17
+        }
+      },
+      "per_query_answerable": [
+        {
+          "query_id": "Q026",
+          "latency_ms": 4.59,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q027",
+          "latency_ms": 4.17,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q028",
+          "latency_ms": 4.1,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.125
+        },
+        {
+          "query_id": "Q029",
+          "latency_ms": 3.99,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q030",
+          "latency_ms": 6.32,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q031",
+          "latency_ms": 4.21,
+          "recall@3": 0.0,
+          "recall@5": 1.0,
+          "mrr": 0.25
+        },
+        {
+          "query_id": "Q032",
+          "latency_ms": 4.05,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q033",
+          "latency_ms": 4.27,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q034",
+          "latency_ms": 6.77,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q035",
+          "latency_ms": 5.13,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q036",
+          "latency_ms": 4.48,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q037",
+          "latency_ms": 4.21,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q038",
+          "latency_ms": 4.03,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        }
+      ],
+      "per_query_no_answer": [
+        {
+          "query_id": "Q041",
+          "latency_ms": 4.38,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 8.18353,
+          "result_count": 16
+        },
+        {
+          "query_id": "Q042",
+          "latency_ms": 4.14,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 10.449089,
+          "result_count": 16
+        },
+        {
+          "query_id": "Q044",
+          "latency_ms": 4.11,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 8.534792,
+          "result_count": 16
+        }
+      ]
+    },
+    "dense": {
+      "label": "Dense (BGE-small-zh)",
+      "answerable": {
+        "answerable_count": 13,
+        "recall@3_mean": 0.6538,
+        "recall@5_mean": 0.7692,
+        "mrr_mean": 0.7205,
+        "latency_mean_ms": 14.34,
+        "latency_p50_ms": 12.32,
+        "latency_p95_ms": 36.78
+      },
+      "no_answer": {
+        "no_answer_count": 3,
+        "abstained_count": 0,
+        "false_positive_count": 3,
+        "false_positive_rate": 1.0,
+        "top1_score_mean": 0.502632,
+        "result_count_mean": 17
+      },
+      "by_category": {
+        "clarification": {
+          "answerable_count": 2,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 11.96,
+          "latency_p50_ms": 11.96,
+          "latency_p95_ms": 12.6
+        },
+        "clause_ref": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 12.28,
+          "latency_p50_ms": 12.28,
+          "latency_p95_ms": 12.28
+        },
+        "cross_file": {
+          "answerable_count": 1,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 36.78,
+          "latency_p50_ms": 36.78,
+          "latency_p95_ms": 36.78
+        },
+        "equipment": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.5,
+          "latency_mean_ms": 13.0,
+          "latency_p50_ms": 13.0,
+          "latency_p95_ms": 13.0
+        },
+        "numeric": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.6666,
+          "latency_mean_ms": 12.84,
+          "latency_p50_ms": 12.84,
+          "latency_p95_ms": 14.4
+        },
+        "personnel": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.0,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.1416,
+          "latency_mean_ms": 13.07,
+          "latency_p50_ms": 13.07,
+          "latency_p95_ms": 14.05
+        },
+        "qualification": {
+          "answerable_count": 3,
+          "recall@3_mean": 0.6667,
+          "recall@5_mean": 0.8333,
+          "mrr_mean": 0.75,
+          "latency_mean_ms": 12.35,
+          "latency_p50_ms": 12.32,
+          "latency_p95_ms": 14.0
+        },
+        "tender_spec": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 11.6,
+          "latency_p50_ms": 11.6,
+          "latency_p95_ms": 11.6
+        }
+      },
+      "per_query_answerable": [
+        {
+          "query_id": "Q026",
+          "latency_ms": 36.78,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q027",
+          "latency_ms": 11.6,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q028",
+          "latency_ms": 12.1,
+          "recall@3": 0.0,
+          "recall@5": 1.0,
+          "mrr": 0.2
+        },
+        {
+          "query_id": "Q029",
+          "latency_ms": 14.4,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q030",
+          "latency_ms": 11.28,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q031",
+          "latency_ms": 14.0,
+          "recall@3": 0.0,
+          "recall@5": 0.5,
+          "mrr": 0.25
+        },
+        {
+          "query_id": "Q032",
+          "latency_ms": 12.6,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q033",
+          "latency_ms": 11.31,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q034",
+          "latency_ms": 12.32,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q035",
+          "latency_ms": 12.28,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q036",
+          "latency_ms": 14.05,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.0833
+        },
+        {
+          "query_id": "Q037",
+          "latency_ms": 13.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q038",
+          "latency_ms": 10.72,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        }
+      ],
+      "per_query_no_answer": [
+        {
+          "query_id": "Q041",
+          "latency_ms": 17.72,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.464811,
+          "result_count": 17
+        },
+        {
+          "query_id": "Q042",
+          "latency_ms": 19.71,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.500156,
+          "result_count": 17
+        },
+        {
+          "query_id": "Q044",
+          "latency_ms": 17.95,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.54293,
+          "result_count": 17
+        }
+      ]
+    },
+    "hybrid_rrf": {
+      "label": "BM25+Dense RRF (k=60)",
+      "answerable": {
+        "answerable_count": 13,
+        "recall@3_mean": 0.6923,
+        "recall@5_mean": 0.6923,
+        "mrr_mean": 0.7289,
+        "latency_mean_ms": 23.64,
+        "latency_p50_ms": 20.8,
+        "latency_p95_ms": 38.32
+      },
+      "no_answer": {
+        "no_answer_count": 3,
+        "abstained_count": 0,
+        "false_positive_count": 3,
+        "false_positive_rate": 1.0,
+        "top1_score_mean": 0.032114,
+        "result_count_mean": 17
+      },
+      "by_category": {
+        "clarification": {
+          "answerable_count": 2,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 19.48,
+          "latency_p50_ms": 19.48,
+          "latency_p95_ms": 26.08
+        },
+        "clause_ref": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 24.6,
+          "latency_p50_ms": 24.6,
+          "latency_p95_ms": 24.6
+        },
+        "cross_file": {
+          "answerable_count": 1,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 20.8,
+          "latency_p50_ms": 20.8,
+          "latency_p95_ms": 20.8
+        },
+        "equipment": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 0.5,
+          "latency_mean_ms": 29.21,
+          "latency_p50_ms": 29.21,
+          "latency_p95_ms": 29.21
+        },
+        "numeric": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.5,
+          "recall@5_mean": 0.5,
+          "mrr_mean": 0.6666,
+          "latency_mean_ms": 19.48,
+          "latency_p50_ms": 19.48,
+          "latency_p95_ms": 20.35
+        },
+        "personnel": {
+          "answerable_count": 2,
+          "recall@3_mean": 0.0,
+          "recall@5_mean": 0.0,
+          "mrr_mean": 0.1548,
+          "latency_mean_ms": 24.04,
+          "latency_p50_ms": 24.04,
+          "latency_p95_ms": 31.14
+        },
+        "qualification": {
+          "answerable_count": 3,
+          "recall@3_mean": 0.8333,
+          "recall@5_mean": 0.8333,
+          "mrr_mean": 0.7778,
+          "latency_mean_ms": 30.22,
+          "latency_p50_ms": 32.85,
+          "latency_p95_ms": 38.32
+        },
+        "tender_spec": {
+          "answerable_count": 1,
+          "recall@3_mean": 1.0,
+          "recall@5_mean": 1.0,
+          "mrr_mean": 1.0,
+          "latency_mean_ms": 15.97,
+          "latency_p50_ms": 15.97,
+          "latency_p95_ms": 15.97
+        }
+      },
+      "per_query_answerable": [
+        {
+          "query_id": "Q026",
+          "latency_ms": 20.8,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q027",
+          "latency_ms": 15.97,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q028",
+          "latency_ms": 16.94,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.1429
+        },
+        {
+          "query_id": "Q029",
+          "latency_ms": 20.35,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q030",
+          "latency_ms": 18.62,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q031",
+          "latency_ms": 19.5,
+          "recall@3": 0.5,
+          "recall@5": 0.5,
+          "mrr": 0.3333
+        },
+        {
+          "query_id": "Q032",
+          "latency_ms": 12.88,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q033",
+          "latency_ms": 26.08,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q034",
+          "latency_ms": 38.32,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q035",
+          "latency_ms": 24.6,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        },
+        {
+          "query_id": "Q036",
+          "latency_ms": 31.14,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "mrr": 0.1667
+        },
+        {
+          "query_id": "Q037",
+          "latency_ms": 29.21,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 0.5
+        },
+        {
+          "query_id": "Q038",
+          "latency_ms": 32.85,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0
+        }
+      ],
+      "per_query_no_answer": [
+        {
+          "query_id": "Q041",
+          "latency_ms": 24.72,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.031778,
+          "result_count": 17
+        },
+        {
+          "query_id": "Q042",
+          "latency_ms": 19.55,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.032787,
+          "result_count": 17
+        },
+        {
+          "query_id": "Q044",
+          "latency_ms": 22.07,
+          "abstained": false,
+          "false_positive": true,
+          "top1_score": 0.031778,
+          "result_count": 17
+        }
+      ]
+    }
+  },
+  "failures": {
+    "total_records": 21,
+    "unique_query_count": 5,
+    "by_mode": {
+      "keyword": 4,
+      "tfidf": 4,
+      "bm25": 4,
+      "dense": 4,
+      "hybrid_rrf": 5
+    },
+    "by_failure_type": {
+      "no_answer_false_positive": 15,
+      "recall_at_5_miss": 6
+    },
+    "items": [
+      {
+        "query_id": "Q028",
+        "split": "test",
+        "category": "personnel",
+        "retrieval_mode": "keyword",
+        "failure_type": "recall_at_5_miss",
+        "recall@5": 0.0,
+        "mrr": 0.1,
+        "relevant_chunk_ids": [
+          "C0014"
+        ],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0002",
+          "C0003",
+          "C0009",
+          "C0016"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q041",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "keyword",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0010",
+          "C0002",
+          "C0008",
+          "C0011",
+          "C0017"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q042",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "keyword",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0002",
+          "C0003",
+          "C0008",
+          "C0004"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q044",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "keyword",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0010",
+          "C0008",
+          "C0004",
+          "C0002"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q028",
+        "split": "test",
+        "category": "personnel",
+        "retrieval_mode": "tfidf",
+        "failure_type": "recall_at_5_miss",
+        "recall@5": 0.0,
+        "mrr": 0.1111,
+        "relevant_chunk_ids": [
+          "C0014"
+        ],
+        "retrieved_chunk_ids": [
+          "C0002",
+          "C0003",
+          "C0016",
+          "C0009",
+          "C0005"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q041",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "tfidf",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0010",
+          "C0005",
+          "C0008",
+          "C0002",
+          "C0017"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q042",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "tfidf",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0008",
+          "C0002",
+          "C0004",
+          "C0010"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q044",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "tfidf",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0010",
+          "C0017",
+          "C0008",
+          "C0005",
+          "C0004"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q028",
+        "split": "test",
+        "category": "personnel",
+        "retrieval_mode": "bm25",
+        "failure_type": "recall_at_5_miss",
+        "recall@5": 0.0,
+        "mrr": 0.125,
+        "relevant_chunk_ids": [
+          "C0014"
+        ],
+        "retrieved_chunk_ids": [
+          "C0002",
+          "C0016",
+          "C0017",
+          "C0003",
+          "C0009"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q041",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "bm25",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0010",
+          "C0005",
+          "C0008",
+          "C0002",
+          "C0009"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q042",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "bm25",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0008",
+          "C0010",
+          "C0002",
+          "C0005"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q044",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "bm25",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0010",
+          "C0008",
+          "C0005",
+          "C0009"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q036",
+        "split": "test",
+        "category": "personnel",
+        "retrieval_mode": "dense",
+        "failure_type": "recall_at_5_miss",
+        "recall@5": 0.0,
+        "mrr": 0.0833,
+        "relevant_chunk_ids": [
+          "C0016"
+        ],
+        "retrieved_chunk_ids": [
+          "C0005",
+          "C0006",
+          "C0017",
+          "C0004",
+          "C0003"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q041",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "dense",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0009",
+          "C0003",
+          "C0006",
+          "C0005",
+          "C0004"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q042",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "dense",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0002",
+          "C0013",
+          "C0007",
+          "C0004"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q044",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "dense",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0009",
+          "C0002",
+          "C0007",
+          "C0014",
+          "C0017"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q028",
+        "split": "test",
+        "category": "personnel",
+        "retrieval_mode": "hybrid_rrf",
+        "failure_type": "recall_at_5_miss",
+        "recall@5": 0.0,
+        "mrr": 0.1429,
+        "relevant_chunk_ids": [
+          "C0014"
+        ],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0002",
+          "C0005",
+          "C0016",
+          "C0009"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q036",
+        "split": "test",
+        "category": "personnel",
+        "retrieval_mode": "hybrid_rrf",
+        "failure_type": "recall_at_5_miss",
+        "recall@5": 0.0,
+        "mrr": 0.1667,
+        "relevant_chunk_ids": [
+          "C0016"
+        ],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0002",
+          "C0005",
+          "C0003",
+          "C0004"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q041",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "hybrid_rrf",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0009",
+          "C0005",
+          "C0010",
+          "C0002",
+          "C0003"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q042",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "hybrid_rrf",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0017",
+          "C0002",
+          "C0008",
+          "C0004",
+          "C0007"
+        ],
+        "manual_failure_category": null
+      },
+      {
+        "query_id": "Q044",
+        "split": "test",
+        "category": "no_answer",
+        "retrieval_mode": "hybrid_rrf",
+        "failure_type": "no_answer_false_positive",
+        "recall@5": 0.0,
+        "mrr": 0.0,
+        "relevant_chunk_ids": [],
+        "retrieved_chunk_ids": [
+          "C0009",
+          "C0017",
+          "C0002",
+          "C0008",
+          "C0010"
+        ],
+        "manual_failure_category": null
+      }
+    ]
+  },
+  "toy_case_verification": {
+    "recall@3": 0.3333,
+    "recall@3_expected": 0.3333,
+    "recall@3_correct": true,
+    "recall@5": 0.6667,
+    "recall@5_expected": 0.6667,
+    "recall@5_correct": true,
+    "mrr": 0.5,
+    "mrr_expected": 0.5,
+    "mrr_correct": true,
+    "no_answer_false_positive": true,
+    "no_answer_abstained": false,
+    "no_answer_fp_expected": true,
+    "no_answer_fp_correct": true,
+    "answerable_count": 1,
+    "answerable_count_expected": 1,
+    "answerable_count_correct": true,
+    "no_answer_count": 1,
+    "no_answer_count_expected": 1,
+    "no_answer_count_correct": true,
+    "no_answer_false_positive_rate": 1.0,
+    "no_answer_fp_rate_expected": 1.0,
+    "no_answer_fp_rate_correct": true
+  }
+}

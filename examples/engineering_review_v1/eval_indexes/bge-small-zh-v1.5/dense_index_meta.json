@@ -1,0 +1,32 @@
+{
+  "corpus_sha256": "05da389fade896f65196ced5744623fd05d099f2432591ce867f93523dd31c8c",
+  "model_repo_id": "BAAI/bge-small-zh-v1.5",
+  "model_revision": "7999e1d3359715c523056ef9478215996d62a620",
+  "embedding_dimension": 512,
+  "chunk_count": 17,
+  "chunk_ids": [
+    "C0001",
+    "C0002",
+    "C0003",
+    "C0004",
+    "C0005",
+    "C0006",
+    "C0007",
+    "C0008",
+    "C0009",
+    "C0010",
+    "C0011",
+    "C0012",
+    "C0013",
+    "C0014",
+    "C0015",
+    "C0016",
+    "C0017"
+  ],
+  "normalize_embeddings": true,
+  "query_instruction": "为这个句子生成表示以用于检索相关文章：",
+  "chunking_version": "1.0.0",
+  "created_at": "2026-08-07T09:31:32.282033+00:00",
+  "index_sha256": "81b26a16cd8363ffde32c8efc887642aee941e13633d6c54f726d30011a29578",
+  "dtype": "float32"
+}

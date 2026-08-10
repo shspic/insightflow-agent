@@ -71,6 +71,25 @@ services:
     mem_reservation: 768m
     cpus: "2.00"
 
+  mcp:
+    <<: *app-common
+    command: ["python", "-m", "app.mcp.run_review_tools_server"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    expose:
+      - "8765"
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.mcp.healthcheck", "--url", "http://127.0.0.1:8765/mcp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 30s
+    mem_limit: 512m
+    mem_reservation: 192m
+    cpus: "0.75"
+
   web:
     image: ${INSIGHTFLOW_WEB_IMAGE:-insightflow-web:local}
     build:

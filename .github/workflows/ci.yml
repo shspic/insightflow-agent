@@ -4,9 +4,18 @@ on:
   push:
   pull_request:
 
+# 并发取消：同一分支/PR 的旧运行自动取消，避免重复浪费资源。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 最小权限：本工作流只读取代码并上传 artifacts，不需要写仓库。
+permissions:
+  contents: read
+
 jobs:
   backend:
-    name: 后端测试
+    name: 后端（固定依赖 + Alembic + 完整 pytest）
     runs-on: ubuntu-latest
 
     steps:
@@ -18,38 +27,230 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 安装后端依赖
+      - name: 安装中文字体（Matplotlib/PDF 中文渲染需要）
+        run: |
+          sudo apt-get update
+          # fonts-noto-cjk：Matplotlib 图表中文（OFC/CFF 轮廓可用）；
+          # fonts-wqy-zenhei：reportlab PDF 报告（Noto CJK 的 ttc 是 PostScript
+          # 轮廓，reportlab 无法加载；wqy-zenhei.ttc 为 TrueType 轮廓）。
+          sudo apt-get install -y --no-install-recommends fontconfig fonts-noto-cjk fonts-wqy-zenhei
+          fc-cache -f >/dev/null
+          # 明确验证中文字体可用：找不到时立即失败，不允许后续测试在缺字体下运行
+          fc-match "Noto Sans CJK SC" | grep -qi "noto" || { echo "Noto Sans CJK SC 字体不可用"; exit 1; }
+          fc-match "WenQuanYi Zen Hei" | grep -qi "wqy" || { echo "WenQuanYi Zen Hei 字体不可用"; exit 1; }
+
+      - name: 安装后端依赖（固定版本）
         working-directory: backend
         run: pip install -r requirements.txt
 
-      - name: 运行后端测试
+      - name: 运行 Alembic 迁移测试
         working-directory: backend
         env:
           APP_NAME: InsightFlow Agent
           ENV: testing
-          DATABASE_URL: sqlite:///:memory:
+          # 独立临时数据库：任何用例都不会触碰默认 app.db
+          DATABASE_URL: sqlite:///./.ci-tmp/ci.db
           LLM_ENABLED: "false"
           LLM_API_KEY: ""
           CORS_ORIGINS: http://localhost:5173
-        run: pytest
+        run: python -m pytest tests/test_alembic_migrations.py -q -p no:cacheprovider
+
+      - name: 运行完整后端测试
+        working-directory: backend
+        env:
+          APP_NAME: InsightFlow Agent
+          ENV: testing
+          DATABASE_URL: sqlite:///./.ci-tmp/ci.db
+          # 测试存储与数据库均隔离：不写默认 app.db/uploads/reports/retrieval。
+          # conftest 的会话级隔离 fixture 会再覆盖到 pytest 临时目录。
+          UPLOAD_DIR: ./.ci-tmp/uploads
+          REPORT_DIR: ./.ci-tmp/reports
+          CHART_DIR: ./.ci-tmp/charts
+          ENGINEERING_RETRIEVAL_INDEX_ROOT: ./.ci-tmp/retrieval
+          LLM_ENABLED: "false"
+          LLM_API_KEY: ""
+          CORS_ORIGINS: http://localhost:5173
+        run: python -m pytest -q -p no:cacheprovider
+
+      # CI 安全边界说明：
+      # - 不调用真实 DeepSeek：LLM_ENABLED=false、LLM_API_KEY 为空；
+      # - 不联网下载真实 BGE：全部离线测试使用项目已有的 FakeEmbeddingProvider，
+      #   无任何下载模型的步骤；
+      # - 不提交 .env：密钥只通过 job 环境变量注入；真实密钥只存在于 GitHub
+      #   Secrets（部署占位说明见 docs/DEPLOYMENT_V3.md）。
 
   frontend:
-    name: 前端构建
+    name: 前端（npm ci + 测试 + 构建）
     runs-on: ubuntu-latest
 
     steps:
       - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: 安装 Node
+      - name: 安装 Node（固定版本 + npm 缓存）
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: 安装前端依赖
+      - name: 安装前端依赖（npm ci）
         working-directory: frontend
-        run: npm install
+        run: npm ci
+
+      - name: 运行前端测试
+        working-directory: frontend
+        run: npm test
 
       - name: 构建前端
         working-directory: frontend
         run: npm run build
+
+  playwright-smoke:
+    name: 浏览器冒烟（登录/工程/核验/隔离/390px）
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装后端依赖（固定版本）
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: 安装 Node（固定版本 + npm 缓存）
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 安装前端依赖（npm ci）
+        working-directory: frontend
+        run: npm ci
+
+      - name: 安装 Playwright Chromium（CI 使用自带浏览器，不依赖系统 Chrome）
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+
+      # 冒烟数据：临时数据库 + 测试账号 + 黄金材料，全部隔离：
+      # 不依赖本机 app.db，不依赖 Stage 6B 已准备好的本地项目。
+      - name: 初始化临时数据库并生成冒烟数据
+        working-directory: backend
+        env:
+          ENV: testing
+          DATABASE_URL: sqlite:///./.ci-smoke/smoke.db
+          UPLOAD_DIR: ./.ci-smoke/uploads
+          REPORT_DIR: ./.ci-smoke/reports
+          CHART_DIR: ./.ci-smoke/charts
+          ENGINEERING_RETRIEVAL_INDEX_ROOT: ./.ci-smoke/retrieval
+          LLM_ENABLED: "false"
+          LLM_API_KEY: ""
+          AUTH_SECRET_KEY: ci-smoke-secret-not-for-production
+        run: |
+          python -m app.db.init_db
+          python ../scripts/ci_smoke_setup.py > ./.ci-smoke/setup.log
+          cat ./.ci-smoke/setup.log
+          WS_ID=$(grep -oP 'WORKSPACE_ID=\K[0-9]+' ./.ci-smoke/setup.log)
+          echo "CI_SMOKE_WORKSPACE_ID=${WS_ID}" >> "$GITHUB_ENV"
+
+      - name: 启动隔离后端
+        working-directory: backend
+        env:
+          ENV: testing
+          DATABASE_URL: sqlite:///./.ci-smoke/smoke.db
+          UPLOAD_DIR: ./.ci-smoke/uploads
+          REPORT_DIR: ./.ci-smoke/reports
+          CHART_DIR: ./.ci-smoke/charts
+          ENGINEERING_RETRIEVAL_INDEX_ROOT: ./.ci-smoke/retrieval
+          LLM_ENABLED: "false"
+          LLM_API_KEY: ""
+          AUTH_SECRET_KEY: ci-smoke-secret-not-for-production
+          CORS_ORIGINS: http://127.0.0.1:5173
+          PUBLIC_SITE_URL: http://127.0.0.1:8000
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ./.ci-smoke/backend.log 2>&1 &
+          echo $! > ./.ci-smoke/backend.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+              echo "backend healthy"
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/api/health || { cat ./.ci-smoke/backend.log; exit 1; }
+
+      - name: 构建并启动隔离前端（preview）
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
+        run: |
+          npm run build
+          # 直接运行 vite 可执行文件，确保 $! 就是实际监听进程的 PID，
+          # 避免通过 npm wrapper 启动导致只杀掉 wrapper、vite 残留。
+          # 日志与 PID 统一写入 backend/.ci-smoke，与 artifact/cleanup 一致。
+          ./node_modules/.bin/vite preview \
+            --host 127.0.0.1 \
+            --port 5173 \
+            > ../backend/.ci-smoke/frontend.log 2>&1 &
+          echo $! > ../backend/.ci-smoke/frontend.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/ >/dev/null 2>&1; then
+              echo "frontend ready"
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/ >/dev/null || { cat ../backend/.ci-smoke/frontend.log; exit 1; }
+
+      - name: 运行 Playwright 浏览器冒烟
+        working-directory: frontend
+        env:
+          PW_CHROMIUM_CHANNEL: "none"
+          PW_OUTPUT_DIR: ../output/playwright/stage6c-ci-smoke-test-results
+          CI_SMOKE_BASE_URL: http://127.0.0.1:5173
+          CI_SMOKE_WORKSPACE_ID: ${{ env.CI_SMOKE_WORKSPACE_ID }}
+          CI_SMOKE_PRIMARY_USER: alice_smoke
+          CI_SMOKE_PRIMARY_PASSWORD: SmokePassword!2026
+          CI_SMOKE_SECONDARY_USER: bob_smoke
+          CI_SMOKE_SECONDARY_PASSWORD: SmokePassword!2026
+        run: npx playwright test e2e/stage6c-ci-smoke.spec.js --project=chromium-ci
+
+      - name: 上传冒烟证据（screenshot/trace/video 与日志，成功与失败均保留）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-ci-smoke
+          path: |
+            output/playwright/stage6c-ci-smoke/
+            output/playwright/stage6c-ci-smoke-test-results/
+            backend/.ci-smoke/*.log
+          if-no-files-found: ignore
+
+      - name: 停止冒烟进程并释放端口
+        if: always()
+        run: |
+          if [ -f backend/.ci-smoke/frontend.pid ]; then kill $(cat backend/.ci-smoke/frontend.pid) 2>/dev/null || true; fi
+          if [ -f backend/.ci-smoke/backend.pid ]; then kill $(cat backend/.ci-smoke/backend.pid) 2>/dev/null || true; fi
+          sleep 2
+          # 真实验证端口释放：5173/8000 必须都不再监听。
+          # 仍监听则先强制终止一次，复查后仍监听则让本 step 失败，
+          # 不能只输出“已释放”。
+          for port in 5173 8000; do
+            if ss -ltn | grep -qE ":${port}[[:space:]]"; then
+              echo "端口 ${port} 仍被监听，执行强制终止" >&2
+              if [ -f backend/.ci-smoke/frontend.pid ]; then kill -9 $(cat backend/.ci-smoke/frontend.pid) 2>/dev/null || true; fi
+              if [ -f backend/.ci-smoke/backend.pid ]; then kill -9 $(cat backend/.ci-smoke/backend.pid) 2>/dev/null || true; fi
+              sleep 1
+              if ss -ltn | grep -qE ":${port}[[:space:]]"; then
+                echo "端口 ${port} 释放失败" >&2
+                exit 1
+              fi
+            fi
+          done
+          echo "冒烟进程已停止，端口 5173/8000 均已释放"

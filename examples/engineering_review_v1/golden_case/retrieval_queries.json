@@ -1,0 +1,374 @@
+{
+  "dataset_name": "engineering-review-v1",
+  "version": "1.1.0",
+  "created_date": "2026-08-07",
+  "corpus_sha256": "05da389fade896f65196ced5744623fd05d099f2432591ce867f93523dd31c8c",
+  "disclaimer": "合成演示数据，不作为真实招投标、工程、资质或法律判断依据。",
+  "description": "工程投标审查检索评测集，包含 44 条查询（38 条可回答 + 6 条无答案），28 条开发集 + 16 条测试集。",
+  "categories": {
+    "tender_spec": "招标要求查询",
+    "bid_info": "投标响应信息查询",
+    "personnel": "人员数据查询",
+    "equipment": "设备数据查询",
+    "qualification": "资质证书查询",
+    "clarification": "澄清文件查询",
+    "cross_file": "跨文件一致性查询",
+    "numeric": "数值/阈值查询",
+    "clause_ref": "条款/证书编号查询",
+    "no_answer": "无答案查询（语料中不存在相关信息）"
+  },
+  "queries": [
+    {
+      "query_id": "Q001",
+      "query_text": "项目名称填写有什么要求",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0002"]
+    },
+    {
+      "query_id": "Q002",
+      "query_text": "最低人员数量要求是多少人",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003"]
+    },
+    {
+      "query_id": "Q003",
+      "query_text": "本项目预算上限是多少元",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003"]
+    },
+    {
+      "query_id": "Q004",
+      "query_text": "投标截止日期是哪一天",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0001", "C0004"]
+    },
+    {
+      "query_id": "Q005",
+      "query_text": "资质证书有效期需要满足什么条件",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0004"]
+    },
+    {
+      "query_id": "Q006",
+      "query_text": "最低设备数量是多少台",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0005"]
+    },
+    {
+      "query_id": "Q007",
+      "query_text": "项目负责人叫什么名字",
+      "category": "bid_info",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007", "C0009"]
+    },
+    {
+      "query_id": "Q008",
+      "query_text": "投标总报价是多少钱",
+      "category": "bid_info",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007", "C0009"]
+    },
+    {
+      "query_id": "Q009",
+      "query_text": "SYN-JC-24018 这个证书编号出现在哪个文件",
+      "category": "clause_ref",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007"]
+    },
+    {
+      "query_id": "Q010",
+      "query_text": "项目团队有哪些成员",
+      "category": "bid_info",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0009"]
+    },
+    {
+      "query_id": "Q011",
+      "query_text": "人员清单中项目负责人的证书编号是什么",
+      "category": "personnel",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0014"]
+    },
+    {
+      "query_id": "Q012",
+      "query_text": "人员清单中一共有几个人",
+      "category": "personnel",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0014", "C0016"]
+    },
+    {
+      "query_id": "Q013",
+      "query_text": "设备清单中有哪些检测设备",
+      "category": "equipment",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0015"]
+    },
+    {
+      "query_id": "Q014",
+      "query_text": "校准有效期最早的设备是哪一台",
+      "category": "equipment",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0015", "C0016"]
+    },
+    {
+      "query_id": "Q015",
+      "query_text": "CMA资质证书编号是什么",
+      "category": "qualification",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0011"]
+    },
+    {
+      "query_id": "Q016",
+      "query_text": "资质证书有效期到什么时候",
+      "category": "qualification",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0011"]
+    },
+    {
+      "query_id": "Q017",
+      "query_text": "SYN-CLAR-001 条款的内容是什么",
+      "category": "clarification",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0017"]
+    },
+    {
+      "query_id": "Q018",
+      "query_text": "证书编号的可追溯要求是什么",
+      "category": "clarification",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0017"]
+    },
+    {
+      "query_id": "Q019",
+      "query_text": "SYN-TENDER-007 条款规定了什么",
+      "category": "clause_ref",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003"]
+    },
+    {
+      "query_id": "Q020",
+      "query_text": "SYN-TENDER-013 关于设备的规定",
+      "category": "clause_ref",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0005"]
+    },
+    {
+      "query_id": "Q021",
+      "query_text": "投标报价是否超过了预算上限",
+      "category": "numeric",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003", "C0007"]
+    },
+    {
+      "query_id": "Q022",
+      "query_text": "项目负责人的证书编号在两个文件中是否一致",
+      "category": "cross_file",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007", "C0014"]
+    },
+    {
+      "query_id": "Q023",
+      "query_text": "设备校准有效期需要覆盖到什么时候",
+      "category": "tender_spec",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0006"]
+    },
+    {
+      "query_id": "Q024",
+      "query_text": "投标文件是什么时候签署的",
+      "category": "bid_info",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007", "C0010"]
+    },
+    {
+      "query_id": "Q025",
+      "query_text": "投标人是谁",
+      "category": "bid_info",
+      "split": "dev",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007", "C0008"]
+    },
+    {
+      "query_id": "Q026",
+      "query_text": "投标响应文件中项目名称字段是否为空",
+      "category": "cross_file",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0007", "C0013"]
+    },
+    {
+      "query_id": "Q027",
+      "query_text": "证书一致性有什么规定",
+      "category": "tender_spec",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003"]
+    },
+    {
+      "query_id": "Q028",
+      "query_text": "人员清单中是否有人的姓名为空",
+      "category": "personnel",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0014"]
+    },
+    {
+      "query_id": "Q029",
+      "query_text": "实际投入人员是否满足最低 5 人要求",
+      "category": "numeric",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003", "C0014"]
+    },
+    {
+      "query_id": "Q030",
+      "query_text": "实际投入设备是否满足最低 4 台要求",
+      "category": "numeric",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0005", "C0015"]
+    },
+    {
+      "query_id": "Q031",
+      "query_text": "资质有效期是否覆盖到服务结束日期之后",
+      "category": "qualification",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0001", "C0011"]
+    },
+    {
+      "query_id": "Q032",
+      "query_text": "扫描证书无法识别时应该怎么处理",
+      "category": "clarification",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0017"]
+    },
+    {
+      "query_id": "Q033",
+      "query_text": "澄清文件确认的最低设备数量",
+      "category": "clarification",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0017"]
+    },
+    {
+      "query_id": "Q034",
+      "query_text": "SYN-CMA-2026-014 是什么类型的证书",
+      "category": "qualification",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0011"]
+    },
+    {
+      "query_id": "Q035",
+      "query_text": "预算上限 200 万的条款编号是什么",
+      "category": "clause_ref",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0003"]
+    },
+    {
+      "query_id": "Q036",
+      "query_text": "数据说明中提到了哪些已知问题",
+      "category": "personnel",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0016"]
+    },
+    {
+      "query_id": "Q037",
+      "query_text": "钢筋扫描仪的校准有效期到什么时候",
+      "category": "equipment",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0015"]
+    },
+    {
+      "query_id": "Q038",
+      "query_text": "资质附件中发证机构是谁",
+      "category": "qualification",
+      "split": "test",
+      "answerable": true,
+      "relevant_chunk_ids": ["C0011"]
+    },
+    {
+      "query_id": "Q039",
+      "query_text": "项目要求投入多少架无人机",
+      "category": "no_answer",
+      "split": "dev",
+      "answerable": false,
+      "relevant_chunk_ids": []
+    },
+    {
+      "query_id": "Q040",
+      "query_text": "投标人需要具备ISO 9001质量管理体系认证吗",
+      "category": "no_answer",
+      "split": "dev",
+      "answerable": false,
+      "relevant_chunk_ids": []
+    },
+    {
+      "query_id": "Q041",
+      "query_text": "合同付款方式和分阶段付款比例是多少",
+      "category": "no_answer",
+      "split": "test",
+      "answerable": false,
+      "relevant_chunk_ids": []
+    },
+    {
+      "query_id": "Q042",
+      "query_text": "项目所在地的地质条件和地下水位数据",
+      "category": "no_answer",
+      "split": "test",
+      "answerable": false,
+      "relevant_chunk_ids": []
+    },
+    {
+      "query_id": "Q043",
+      "query_text": "联合体投标的牵头方必须是CMA认证机构吗",
+      "category": "no_answer",
+      "split": "dev",
+      "answerable": false,
+      "relevant_chunk_ids": []
+    },
+    {
+      "query_id": "Q044",
+      "query_text": "投标保证金的具体金额和缴纳方式是什么",
+      "category": "no_answer",
+      "split": "test",
+      "answerable": false,
+      "relevant_chunk_ids": []
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "raw_requirements": "重点检查项目负责人、人员和设备数量、设备校准有效期及资质有效期，同时核对总报价是否超过预算。所有高风险问题必须给出证据位置；扫描证书无法可靠识别时必须提示人工复核，不得猜测证书编号。",
+  "interpreted": {
+    "objectives": [
+      "人员一致性审查",
+      "设备投入审查",
+      "资质有效期审查",
+      "报价阈值审查"
+    ],
+    "required_check_types": [
+      "required_field",
+      "cross_file_equal",
+      "numeric_threshold",
+      "date_order",
+      "document_presence",
+      "evidence_required"
+    ],
+    "excluded_check_types": [],
+    "excluded_scopes": [],
+    "priority_fields": [
+      "bid_response.leader_name",
+      "personnel_equipment_data.total_personnel",
+      "personnel_equipment_data.total_equipment",
+      "personnel_equipment_data.earliest_calibration_expiry",
+      "qualification_attachment.expiry_date"
+    ],
+    "output_requirements": [
+      "high_risk_requires_evidence",
+      "group_by_severity"
+    ],
+    "clarification_questions": [],
+    "unsupported_requests": []
+  },
+  "interpreter_type": "deterministic_fixture",
+  "disclaimer": "合成演示数据，不作为真实招投标、工程、资质或法律判断依据。"
+}

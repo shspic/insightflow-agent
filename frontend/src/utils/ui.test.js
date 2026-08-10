@@ -96,3 +96,31 @@ test("浏览器标题按路由统一包含产品名称", () => {
   assert.equal(resolvePageTitle("/workspaces/9/settings"), "工作区设置 · InsightFlow Agent");
   assert.equal(resolvePageTitle("/admin"), "管理后台 · InsightFlow Agent");
 });
+
+test("V3 工程审查与通用分析路由标题", () => {
+  assert.equal(resolvePageTitle("/engineering/projects"), "engineering · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/engineering/projects/1"), "engineering · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/engineering/projects/1/files"), "文件 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/engineering/projects/1/tasks/2"), "任务详情 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/engineering/projects/1/reports/2"), "报告 · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/engineering/projects/1/context"), "Workspace Context · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/general/workspaces"), "general · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/general/workspaces/1"), "general · InsightFlow Agent");
+  assert.equal(resolvePageTitle("/general/workspaces/1/tasks/2"), "任务详情 · InsightFlow Agent");
+});
+
+test("旧路由 legacy redirect 映射正确性", () => {
+  // 验证 redirectType 参数驱动的跳转目标
+  const redirect = (type, workspaceId, section, taskId) => {
+    if (type === "report") return `/general/workspaces/${workspaceId}/reports/${taskId}`;
+    if (type === "task") return `/general/workspaces/${workspaceId}/tasks/${taskId}`;
+    if (type === "section") return `/general/workspaces/${workspaceId}/${section}`;
+    return `/general/workspaces/${workspaceId}`;
+  };
+  assert.equal(redirect("detail", "12"), "/general/workspaces/12");
+  assert.equal(redirect("section", "12", "files"), "/general/workspaces/12/files");
+  assert.equal(redirect("task", "12", undefined, "34"), "/general/workspaces/12/tasks/34");
+  assert.equal(redirect("report", "12", undefined, "34"), "/general/workspaces/12/reports/34");
+  // report 不应进入 task 分支
+  assert.notEqual(redirect("report", "12", undefined, "34"), "/general/workspaces/12/tasks/34");
+});

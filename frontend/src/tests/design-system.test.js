@@ -36,9 +36,33 @@ test("Button 支持完整语义、loading 防重复提交并保留原标签宽�
 });
 
 test("破坏性操作使用 danger，普通取消按钮仍为 secondary", () => {
-  assert.match(workspaceList, /<Button variant="danger"[\s\S]{0,120}软删除<\/Button>/);
+  assert.match(workspaceList, /<Button variant="danger"[\s\S]{0,120}永久删除<\/Button>/);
   assert.match(reportCenter, /<Button size="sm" variant="danger"[\s\S]{0,120}删除版本<\/Button>/);
   assert.match(workspaceList, /<Button variant="secondary"[\s\S]{0,120}>取消<\/Button>/);
+});
+
+test("WorkspaceList 不包含已删除筛选、恢复按钮，保留永久删除和归档/恢复使用", () => {
+  // 确认不再有"已删除"作为筛选选项（<option>中）
+  assert.doesNotMatch(workspaceList, /<option[^>]*>已删除</);
+  // 确认不再有"恢复"按钮（独立按钮，非"恢复使用"）
+  assert.doesNotMatch(workspaceList, />恢复<\/Button>/);
+  // 确认永久删除 Dialog 存在
+  assert.match(workspaceList, /永久删除/);
+  // 确认归档/恢复使用仍通过 PATCH status 工作
+  assert.match(workspaceList, /status.*archived/);
+  assert.match(workspaceList, /status.*active/);
+  // 确认 cleanup warning 提示存在
+  assert.match(workspaceList, /部分磁盘资产清理失败/);
+});
+
+test("workspaces API 不导出 restoreWorkspace，deleteWorkspace 发送 confirmation_name", () => {
+  const workspacesApi = read("../api/workspaces.js");
+  // 不应导出 restoreWorkspace
+  assert.doesNotMatch(workspacesApi, /export.*restoreWorkspace/);
+  // deleteWorkspace 应发送 confirmation_name 在请求体中
+  assert.match(workspacesApi, /confirmation_name/);
+  // deleteWorkspace 应使用 DELETE method
+  assert.match(workspacesApi, /"DELETE"/);
 });
 
 test("上传使用真实不确定状态，不显示固定虚假百分比", () => {

@@ -1,0 +1,92 @@
+[
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q012",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q013",
+  "detail": "recall@5=0.0"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q022",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q025",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q026",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q028",
+  "detail": "recall@5=0.0"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q029",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q030",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "RETRIEVAL_MISS",
+  "manual_failure_category": "RECALL",
+  "item_id": "Q031",
+  "detail": "recall@5=0.5"
+ },
+ {
+  "failure_type": "NO_ANSWER_FALSE_POSITIVE",
+  "manual_failure_category": "NO_ANSWER",
+  "item_id": "Q039",
+  "detail": "no-answer 查询返回了结果"
+ },
+ {
+  "failure_type": "NO_ANSWER_FALSE_POSITIVE",
+  "manual_failure_category": "NO_ANSWER",
+  "item_id": "Q040",
+  "detail": "no-answer 查询返回了结果"
+ },
+ {
+  "failure_type": "NO_ANSWER_FALSE_POSITIVE",
+  "manual_failure_category": "NO_ANSWER",
+  "item_id": "Q041",
+  "detail": "no-answer 查询返回了结果"
+ },
+ {
+  "failure_type": "NO_ANSWER_FALSE_POSITIVE",
+  "manual_failure_category": "NO_ANSWER",
+  "item_id": "Q042",
+  "detail": "no-answer 查询返回了结果"
+ },
+ {
+  "failure_type": "NO_ANSWER_FALSE_POSITIVE",
+  "manual_failure_category": "NO_ANSWER",
+  "item_id": "Q043",
+  "detail": "no-answer 查询返回了结果"
+ },
+ {
+  "failure_type": "NO_ANSWER_FALSE_POSITIVE",
+  "manual_failure_category": "NO_ANSWER",
+  "item_id": "Q044",
+  "detail": "no-answer 查询返回了结果"
+ }
+]

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import { RequireAdmin, RequireSession } from "./components/AuthGuards";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -12,7 +12,11 @@ const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const Register = lazy(() => import("./pages/Register"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
+const LegalPrivacy = lazy(() => import("./pages/LegalPrivacy"));
+const LegalTerms = lazy(() => import("./pages/LegalTerms"));
+const LegalAiDisclosure = lazy(() => import("./pages/LegalAiDisclosure"));
 const WorkspaceDetail = lazy(() => import("./pages/WorkspaceDetail"));
+const EngineeringProjectDetail = lazy(() => import("./pages/EngineeringProjectDetail"));
 const WorkspaceList = lazy(() => import("./pages/WorkspaceList"));
 const Usage = lazy(() => import("./pages/Usage"));
 import "./styles/tokens.css";
@@ -37,16 +41,34 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/password-reset" element={<PasswordReset />} />
+              {/* 大陆公众站法律页面（公开路由，无需登录） */}
+              <Route path="/legal/privacy" element={<LegalPrivacy />} />
+              <Route path="/legal/terms" element={<LegalTerms />} />
+              <Route path="/legal/ai-disclosure" element={<LegalAiDisclosure />} />
               <Route element={<RequireSession allowPasswordChange />}>
                 <Route path="/change-password" element={<ChangePassword />} />
               </Route>
               <Route element={<RequireSession />}>
                 <Route element={<AppLayout />}>
-                  <Route path="/workspaces" element={<WorkspaceList />} />
-                  <Route path="/workspaces/:workspaceId" element={<WorkspaceDetail />} />
-                  <Route path="/workspaces/:workspaceId/:section" element={<WorkspaceDetail />} />
-                  <Route path="/workspaces/:workspaceId/tasks/:taskId" element={<WorkspaceDetail />} />
-                  <Route path="/workspaces/:workspaceId/reports/:taskId" element={<WorkspaceDetail />} />
+                  {/* V3 工程审查（默认首页） */}
+                  <Route path="/engineering/projects" element={<WorkspaceList type="engineering" />} />
+                  <Route path="/engineering/projects/:workspaceId" element={<EngineeringProjectDetail />} />
+                  <Route path="/engineering/projects/:workspaceId/:section" element={<EngineeringProjectDetail />} />
+
+                  {/* V3 通用分析（旧版） */}
+                  <Route path="/general/workspaces" element={<WorkspaceList type="general" />} />
+                  <Route path="/general/workspaces/:workspaceId" element={<WorkspaceDetail type="general" />} />
+                  <Route path="/general/workspaces/:workspaceId/:section" element={<WorkspaceDetail type="general" />} />
+                  <Route path="/general/workspaces/:workspaceId/tasks/:taskId" element={<WorkspaceDetail type="general" />} />
+                  <Route path="/general/workspaces/:workspaceId/reports/:taskId" element={<WorkspaceDetail type="general" />} />
+
+                  {/* 旧地址兼容：跳转到 general */}
+                  <Route path="/workspaces" element={<Navigate to="/general/workspaces" replace />} />
+                  <Route path="/workspaces/:workspaceId" element={<LegacyWorkspaceRedirect redirectType="detail" />} />
+                  <Route path="/workspaces/:workspaceId/:section" element={<LegacyWorkspaceRedirect redirectType="section" />} />
+                  <Route path="/workspaces/:workspaceId/tasks/:taskId" element={<LegacyWorkspaceRedirect redirectType="task" />} />
+                  <Route path="/workspaces/:workspaceId/reports/:taskId" element={<LegacyWorkspaceRedirect redirectType="report" />} />
+
                   <Route path="/usage" element={<Usage />} />
                   <Route element={<RequireAdmin />}>
                     <Route path="/admin" element={<Admin />} />
@@ -54,7 +76,7 @@ export default function App() {
                   <Route path="/forbidden" element={<StatusPage status={403} />} />
                 </Route>
               </Route>
-              <Route path="/" element={<Navigate to="/workspaces" replace />} />
+              <Route path="/" element={<Navigate to="/engineering/projects" replace />} />
               <Route path="*" element={<StatusPage status={404} />} />
             </Routes>
           </Suspense>
@@ -62,4 +84,18 @@ export default function App() {
       </AuthProvider>
     </BrowserRouter>
   );
+}
+
+function LegacyWorkspaceRedirect({ redirectType }) {
+  const { workspaceId, section, taskId } = useParams();
+  if (redirectType === "report") {
+    return <Navigate to={`/general/workspaces/${workspaceId}/reports/${taskId}`} replace />;
+  }
+  if (redirectType === "task") {
+    return <Navigate to={`/general/workspaces/${workspaceId}/tasks/${taskId}`} replace />;
+  }
+  if (redirectType === "section") {
+    return <Navigate to={`/general/workspaces/${workspaceId}/${section}`} replace />;
+  }
+  return <Navigate to={`/general/workspaces/${workspaceId}`} replace />;
 }

@@ -223,8 +223,8 @@ def test_worker_executes_confirmed_plan_idempotently(
     headers = _login(client, user.username)
     task_data = _create_and_confirm(client, headers, workspace.id, file_record.id)
     monkeypatch.setattr(
-        "app.services.v2_report_service._report_file",
-        lambda task_id: tmp_path / f"task_{task_id}_v2.md",
+        "app.services.report_version_service._storage_root",
+        lambda: tmp_path,
     )
 
     assert TaskWorker("worker-test").run_once(db_session) is True

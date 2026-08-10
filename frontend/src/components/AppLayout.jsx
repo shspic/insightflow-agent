@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import SiteFooter from "./SiteFooter";
 import { Button, Dropdown, IconButton, Select, Tooltip } from "./common";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
 const NAV_ITEMS = [
-  { to: "/workspaces", short: "工", label: "工作区", end: false },
+  { to: "/engineering/projects", short: "E", label: "engineering", end: false },
+  { to: "/general/workspaces", short: "G", label: "general", end: false },
   { to: "/usage", short: "量", label: "使用量", end: true },
 ];
 
@@ -40,7 +42,7 @@ export default function AppLayout() {
           <span className="app-brand__mark" aria-hidden="true">
             <img src="/favicon.png" alt="" />
           </span>
-          {!collapsed && <div><strong>InsightFlow Agent</strong><small>多模态分析工作台</small></div>}
+          {!collapsed && <div><strong>InsightFlow Agent</strong><small>证据化文档审查工作台</small></div>}
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
@@ -82,8 +84,19 @@ export default function AppLayout() {
             菜单
           </IconButton>
           <div className="topbar__context">
-            <strong>{location.pathname.startsWith("/admin") ? "系统管理" : "InsightFlow Agent"}</strong>
-            <small>多模态资料分析与报告生成</small>
+            <strong>
+              {location.pathname.startsWith("/admin") ? "系统管理"
+                : location.pathname.startsWith("/engineering") ? "engineering"
+                : location.pathname.startsWith("/general") ? "general"
+                : location.pathname.startsWith("/usage") ? "使用量"
+                : "InsightFlow Agent"}
+            </strong>
+            <small>
+              {location.pathname.startsWith("/engineering") ? "工程检测服务投标资料辅助审查"
+                : location.pathname.startsWith("/general") ? "通用文档分析（旧版）"
+                : location.pathname.startsWith("/usage") ? "查看配额、模型用量和存储"
+                : "多模态资料分析与报告生成"}
+            </small>
           </div>
           <Dropdown label={`${user.username} · ${user.role === "admin" ? "管理员" : "用户"}`}>
             <label className="theme-control">
@@ -100,6 +113,7 @@ export default function AppLayout() {
         <main id="main-content" className="app-content" tabIndex="-1">
           <Outlet />
         </main>
+        <SiteFooter />
       </div>
     </div>
   );

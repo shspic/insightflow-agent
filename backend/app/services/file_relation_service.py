@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.models.file import File
 from app.models.file_profile import FileProfile
 from app.models.file_relation import FileRelation
+from app.models.workspace import Workspace
 from app.models.workspace_file import WorkspaceFile
 from app.schemas.file_relation import FileRelationResponse, RelationDiscoverResponse
 from app.services.audit_service import add_audit_log
@@ -33,6 +34,13 @@ RELATION_TYPES = {
     "unrelated",
     "custom",
 }
+ENGINEERING_RELATION_TYPES = frozenset({
+    "constrains",
+    "responds_to",
+    "data_source_of",
+    "evidence_for",
+    "supersedes",
+})
 SYMMETRIC_RELATION_TYPES = {
     "same_dataset",
     "continuation",
@@ -271,7 +279,9 @@ def mutate_file_relation(
         relation.updated_at = utcnow()
         result = relation
     elif normalized_action in {"replace", "update"}:
-        new_type = _normalize_relation_type(relation_type, custom_relation_type)
+        ws = db.scalar(select(Workspace).where(Workspace.id == workspace_id))
+        ws_type = ws.workspace_type if ws else "general"
+        new_type = _normalize_relation_type(relation_type, custom_relation_type, workspace_type=ws_type)
         source_id, target_id, direction = _normalize_direction(
             relation.source_file_id,
             relation.target_file_id,
@@ -736,10 +746,18 @@ def _find_current_relation(
 def _normalize_relation_type(
     relation_type: str | None,
     custom_relation_type: str | None,
+    *,
+    workspace_type: str = "general",
 ) -> str:
     normalized = (relation_type or "").strip()
-    if normalized not in RELATION_TYPES:
+    all_valid = RELATION_TYPES | ENGINEERING_RELATION_TYPES
+    if normalized not in all_valid:
         raise FileRelationError("关系类型不在允许范围内", "INVALID_RELATION_TYPE")
+    # general 工作区不能使用工程关系
+    if workspace_type != "engineering" and normalized in ENGINEERING_RELATION_TYPES:
+        raise FileRelationError(
+            "工程关系仅限 engineering 工作区使用", "ENGINEERING_RELATION_NOT_ALLOWED"
+        )
     if normalized != "custom":
         return normalized
     custom = (custom_relation_type or "").strip()

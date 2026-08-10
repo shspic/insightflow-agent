@@ -1,0 +1,75 @@
+{
+  "case_id": "SYN-ENG-2026-001",
+  "manifest_version": "1.1.0",
+  "generator_version": "1.1.0",
+  "generated_date": "2026-08-06",
+  "rule_pack_id": "engineering_bid_review_v1",
+  "rule_pack_version": "1.1.0",
+  "disclaimer": "合成演示数据，不作为真实招投标、工程、资质或法律判断依据。",
+  "files": [
+    {
+      "filename": "01_合成招标要求.pdf",
+      "role": "tender_requirement",
+      "mime_type": "application/pdf",
+      "sha256": "fc9cde98c2c95eab3719bca176cdbf17328ef18b19783b70fb9536ca7b5db6a9",
+      "size_bytes": 12394,
+      "page_count": 6,
+      "text_layer_mode": "full",
+      "ocr_required": false,
+      "disclaimer_visible": true
+    },
+    {
+      "filename": "02_合成投标响应.pdf",
+      "role": "bid_response",
+      "mime_type": "application/pdf",
+      "sha256": "9715dd74a638c30cf539fa56d0a0f1548308ed845a0a0adf6966a3525d443079",
+      "size_bytes": 12715,
+      "page_count": 4,
+      "text_layer_mode": "full",
+      "ocr_required": false,
+      "disclaimer_visible": true
+    },
+    {
+      "filename": "04_合成资质附件.pdf",
+      "role": "qualification_attachment",
+      "mime_type": "application/pdf",
+      "sha256": "f2f73f3b47ca01ae6a4131069846a2ae9c197245813ae89e3a254f1ed3583c7b",
+      "size_bytes": 4187878,
+      "page_count": 2,
+      "text_layer_mode": "page1_text_page2_raster",
+      "ocr_required": true,
+      "ocr_required_pages": [
+        2
+      ],
+      "disclaimer_visible": true
+    },
+    {
+      "filename": "03_人员设备清单.xlsx",
+      "role": "personnel_equipment_data",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "sha256": "12c9b8ddec25d814d36939347f57a9b5306c11c9e7aba012b1a12e6d26d30c27",
+      "size_bytes": 31385,
+      "sheet_names": [
+        "项目概况",
+        "人员清单",
+        "设备清单",
+        "数据说明"
+      ],
+      "formula_count": 0,
+      "disclaimer_visible": true
+    },
+    {
+      "filename": "05_项目澄清.md",
+      "role": "clarification_document",
+      "mime_type": "text/markdown",
+      "sha256": "ec454cc78881e3dffb36bedc5bef800f7da65758f47c7802c2117dfadd2a6ce8",
+      "size_bytes": 1247,
+      "encoding": "utf-8",
+      "clause_codes": [
+        "SYN-CLAR-001",
+        "SYN-CLAR-002"
+      ],
+      "disclaimer_visible": true
+    }
+  ]
+}

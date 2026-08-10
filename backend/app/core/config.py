@@ -55,9 +55,9 @@ class Settings:
     )
     llm_enabled: bool = _parse_bool(_get_env("LLM_ENABLED", "true"))
     llm_max_retries: int = _parse_int(_get_env("LLM_MAX_RETRIES", "1"), 1)
-    embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")
-    vector_store: str = _get_env("VECTOR_STORE", "chroma")
-    rag_retrieval_mode: str = _get_env("RAG_RETRIEVAL_MODE", "auto")
+    embedding_provider: str = _get_env("EMBEDDING_PROVIDER", "local")  # 规划中，未接入真实 Embedding
+    vector_store: str = _get_env("VECTOR_STORE", "chroma")  # 规划中，未接入真实 Chroma/FAISS
+    rag_retrieval_mode: str = _get_env("RAG_RETRIEVAL_MODE", "auto")  # auto/tfidf/keyword，当前为 TF-IDF 算法
     rag_top_k: int = _parse_int(_get_env("RAG_TOP_K", "5"), 5)
     rag_chunk_size: int = _parse_int(_get_env("RAG_CHUNK_SIZE", "800"), 800)
     rag_chunk_overlap: int = _parse_int(_get_env("RAG_CHUNK_OVERLAP", "100"), 100)
@@ -88,6 +88,35 @@ class Settings:
     auth_rate_window_seconds: int = _parse_int(_get_env("AUTH_RATE_WINDOW_SECONDS", "900"), 900)
     auth_block_seconds: int = _parse_int(_get_env("AUTH_BLOCK_SECONDS", "900"), 900)
     enable_legacy_v1_api: bool = _parse_bool(_get_env("ENABLE_LEGACY_V1_API", "true"))
+    # 阶段 5A-1：Review Tools MCP 配置（默认关闭；仅绑定 127.0.0.1）
+    engineering_mcp_enabled: bool = _parse_bool(_get_env("ENGINEERING_MCP_ENABLED", "false"))
+    # 工程检索索引根目录覆盖（测试/部署用；空=默认 backend/storage/retrieval/workspaces）
+    engineering_retrieval_index_root: str = _get_env("ENGINEERING_RETRIEVAL_INDEX_ROOT", "")
+    engineering_mcp_url: str = _get_env("ENGINEERING_MCP_URL", "http://127.0.0.1:8765/mcp")
+    engineering_mcp_timeout_seconds: float = _parse_float(
+        _get_env("ENGINEERING_MCP_TIMEOUT_SECONDS", "15"),
+        15.0,
+    )
+    engineering_mcp_internal_token: str = _get_env("ENGINEERING_MCP_INTERNAL_TOKEN", "")
+    # 阶段 6D-1：仅生产 mcp 容器显式启用；默认关闭时 MCP 只绑定 localhost
+    engineering_mcp_allow_container_bind: bool = _parse_bool(
+        _get_env("ENGINEERING_MCP_ALLOW_CONTAINER_BIND", "false")
+    )
+    # 阶段 6D-2：大陆公众站合规配置（默认关闭；仅公开上线时门禁要求必填）
+    public_launch_enabled: bool = _parse_bool(_get_env("PUBLIC_LAUNCH_ENABLED", "false"))
+    site_operator_name: str = _get_env("SITE_OPERATOR_NAME", "")
+    site_contact_email: str = _get_env("SITE_CONTACT_EMAIL", "")
+    icp_filing_number: str = _get_env("ICP_FILING_NUMBER", "")
+    icp_filing_url: str = _get_env("ICP_FILING_URL", "https://beian.miit.gov.cn/")
+    public_security_filing_number: str = _get_env("PUBLIC_SECURITY_FILING_NUMBER", "")
+    public_security_filing_url: str = _get_env(
+        "PUBLIC_SECURITY_FILING_URL", "http://www.beian.gov.cn/portal/index.do"
+    )
+    ai_model_display_name: str = _get_env("AI_MODEL_DISPLAY_NAME", "")
+    ai_model_filing_number: str = _get_env("AI_MODEL_FILING_NUMBER", "")
+    ai_assisted_notice: str = _get_env("AI_ASSISTED_NOTICE", "AI 辅助生成，须人工复核")
+    privacy_policy_version: str = _get_env("PRIVACY_POLICY_VERSION", "")
+    terms_version: str = _get_env("TERMS_VERSION", "")
     upload_max_file_size_bytes: int = _parse_int(
         _get_env("UPLOAD_MAX_FILE_SIZE_BYTES", "20971520"),
         20 * 1024 * 1024,
@@ -319,3 +348,103 @@ def validate_production_security(current_settings: Settings = settings) -> None:
         or admin_password.lower() in {"admin", "password", "changeme", "admin123456"}
     ):
         raise RuntimeError("生产环境不能使用默认或弱管理员密码")
+    _validate_production_mcp(current_settings)
+    _validate_production_public_site(current_settings)
+
+
+# 占位符前缀：示例文件与未完成配置的识别标记
+_EXAMPLE_PREFIXES = ("replace_", "your_", "change_me")
+
+
+def _validate_production_public_site(current_settings: Settings) -> None:
+    """大陆公众站合规门禁（PUBLIC_LAUNCH_ENABLED=true 时强制必填项）。
+
+    依据：
+    - 《非经营性互联网信息服务备案管理办法》（信息产业部令第 33 号）第十三条：
+      主页底部中央位置标明备案编号并链接工信部备案管理系统；
+    - 公安联网备案：ICP 备案后 30 日内完成（www.beian.gov.cn）；
+      允许"尚在法定办理期限内"的明确状态，但不得伪造号码；
+    - 《人工智能生成合成内容标识办法》（国信办通字〔2025〕2 号）：显式标识义务。
+
+    未启用 PUBLIC_LAUNCH_ENABLED 时不检查（private/prelaunch 模式允许为空）。
+    """
+    if not current_settings.public_launch_enabled:
+        return
+
+    required = {
+        "SITE_OPERATOR_NAME": current_settings.site_operator_name,
+        "SITE_CONTACT_EMAIL": current_settings.site_contact_email,
+        "ICP_FILING_NUMBER": current_settings.icp_filing_number,
+        "PRIVACY_POLICY_VERSION": current_settings.privacy_policy_version,
+        "TERMS_VERSION": current_settings.terms_version,
+        "AI_MODEL_DISPLAY_NAME": current_settings.ai_model_display_name,
+        "AI_ASSISTED_NOTICE": current_settings.ai_assisted_notice,
+    }
+    for name, value in required.items():
+        stripped = (value or "").strip()
+        if not stripped or stripped.lower().startswith(_EXAMPLE_PREFIXES):
+            raise RuntimeError(f"生产环境公开站必须配置 {name}（不能为空或使用示例占位符）")
+
+    email = current_settings.site_contact_email.strip()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        raise RuntimeError("生产环境 SITE_CONTACT_EMAIL 必须是有效邮箱地址")
+
+    icp_number = current_settings.icp_filing_number.strip()
+    if not re.match(r"^[一-龥]{1,2}ICP备\d+号(-\d+)?$", icp_number):
+        raise RuntimeError(
+            "生产环境 ICP_FILING_NUMBER 格式不合法（应为省简称+ICP备+编号，如 京ICP备12345678号-1）"
+        )
+    if current_settings.icp_filing_url.strip().lower() != "https://beian.miit.gov.cn/":
+        raise RuntimeError("生产环境 ICP_FILING_URL 必须指向工信部备案管理系统 https://beian.miit.gov.cn/")
+
+    security_number = current_settings.public_security_filing_number.strip()
+    if security_number:
+        if security_number.lower().startswith(_EXAMPLE_PREFIXES):
+            raise RuntimeError("生产环境 PUBLIC_SECURITY_FILING_NUMBER 不能使用示例占位符")
+        if not re.match(r"^[一-龥]{1,2}公网安备\d+号$", security_number):
+            raise RuntimeError(
+                "生产环境 PUBLIC_SECURITY_FILING_NUMBER 格式不合法（应为省简称+公网安备+编号+号）"
+            )
+    security_url = current_settings.public_security_filing_url.strip().lower()
+    if security_url not in (
+        "http://www.beian.gov.cn/portal/index.do",
+        "https://www.beian.gov.cn/portal/index.do",
+    ):
+        raise RuntimeError(
+            "生产环境 PUBLIC_SECURITY_FILING_URL 必须指向全国互联网安全管理服务平台 "
+            "http://www.beian.gov.cn/portal/index.do"
+        )
+
+    ai_filing = current_settings.ai_model_filing_number.strip()
+    if ai_filing and ai_filing.lower().startswith(_EXAMPLE_PREFIXES):
+        raise RuntimeError("生产环境 AI_MODEL_FILING_NUMBER 不能使用示例占位符")
+
+
+# 生产 MCP 允许的受控内部地址（Docker 服务名或 localhost 系，禁止公网域名）
+_MCP_PRODUCTION_ALLOWED_HOSTS = frozenset({"mcp", "127.0.0.1", "localhost", "::1"})
+_MCP_EXAMPLE_TOKEN_PREFIXES = ("replace_", "change_me", "your_")
+
+
+def _validate_production_mcp(current_settings: Settings) -> None:
+    """生产 MCP 安全校验（ENABLED=false 时不检查，保持原行为兼容）。"""
+    if not current_settings.engineering_mcp_enabled:
+        return
+    token = current_settings.engineering_mcp_internal_token
+    if len(token) < 32:
+        raise RuntimeError("生产环境 ENGINEERING_MCP_INTERNAL_TOKEN 至少需要 32 个字符")
+    if token.lower().startswith(_MCP_EXAMPLE_TOKEN_PREFIXES):
+        raise RuntimeError("生产环境 ENGINEERING_MCP_INTERNAL_TOKEN 不能使用示例占位符")
+    if len(set(token)) < 12:
+        raise RuntimeError("生产环境 ENGINEERING_MCP_INTERNAL_TOKEN 必须具有足够随机性")
+    from urllib.parse import urlparse
+
+    parsed = urlparse(current_settings.engineering_mcp_url)
+    host = (parsed.hostname or "").lower()
+    if host == "mcp" and not current_settings.engineering_mcp_allow_container_bind:
+        raise RuntimeError(
+            "生产环境 ENGINEERING_MCP_URL 指向 mcp 容器时必须启用 ENGINEERING_MCP_ALLOW_CONTAINER_BIND"
+        )
+    if parsed.scheme != "http" or host not in _MCP_PRODUCTION_ALLOWED_HOSTS:
+        raise RuntimeError(
+            "生产环境 ENGINEERING_MCP_URL 必须指向受控内部地址（如 http://mcp:8765/mcp），禁止公网域名"
+        )

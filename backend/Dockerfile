@@ -11,6 +11,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         fonts-noto-cjk \
+        fonts-wqy-zenhei \
         libfreetype6 \
         libglib2.0-0 \
         libgl1 \
@@ -36,9 +37,16 @@ RUN groupadd --gid 10001 insightflow \
 COPY --chown=insightflow:insightflow app ./app
 COPY --chown=insightflow:insightflow alembic ./alembic
 COPY --chown=insightflow:insightflow alembic.ini ./
+COPY --chown=insightflow:insightflow docker-entrypoint.sh ./
+
+# 固化入口可执行权限：不依赖 Windows 文件权限或本地 build context 权限位
+RUN chmod 0555 /app/docker-entrypoint.sh
 
 USER insightflow
 
 EXPOSE 8000
 
+# 启动前安全执行 Alembic 迁移（幂等），再启动实际命令。
+# 覆盖 CMD 可运行 worker 等其他入口，迁移始终先执行。
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["python", "-m", "app.cli.run_api"]

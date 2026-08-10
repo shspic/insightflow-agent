@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class WorkspaceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
+    workspace_type: str | None = Field(default="general", pattern="^(engineering|general)$")
 
 
 class WorkspaceUpdate(BaseModel):
@@ -19,6 +20,8 @@ class WorkspaceResponse(BaseModel):
     id: int
     name: str
     description: str | None
+    workspace_type: str
+    review_template_key: str | None = None
     status: str
     is_deleted: bool
     file_count: int

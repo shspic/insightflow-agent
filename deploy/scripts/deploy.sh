@@ -33,10 +33,16 @@ compose build backend web
 compose run --rm --no-deps backend alembic upgrade head
 
 echo "现在通过现有安全 CLI 创建管理员；密码不会写入部署日志。"
-compose run --rm --no-deps backend python -m app.cli.create_admin
+# 支持环境变量 ADMIN_USERNAME/ADMIN_PASSWORD 非交互创建（自动化部署）；
+# 未设置时 compose run 保持交互输入。
+admin_env_args=()
+[[ -n "${ADMIN_USERNAME:-}" ]] && admin_env_args+=(-e ADMIN_USERNAME)
+[[ -n "${ADMIN_PASSWORD:-}" ]] && admin_env_args+=(-e ADMIN_PASSWORD)
+compose run --rm --no-deps "${admin_env_args[@]}" backend python -m app.cli.create_admin
 
-compose up -d backend worker
+compose up -d backend mcp worker
 wait_readiness 45
+wait_mcp_healthy 45
 compose up -d web
 compose exec -T web nginx -t
 

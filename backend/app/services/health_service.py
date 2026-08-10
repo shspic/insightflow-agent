@@ -85,6 +85,19 @@ def readiness_details(db: Session) -> dict:
     }
     tesseract = settings.tesseract_cmd or shutil.which("tesseract")
     checks["ocr"] = {"status": "ok" if tesseract else "degraded"}
+    if settings.engineering_mcp_enabled:
+        # 阶段 6D-1：MCP 启用时真实工具发现；故障降级（不把永久 MCP 故障
+        # 误报成完全健康，也不让 MCP 故障拖垮整个 backend liveness）。
+        try:
+            from app.mcp.healthcheck import mcp_healthcheck_ok
+
+            mcp_ok = mcp_healthcheck_ok(timeout_seconds=5.0)
+        except Exception:
+            mcp_ok = False
+        checks["mcp"] = {
+            "status": "ok" if mcp_ok else "degraded",
+            **({} if mcp_ok else {"message": "MCP 服务不可用或工具发现失败"}),
+        }
     required_failed = any(
         checks[name]["status"] == "failed"
         for name in ("database", "migration", "storage", "worker", "configuration")

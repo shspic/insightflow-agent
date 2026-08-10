@@ -69,25 +69,29 @@ def upload_file(client: TestClient, workspace_id: int, filename: str = "sample.c
     return response.json()
 
 
-def test_workspace_soft_delete_restore_and_password_change_gate(client, db_session):
+def test_workspace_permanent_delete_and_password_change_gate(client, db_session):
+    import json
     add_user(db_session, "workspace.user")
     assert login(client, "workspace.user").status_code == 200
     workspace = create_workspace(client)
 
-    deleted = client.delete(
+    # 永久删除需要 confirmation_name
+    deleted = client.request(
+        "DELETE",
         f"/api/v2/workspaces/{workspace['id']}",
-        headers=session_csrf(client),
+        content=json.dumps({"confirmation_name": workspace["name"]}),
+        headers={**session_csrf(client), "Content-Type": "application/json"},
     )
     assert deleted.status_code == 200
+    assert deleted.json()["message"] == "项目已永久删除"
     assert client.get(f"/api/v2/workspaces/{workspace['id']}").status_code == 404
-    listed = client.get("/api/v2/workspaces?include_deleted=true").json()
-    assert listed[0]["is_deleted"] is True
+
+    # restore 不再可用
     restored = client.post(
         f"/api/v2/workspaces/{workspace['id']}/restore",
         headers=session_csrf(client),
     )
-    assert restored.status_code == 200
-    assert restored.json()["is_deleted"] is False
+    assert restored.status_code == 410
 
     forced_client = TestClient(app)
     add_user(db_session, "forced.user", must_change=True)

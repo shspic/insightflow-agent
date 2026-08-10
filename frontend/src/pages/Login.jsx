@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import SiteFooter from "../components/SiteFooter";
 import { Alert, Button, FormField, Input } from "../components/common";
 import PasswordField from "../components/common/PasswordField";
 import { useAuth } from "../context/AuthContext";
@@ -74,6 +75,7 @@ export function AuthPage({ title, description, children }) {
           {children}
         </div>
       </section>
+      <SiteFooter />
     </main>
   );
 }

@@ -1,0 +1,10 @@
+# 冻结黄金材料按字节冻结：禁止 Git 换行转换。
+# 05_项目澄清.md 的 CRLF 字节是黄金数据的一部分（manifest sha256 基于 CRLF 计算），
+# 若允许 LF 归一化，Linux checkout 的字节与 manifest 不符，corpus 建立即失败。
+examples/engineering_review_v1/golden_case/05_项目澄清.md -text
+
+# 阶段 6D-3：shell 脚本强制 LF。
+# Windows 上 core.autocrlf=true 会导致 git archive 输出 CRLF，
+# Linux 上 bash 执行 `set -o pipefail\r` 会失败（部署脚本在干净 Linux 无法运行）。
+# blob 本身已是 LF；此规则保证 checkout 与 archive 始终输出 LF。
+*.sh text eol=lf

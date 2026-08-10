@@ -47,7 +47,7 @@ def search_chunks_by_tfidf(
                 "chunk_index": chunk.chunk_index,
                 "chunk_text": chunk.chunk_text,
                 "score": round(score, 6),
-                "retrieval_mode": "vector",
+                "retrieval_mode": "tfidf",
                 "filename": filename,
             }
         )

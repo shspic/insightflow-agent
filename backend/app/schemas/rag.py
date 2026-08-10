@@ -16,7 +16,7 @@ class FileIndexResponse(BaseModel):
 class FileSearchRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=20)
-    retrieval_mode: str | None = Field(default=None, pattern="^(auto|vector|keyword)$")
+    retrieval_mode: str | None = Field(default=None, pattern="^(auto|tfidf|vector|keyword)$")
 
 
 class FileSearchResult(BaseModel):
