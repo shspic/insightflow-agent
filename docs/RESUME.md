@@ -6,29 +6,29 @@ InsightFlow Agent：多模态文档与数据分析智能体
 
 ## 一句话项目描述
 
-基于 FastAPI + React + LangGraph 构建的多模态文档与数据分析 Agent 平台，实现 Supervisor + 五个专业 Agent、多格式文件理解、计划确认、数据库任务队列、SSE 实时进度、报告版本管理和 Docker 生产部署。
+基于 FastAPI + React 构建的多模态资料分析与工程投标审查平台，通过确定性审查管道、DeepSeek 核验、MCP 工具、混合检索、四节点 Supervisor 和质量门控生成证据可追溯报告，并保留 V2 通用文件分析、Worker、SSE 与报告能力。
 
 ## 简历项目描述（标准版）
 
-InsightFlow Agent 是一个前后端分离的多模态文档与数据分析 Agent 平台。后端基于 FastAPI + SQLAlchemy + SQLite + Alembic 构建，前端基于 React + Vite。系统实现 Argon2id 密码认证、邀请码注册、Session Cookie + 双 Token CSRF 和工作区级数据隔离；支持五类文件（CSV/XLSX/PDF/PNG+JPG+WEBP/Markdown）的统一解析、Profile、角色/标签建议和文件关系候选确认；Supervisor 主动追问与版本化计划确认后，由独立 Worker 通过数据库任务队列领取执行，前端通过 SSE 展示实时进度（支持 Last-Event-ID 断线恢复和轮询降级）；LangGraph 编排 Supervisor + File Understanding / Data Analysis / Document Research / Report / Quality Review 五个专业 Agent，Tool Registry 和 Prompt Registry 统一管理工具与 Prompt 版本；集成 Pandas、Matplotlib、PyMuPDF、Tesseract OCR、轻量 RAG 检索，实现多工作表 Excel 分析、PDF 分页检索、扫描 PDF OCR 和 Markdown/DOCX/PDF 三格式报告导出；内置报告版本管理、三模板、用户反馈、配额/监控/评估/备份系统；通过 Docker Compose (Nginx + Backend + Worker) 完成国内单机同域生产部署包。
+InsightFlow Agent 是一个前后端分离的多模态资料分析与工程审查平台。V3 主线先对投标材料做确定性抽取和六类规则检查，再由 DeepSeek Verification 规划固定 MCP 工具与 BM25+BGE+RRF 混合检索，四节点 Supervisor 按 extraction、verification、quality_review、reporting 推进，Quality Gate 复核来源哈希、locator 与输入快照后才生成 Markdown/PDF 报告。V2 兼容线保留五类文件理解、Pandas 分析、数据库任务队列、独立 Worker、SSE、OCR 和三格式报告。系统使用 Session Cookie、CSRF、邀请码与工作区隔离，并通过 Docker Compose + Nginx 完成单机 HTTPS 公网部署。V3 主链是受控确定性状态机，不应写成 LangGraph 多 Agent 主链。
 
 ## 简历 Bullet
 
 - 基于 FastAPI + React 构建全栈多用户 Agent 平台，实现 Argon2id 密码认证、邀请码注册、Session Cookie + 双 Token CSRF 防护、工作区级数据隔离和完整权限依赖校验。
-- 使用 LangGraph 编排 Supervisor + 5 个专业 Agent（File Understanding / Data Analysis / Document Research / Report / Quality Review），设计 Tool Registry 和 Prompt Registry 统一管理工具与版本，限制循环和模型调用上限防止失控。
-- 集成 Pandas、Matplotlib、PyMuPDF、Tesseract OCR 和轻量 RAG，实现多工作表 Excel 分析、PDF 分页检索与引用、扫描页 OCR、Cross-join 检测、Markdown/DOCX/PDF 三格式报告导出。
-- 设计数据库任务队列 + 独立 Worker + 租约/心跳 + SSE 实时进度（Last-Event-ID 断线恢复与轮询降级）+ 协作式取消 + 失败步骤局部重试 + Quality Review 自动修复，保证任务可靠执行。
-- 实现报告版本管理、三模板（综合分析/学生调研/岗位分析）、用户反馈闭环、集中配额系统、Worker/Agent/工具/模型四层指标监控、85 条 deterministic 评估集、SQLite 备份/恢复/清理和 Docker Compose 生产部署（Nginx 同域反代 + HTTPS + SPA fallback）。
+- 设计确定性 Review Pipeline 与四节点 Supervisor，结合 DeepSeek Verification、MCP 工具和 Quality Gate，对 Evidence 哈希、来源文件、locator 与 input snapshot 进行复核，阻止无来源结论进入报告。
+- 构建 BM25+BGE+RRF 混合检索和人工候选采纳边界，真实评测 overall recall@3=0.7632、recall@5=0.8553，并如实保留 validation recall@3 与 no-answer 误召回不足。
+- 保留 V2 数据库任务队列、独立 Worker、租约/心跳、SSE、协作式取消、五类文件理解、Pandas/OCR 和三格式报告，用受控流程而非自主多 Agent 包装业务链路。
+- 使用 GitHub Actions、Playwright、Docker Compose 与 Nginx 完成测试、构建和单机 HTTPS 公网部署；不声称高并发、高可用或备案完成。
 
 ## 技术关键词
 
 - 前端：React、Vite、React Router、Axios、CSS Variables 设计 Token、浅色/深色/跟随系统主题、响应式（360px-1440px）、基础无障碍、SSE EventSource。
 - 后端：FastAPI、Uvicorn、Pydantic、REST API、模块化 service 层、Alembic 数据库迁移、SQLAlchemy ORM。
-- Agent：LangGraph、Supervisor + 5 专业 Agent、版本化 AgentState、Tool Registry、Prompt Registry、循环/调用上限、deterministic 编排器。
+- Agent/工作流：确定性 Review Pipeline、Verification Agent、Streamable HTTP MCP、四节点 Supervisor、Quality Gate；V2 兼容线保留 Supervisor + 5 个专业步骤，V3 主链不使用 LangGraph。
 - 认证与安全：Argon2id、Session Cookie（HttpOnly/Secure/SameSite=Lax）、双 Token CSRF、邀请码哈希存储、密码强制修改、持久化限流、资源归属双重校验。
 - 文件理解：CSV/XLSX/PDF/PNG+JPG+WEBP/Markdown 五类、多工作表 Excel、分页 PDF、扫描 OCR、版本化 Profile、角色/标签/关系候选确认。
 - 数据分析：Pandas、openpyxl、缺失值/重复值/分布/分组/连接/对比/趋势、Cross-join 风险检测、预设 Matplotlib 图表。
-- RAG：PyMuPDF 分页提取、PDF/Markdown chunk 分块、关键词/TF-IDF 检索、章节/页码引用、扫描 PDF OCR。
+- RAG：V3 使用 BM25+BGE+RRF 混合检索、确定性 Corpus 与 Evidence 哈希/locator 校验；V2 兼容线保留关键词/TF-IDF 检索。
 - OCR：pytesseract、Pillow、Tesseract 中英文、低文本页检测、OCR 警告标记。
 - 报告：Markdown/DOCX/PDF 三格式、三模板、版本管理、用户反馈、鉴权下载、python-docx。
 - 工程化：SQLite WAL + busy timeout + 外键、Docker、Docker Compose、Nginx 反向代理、非 root 运行、生产安全门禁、`.env.example`、pip check、compileall。
@@ -38,47 +38,44 @@ InsightFlow Agent 是一个前后端分离的多模态文档与数据分析 Agen
 
 ### 保守版
 
-InsightFlow Agent：基于 FastAPI + React 的全栈多用户文档分析平台，实现用户认证、工作区隔离、五类文件上传/解析/Profile、数据库任务队列 + Worker 异步执行、SSE 实时进度、LangGraph Supervisor + 专业 Agent 编排、Pandas 数据分析、PDF RAG 检索、图片 OCR、Markdown/DOCX/PDF 报告导出和 Docker Compose 生产部署。
+InsightFlow Agent：基于 FastAPI + React 的全栈多用户资料分析与工程审查平台，实现认证与工作区隔离、确定性材料抽取和规则检查、受控 Verification Agent、数据库任务队列 + Worker、SSE 实时进度、结构化报告与多格式导出，并通过 Docker Compose + Nginx 完成单机 HTTPS 公网部署。
 
 适合强调：后端开发、全栈开发、文件处理、数据分析工具。
 
 ### 标准版
 
-InsightFlow Agent：基于 FastAPI + React + LangGraph 构建的多模态文档与数据分析 Agent 平台。系统实现多用户认证、工作区数据隔离、五类文件统一理解、文件关系确认、计划确认、数据库任务队列 + 独立 Worker + SSE、Supervisor + 五个专业 Agent、Pandas/Matplotlib/PyMuPDF/Tesseract/RAG 工具链、Markdown/DOCX/PDF 三格式报告、配额/监控/评估/备份系统和 Docker 国内单机生产部署。
+InsightFlow Agent：基于 FastAPI + React 构建的多用户资料分析与工程投标审查平台。V3 主线通过确定性 Review Pipeline、DeepSeek Verification、Streamable HTTP MCP、BM25+BGE+RRF 混合检索、四节点 Supervisor 和 Quality Gate 生成证据可追溯的报告；V2 兼容线保留五类文件理解、数据库任务队列、独立 Worker、SSE、图表和 Markdown/DOCX/PDF 导出。系统已完成 Docker Compose + Nginx 单机 HTTPS 公网部署。
 
 适合强调：AI 应用开发、AI Agent 开发、RAG 应用开发。
 
 ### 强化版
 
-InsightFlow Agent：独立设计并实现一个面向多用户的多模态文件分析 Agent 平台。从零搭建 FastAPI + React 前后端闭环，涵盖用户认证/工作区隔离/CSRF、五类文件理解与关系确认、数据库持久化任务队列与独立 Worker、SSE 实时进度与协作式取消、LangGraph Supervisor + 五个专业 Agent 架构、工具/Prompt 注册中心、多工作表 Pandas 分析、PDF 分页 RAG 检索与引用、扫描 OCR、三格式报告版本管理与导出、确定性质量审核、配额/监控/评估/备份系统，以及 Docker Compose + Nginx 同域国内单机生产部署包。项目主线代码已封板（`2.0.0-rc.1`），90 后端测试 + 10 前端测试全部通过。
+InsightFlow Agent：独立设计并实现一个面向多用户的多模态资料分析与工程投标审查平台。从零搭建 FastAPI + React 前后端闭环，以确定性 Review Pipeline、DeepSeek Verification、Streamable HTTP MCP、BM25+BGE+RRF 混合检索、四节点 Supervisor 和 Quality Gate 形成证据可追溯的审查报告链路；保留 V2 工作区、五类文件理解、数据库任务队列、Worker、SSE 与三格式报告能力。项目已完成单机 HTTPS 公网部署；当前后端收集 959 项、最近完整成功基线 791 passed，前端 116 passed，不能写成“959 项全部通过”。
 
 适合强调：AI Agent 工程化、工具调用编排、端到端项目交付能力。
 
 ## 面试时 1 分钟介绍话术
 
-InsightFlow Agent 是我做的一个多用户多模态文档与数据分析 Agent 平台，版本号 2.0.0-rc.1。它不是普通聊天机器人，而是面向真实文件的任务执行系统。
+InsightFlow Agent 是我做的一个多用户多模态资料分析与工程审查平台，当前版本为 `3.0.2`。它不是普通聊天机器人，而是把确定性审查、模型核验、工具调用、证据门控和报告交付串起来的任务执行系统。
 
-用户可以注册账号（需邀请码），创建工作区，上传 CSV、Excel、PDF、图片或 Markdown 文件。系统会自动解析文件、生成 Profile、建议文件角色和文件间关系。用户确认关系后，输入自然语言任务需求。Supervisor 会检查信息完整性，不够就主动追问；信息充分后生成执行计划让用户确认、修改或取消。
+在 V3 主线里，用户上传招标要求、响应文件和人员、设备、资质、澄清等材料。系统先做确定性抽取与六类规则检查，再由 Verification Agent 在预检边界内规划固定 MCP 工具，结合 BM25+BGE+RRF 检索核验证据。候选结论由用户确认后，四节点 Supervisor 按抽取、核验、质量审查和报告生成推进，Quality Gate 对来源哈希、定位信息和输入快照做最终校验。
 
-用户确认计划后，任务进入数据库队列，独立 Worker 领取执行。五个专业 Agent 各司其职：File Understanding Agent 负责理解文件、Data Analysis Agent 做 Pandas 分析、Document Research Agent 做 PDF/Markdown 检索、Report Agent 生成报告、Quality Review Agent 进行质量审核。前端通过 SSE 实时展示进度，支持断线恢复。
+V2 兼容线则保留 CSV、Excel、PDF、图片和 Markdown 的通用分析流程：任务计划落库后由独立 Worker 执行，前端通过 SSE 展示进度，最终生成带引用、图表和限制说明的 Markdown、DOCX、PDF 报告。两条链路共用认证、工作区隔离、配额、监控与备份能力，并通过 Docker Compose + Nginx 对外提供 HTTPS 服务。
 
-最终生成带引用、图表、异常说明和限制的完整报告，支持 Markdown、DOCX、PDF 导出。整个系统有配额、监控、评估和备份/恢复，并通过 Docker Compose 完成国内单机生产部署包。
-
-代码主线已封板，90 个后端测试、10 个前端测试全部通过，85 条 deterministic 评估全部命中。后续需要用户自行完成服务器购买、域名备案和公网上线。
+当前版本为 `3.0.2`，已完成单机 HTTPS 公网部署。后端当前收集 959 项但本轮全量未完成，最近完整成功基线为 791 passed；前端 116 passed。真实 DeepSeek+BGE+MCP 评测已完成，但验证集检索和 no-answer 误召回仍需优化。
 
 ## 这个项目为什么是 Agent？
 
-它具备任务型 Agent 的核心特征：
+它具备任务型 Agent 的核心特征，但更准确的说法是**受控的工作流型 Agent**：
 
-- 一个 Supervisor 负责理解用户需求、检查完整性、生成版本化执行计划和调度专业 Agent；
-- 五个专业 Agent 各负责一类任务，边界清晰：文件理解、数据分析、文档检索、报告生成、质量审核；
-- Agent 之间通过版本化结构化状态（AgentState）传递信息和引用，不是自由文本对话；
-- Tool Registry 和 Prompt Registry 集中管理工具调用和 Prompt 版本，Agent 只能调用已注册工具；
-- 确定性代码负责权限、安全、解析、数学计算、状态迁移和持久化；DeepSeek 只做语义判断和表达生成；
-- 循环和模型调用次数有明确上限，Supervisor 不能无限重新规划，Quality Review 不能无限要求重写；
-- OCR、文件解析、图表生成和 DOCX/PDF 导出是确定性工具而非 Agent，Agent 只决定"是否需要、怎么做"。
+- 确定性程序负责材料抽取、规则判断、权限、状态迁移和持久化，模型不接管整条业务链；
+- Verification Agent 只在预检通过后选择固定 MCP 工具，并使用混合检索核验证据；
+- 四节点 Supervisor 通过结构化状态推进流程，节点职责和终止条件由代码约束；
+- Quality Gate 在交付前检查证据来源、定位信息和输入快照，不满足条件就阻止报告生成；
+- 模型调用、工具调用和重试次数有明确上限，关键候选结论保留人工确认；
+- V2 的 Supervisor + 五个专业步骤属于兼容线，不能描述为 V3 的自主多 Agent 主链。
 
-它不是为了"自由聊天"，而是为了"把分散文件变成可核验报告"。
+它不是为了“自由聊天”，而是为了在确定性约束下把分散材料变成可核验报告。
 
 ## 为什么从单 Agent 改成 Supervisor + 子 Agent？
 
@@ -201,12 +198,12 @@ SSE 连接断开后，前端使用以下机制恢复：
 检索流程：
 
 1. PDF 上传后 PyMuPDF 按页提取文本，按页/段落切分为 chunk，保存 `file_chunks` 表（含页码、块序号、字符范围）；
-2. 检索时基于关键词/TF-IDF 匹配，返回相关片段及其页码和文件 ID；
+2. V2 通用线使用关键词/TF-IDF；V3 工程审查线使用 BM25+BGE+RRF 混合检索，返回带 locator、来源哈希和文件归属的候选证据；
 3. Document Research Agent 基于检索片段生成事实时，每条事实必须附带 `citation_id`、文件 ID、页码/块 ID；
 4. Report Agent 使用引用 ID 生成脚注，确定性代码校验每个引用 ID 是否可解析到真实的 chunk 记录；
 5. Quality Review Agent 检查引用覆盖率和引用存在性。
 
-当前 RAG 使用关键词/TF-IDF 检索，不是语义向量检索。引用保证来自确定性校验（引用 ID 可解析性、页码存在性），不是依赖模型承诺。
+当前 V3 主线已使用真实 BGE 稠密检索与 BM25 融合；引用可靠性仍不依赖模型承诺，而依赖服务端对引用 ID、locator、内容哈希、来源文件哈希和 input snapshot 的确定性复核。关键词/TF-IDF 只代表 V2 兼容线。
 
 ## Quality Review 如何防止数字和引用错误？
 
@@ -317,22 +314,16 @@ V2 正式部署方案已完全替代为国内单机 Docker Compose 方案。Verc
 
 ## 当前最大限制？
 
-V2 代码主线已封板，以下为当前已知限制：
+当前已知限制：
 
-1. 未购买中国内地服务器/域名/ICP 备案/HTTPS 证书；
-2. 未执行公网部署和真实网络测试；
-3. 未使用真实 DeepSeek 进行端到端质量评估；
-4. deterministic 评估 1.0 是规则自检，不代表真实 DeepSeek 模型准确率；
-5. SQLite 单 Worker 只适合约 5 人低并发，不支持多实例；
-6. 文件理解仍为同步 HTTP 处理，未迁入任务队列；
-7. 未支持任意 Agent 节点暂停/恢复；
-8. 不支持强制终止外部 LLM 调用；
-9. RAG 使用关键词/TF-IDF 检索，非语义向量检索；
-10. 未迁移 PostgreSQL、对象存储、专业队列；
-11. 单机部署无高可用/多实例；
-12. 未创建 Git Tag 或 GitHub Release；
-13. 未建设自动化 E2E 回归测试；
-14. 未配置 GitHub Actions CI/CD。
+1. 已完成单机 HTTPS 公网部署，但尚无域名、ICP/公安备案，公共发布开关仍为 false；
+2. 公网匿名页面已验收，登录后的完整业务链尚未形成当前发布版本的线上自动化记录；
+3. 已完成真实 DeepSeek+BGE+MCP 评测，但验证集检索与 no-answer 误召回仍未达到理想目标，不能声称高准确率；
+4. SQLite 单 Worker 只适合低并发，不支持多实例高可用；
+5. 文件理解仍有同步 HTTP 路径，未支持任意 Agent 节点暂停/恢复，也不能强制终止已经发出的外部调用；
+6. V3 工程审查使用 BM25+BGE+RRF 混合检索；关键词/TF-IDF 是 V2 历史链路，不能代表当前主线；
+7. 未迁移 PostgreSQL、对象存储或专业队列，单机部署没有高可用与故障切换验证；
+8. 当前 Git Tag 为 `v3.0.2`，但匿名线上接口没有暴露 build version，线上 commit 对应关系仍需发布标识证明。
 
 ## 代码是否由 AI 辅助？
 
@@ -348,7 +339,7 @@ AI 编程助手是工具，项目架构、取舍、验证和交付由我把控�
 
 ## 本人在项目中的真实职责
 
-我负责从需求分析、架构设计、数据库迁移、后端 API、Agent 工作流、RAG、OCR、文件处理、报告系统、前端页面、Docker 部署、运维脚本到文档整理的端到端实现。每个阶段我都限定范围、先验证再推进，并完成了 90 个后端测试、10 个前端测试、85 条 deterministic 评估和完整的部署包交付。
+我负责从需求分析、架构设计、数据库迁移、后端 API、受控工作流、RAG、MCP、OCR、文件处理、报告系统、前端页面、Docker 部署、运维脚本到文档整理的端到端实现。每个阶段限定范围、先验证再推进；当前后端收集 959 项、最近完整成功基线 791 passed，前端 116 passed，并完成真实评测、浏览器证据和单机公网部署。
 
 项目的重点是工程闭环：不是单点算法或某个模型的效果，而是从用户注册到最终报告交付的完整系统。
 

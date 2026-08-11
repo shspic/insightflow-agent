@@ -6,7 +6,7 @@
 
 ## 2. 后端测试范围
 
-后端测试位于 `backend/tests/`，共 30 个测试文件，**791 条测试用例全部通过**（实测于 6C 阶段基线；Alembic 迁移专项 16 项通过）：
+后端测试位于 `backend/tests/`，当前共 44 个 `test_*.py` 文件。2026-08-11 静态收集为 **959 tests**，Alembic 迁移专项仍为 **16 tests**。最近文档化的完整成功基线是 Stage 6C 的 **791 passed**；本轮关闭真实 LLM、使用 FakeEmbedding 的全量隔离重跑超过 300 秒未完成，因此当前只能写“959 collected”，不能写“959 passed”。
 
 - V2 主线：健康检查、配置、数据库模型、认证、管理员、工作区、文件理解、关系上下文、文件安全、任务状态机、任务执行、多 Agent、报告交付、治理、部署、存储隔离；
 - V3 主线：检索基线（4A）、稠密混合检索（4B）、真实 API 集成（4C1）、LLM 契约（4C2）、Verification Agent（4C2）、候选决策（4C3）、工程检索 API（4C）、MCP 工具（5A1）、Verification MCP 集成（5A2）、DeepSeek 脚本契约（5B）、Supervisor 与质量门（5B）、Supervisor API（5B）、阶段 6A 端到端评测、6A 契约专项（Evidence 来源完整性 / input snapshot / validation split）。
@@ -47,7 +47,7 @@ cd backend
 pytest tests/test_alembic_migrations.py -v
 ```
 
-当前 head：`20260724_0006`。测试使用独立临时 SQLite，不影响真实开发数据库。真实开发数据库的 `current` revision 仍然是 `20260724_0005`，需负责人备份后手动升级。
+当前代码 head：`20260812_0014`（2026-08-11 通过 `alembic heads` 核验）。测试使用独立临时 SQLite，不影响真实开发或公网数据库；公网匿名健康接口不公开具体 revision，线上 current 必须通过受控服务器命令或发布记录核验，不能从本地 head 推断。
 
 ## 4. deterministic 评估
 
@@ -64,7 +64,7 @@ python -m app.evaluation.runner --mode deterministic
 
 ## 5. 前端测试
 
-前端测试位于 `frontend/src/`，共 10 条纯逻辑测试全部通过（`10 passed`）：
+前端测试位于 `frontend/src/`。2026-08-11 实际执行结果为 **116 passed，0 failed**：
 
 覆盖范围：状态管理逻辑（任务状态、错误处理）、配额显示/计算逻辑、SSE 事件解析/去重/上限、计划步骤渲染/确认状态、报告版本/模板选择逻辑、权限/认证边界、CSRF Token 管理、主题切换逻辑。
 
@@ -85,7 +85,7 @@ npm install
 npm run build
 ```
 
-当前结果：成功，`77 modules transformed`，无 source map（生产构建关闭了 source map），无编译警告。
+当前结果：2026-08-11 构建成功，`92 modules transformed`，无 source map（生产构建关闭了 source map），无编译警告。
 
 ## 7. Docker Compose 测试
 
@@ -139,22 +139,21 @@ python -m compileall app
 - Docker Compose 可启动前端和后端。
 - 生产 Compose 配置校验通过。
 
-## 11. 当前未覆盖的测试
+## 11. 当前未覆盖或未完成的测试
 
-- 尚未覆盖真实文件上传的端到端自动化测试（Playwright/E2E）。
-- 尚未覆盖真实 DeepSeek 调用的质量评估（需公网部署后执行）。
-- 尚未覆盖真实扫描 PDF 的 OCR 准确率评估。
-- 尚未覆盖真实 DOCX/PDF 渲染的视觉回归测试。
-- 尚未覆盖浏览器端 UI 自动化测试。
-- 尚未覆盖多用户并发场景。
-- 尚未配置 GitHub Actions CI/CD。
+- 已有 Stage 6A 真实 DeepSeek+BGE+MCP 评测，不再属于未覆盖项；但 validation recall@3=0.6429、no-answer FP 率=1.0，不能表述为业务准确率已经达标。
+- 已配置 GitHub Actions 和 Playwright；Stage 6B/6C 已有历史浏览器通过记录。2026-08-11 对公网 Stage 6D-2 实测为 `7 passed, 1 failed`，失败原因是页脚缺少“公安联网备案办理中”占位。
+- 尚未覆盖从公网真实文件上传到工程审查、MCP、Supervisor、报告下载的版本化登录后全链自动化验收。
+- 尚未覆盖真实扫描 PDF 的 OCR 准确率评估和 DOCX/PDF 渲染的完整视觉回归。
+- 尚未覆盖多用户高频并发、SQLite 压力上限、高可用与故障切换。
+- 当前后端可收集 959 项，但本轮全量运行未在 300 秒内完成；获得新的完整成功记录前，不更新为“959 全部通过”。
 
 ## 12. 后续测试增强方向
 
-- 增加 Playwright 前端核心流程 E2E 测试。
-- 增加真实 DeepSeek 调用的评估集和端到端回归。
+- 扩展 Playwright 到公网登录后的文件上传、工程审查、MCP、Supervisor 和报告下载完整链路。
+- 扩充真实 DeepSeek+BGE 评估集，重点降低 no-answer 误召回并提升 validation recall@3。
 - 增加真实扫描 PDF OCR 样例和识别准确率记录。
 - 增加 DOCX/PDF 渲染视觉回归（需 LibreOffice/Poppler 环境）。
-- 增加多用户并发隔离测试。
-- 增加 GitHub Actions 自动运行后端测试、前端测试和构建。
+- 增加多用户并发、SQLite 压力上限和故障恢复测试。
+- 在 CI 中持续记录当前完整 pytest 的通过/失败/跳过数量和耗时，避免只维护 collected 数量。
 - 增加代码覆盖率报告。

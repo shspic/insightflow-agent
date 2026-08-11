@@ -4,7 +4,9 @@
 
 InsightFlow Agent 是一个前后端分离的 **AI 任务执行型应用**，不是普通聊天机器人。用户上传 Excel、CSV、PDF、图片、Markdown 等文件后，系统自动完成「任务判断 → 文件理解 → 工具调用 → 结果生成 → 过程可观测」的完整闭环，并提供工程投标审查（V3 主线）与通用文档分析（V2 兼容线）两条能力线。
 
-核心关键词：**FastAPI + React + LangGraph 风格确定性管道 + SQLite + Agent/MCP/RAG/Supervisor/Quality Gate + Docker/CI**。
+> 当前部署状态：已完成单机 Docker 公网部署，入口为 <https://43.153.181.237/>。2026-08-11 通过真实浏览器、TLS 与匿名接口验证：首页/登录页可访问，`/api/health` 返回 `status=ok`，法律页面桌面端与 390px 视口可用。匿名接口未暴露构建 commit，因此线上实例与当前工作树的精确版本对应仍需发布标识证明。
+
+核心关键词：**FastAPI + React + 确定性 Review Pipeline + SQLite + Agent/MCP/RAG/Supervisor/Quality Gate + Docker/CI**。
 
 ## 两条产品主线
 
@@ -89,12 +91,13 @@ docker compose -f docker-compose.prod.yml up -d --build   # 生产形态（Nginx
 
 | 层 | 内容 | 数量（实测） |
 | --- | --- | --- |
-| 后端 | 完整 pytest（认证/工作区/文件/任务/报告/工程审查/迁移/评测契约） | **791 passed** |
+| 后端 | 完整 pytest（认证/工作区/文件/任务/报告/工程审查/迁移/评测契约） | **959 collected**；最近文档化完整基线为 **791 passed**；2026-08-11 全量隔离重跑超过 300 秒未完成，不能写成 959 passed |
 | 后端迁移 | Alembic upgrade/downgrade/upgrade 全链 | **16 passed** |
-| 前端 | Vitest（组件/API/工具/设计系统/浏览器契约） | **103 passed** |
-| 前端构建 | `npm run build`（Vite 生产构建） | 通过 |
+| 前端 | Node/Vitest 风格测试（组件/API/工具/设计系统/浏览器契约） | **116 passed**（2026-08-11 实测） |
+| 前端构建 | `npm run build`（Vite 生产构建） | 通过，**92 modules transformed**（2026-08-11 实测） |
 | 浏览器冒烟 | Stage 6B 真实浏览器黄金案例复核（登录/核验/发现/报告/下载/隔离/390px） | **3 passed** |
 | 浏览器冒烟 | Stage 6C CI 冒烟（登录/工程页/核验页/跨用户隔离/390px） | **4 passed** |
+| 公网匿名验收 | Stage 6D-2 法律页/登录页桌面与 390px | **7 passed, 1 failed**；失败项为页脚缺少“公安联网备案办理中”占位 |
 | 真实评测 | Stage 6A 真实 DeepSeek + BGE + MCP 黄金案例 | 全部硬条件通过 |
 
 CI 说明：GitHub Actions 三个 job（后端固定依赖 + Alembic + 完整 pytest；前端 npm ci + test + build；Playwright 浏览器冒烟）。CI 默认 `LLM_ENABLED=false` 不调用真实 DeepSeek、不联网下载真实 BGE（使用项目 FakeEmbedding 离线契约）、独立临时数据库与存储、并发取消 + 最小权限。
@@ -132,7 +135,8 @@ CI 说明：GitHub Actions 三个 job（后端固定依赖 + Alembic + 完整 py
 
 - SQLite 单机写并发有限，未迁移 PostgreSQL/对象存储（升级方向见面试材料）；
 - 真实 BGE 需要模型缓存（离线）或首次下载（联网）；CI 使用 Fake 契约；
-- 公网部署未完成（未购买域名/备案/证书），部署说明见 [docs/DEPLOYMENT_V3.md](docs/DEPLOYMENT_V3.md)；
+- 已通过受信任的 IP 地址证书完成公网 HTTPS 部署，但尚无域名/ICP备案/公安备案；`/api/public/site` 当前仍返回 `public_launch_enabled=false`，页脚未显示公安备案办理中占位，不能描述为合规手续已完成；
+- 公网匿名页面和健康检查已验收，登录后的真实上传、工程审查、MCP、报告生成和多用户并发仍需针对当前线上实例补充版本化验收；
 - 历史 V2 通用主线保留兼容，不横向扩展。
 
 ## 文档入口

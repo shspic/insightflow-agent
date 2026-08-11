@@ -1,5 +1,16 @@
 # InsightFlow Agent 变更日志
 
+## [Unreleased] — 2026-08-11
+
+- 已完成单机公网 HTTPS 部署：<https://43.153.181.237/>。2026-08-11 验证登录页、`/api/health`、法律页面和 TLS 可访问。
+- 当前测试口径：后端 `959 collected`（本轮全量未在 300 秒内完成，不能写 959 passed）；前端 `116 passed`；生产构建 `92 modules transformed`；公网 Stage 6D-2 为 `7 passed, 1 failed`。
+- 公网待办：`public_launch_enabled` 仍为 false，页脚缺少公安备案办理中占位；域名、ICP备案、公安备案、高可用与多用户并发尚未完成或验收。
+
+## [3.0.2] — 2026-08-10
+
+- 当前 `master` 提交 `b7343e8` 与 Git Tag `v3.0.2` 一致；`VERSION` 已由过时的 `2.0.0-rc.1` 对齐为 `3.0.2`。
+- V3 工程投标审查主线包含 BM25+BGE+RRF 混合检索、Streamable HTTP MCP、Verification Agent、四节点 Supervisor、Quality Gate 2.0 与 Stage 6A～6D 验收资产。
+
 ## [2.0.0-rc.1] — 2026-07-24
 
 ### V2 正式版发布候选（Release Candidate 1）

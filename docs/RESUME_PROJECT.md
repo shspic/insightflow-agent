@@ -2,7 +2,7 @@
 
 ## 一句话介绍
 
-基于 FastAPI + React 构建的「多模态文档与数据分析 + 工程投标审查」AI 任务执行平台：确定性审查管道、LLM 核验、MCP 工具调用、四节点 Supervisor 与质量门控，791 项后端测试与 103 项前端测试全部通过。
+基于 FastAPI + React 构建的「多模态文档与数据分析 + 工程投标审查」AI 任务执行平台：确定性审查管道、LLM 核验、MCP 工具调用、四节点 Supervisor 与质量门控，并已完成单机 HTTPS 公网部署。
 
 ## 简历 Bullet（3～5 条）
 
@@ -10,7 +10,7 @@
 2. 设计确定性 Review Pipeline（字段抽取 + 六类规则引擎 + Evidence 精确绑定），并用 Supervisor 四节点状态机（extraction→verification→quality_review→reporting）编排 DeepSeek 规划核验与报告生成；Quality Gate 对证据记录哈希、来源文件哈希、语料定位与输入快照逐项复算，阻止无锚结论进入报告。
 3. 实现官方 Streamable HTTP MCP 工具服务（一致性检查/规则检索），短期签名 capability token 认证 + 服务端归属二次校验；仅瞬时错误局部重试（实测重试成功率 1.0），attempt/retry_of/error_code 全链路审计。
 4. 构建 BM25 + BGE 稠密检索 + RRF 融合的工程语料检索，候选证据必须人工采纳（采纳前服务端重新定位与哈希校验，单事务原子提交）；真实 BGE 评测 overall recall@3=0.7632 / recall@5=0.8553。
-5. 工程化交付：GitHub Actions 三线 CI（后端 791 测试 + Alembic 迁移、前端 npm ci/test/build、Playwright 浏览器冒烟）、Docker 多阶段镜像与 Compose 生产部署（非 root、只读根文件系统、启动自动迁移）、13 张真实浏览器验收截图。
+5. 工程化交付：GitHub Actions 三线 CI（后端 pytest + Alembic、前端 npm ci/test/build、Playwright 浏览器冒烟）、Docker 多阶段镜像与 Compose 生产部署（非 root、只读根文件系统、启动自动迁移），并通过受信任的 IP 地址证书提供公网 HTTPS 访问。
 
 ## 技术栈
 
@@ -23,9 +23,10 @@
 
 | 指标 | 数值 |
 | --- | --- |
-| 后端测试 | 791 passed（含 Alembic 全链迁移 16 项） |
-| 前端测试 | 103 passed；`npm run build` 通过 |
+| 后端测试 | 当前 959 collected；最近完整成功基线 791 passed；Alembic 专项 16 collected |
+| 前端测试 | 116 passed；`npm run build` 通过（92 modules transformed） |
 | 浏览器冒烟 | Stage 6B 3 passed（真实浏览器黄金案例复核）+ Stage 6C CI 冒烟 4 passed |
+| 公网部署 | HTTPS 登录页与健康接口可访问；Stage 6D-2 公网匿名验收 7 passed、1 failed（备案办理中占位缺失） |
 | 真实检索评测 | overall recall@3=0.7632、recall@5=0.8553、mrr=0.7210（真实 BGE，38 answerable） |
 | Supervisor | 四节点全 success、Quality Gate passed、Markdown+PDF 双资产、DB/磁盘 SHA 一致 |
 | MCP 局部重试 | 真实故障注入 local_retry_success_rate=1.0 |

@@ -55,7 +55,7 @@ MCP Server 是独立服务，客户端调用时不能只靠共享密钥（一旦
 ## 11. Docker / CI / Playwright 的工程价值？
 
 - Docker：非 root（uid 10001）、只读根文件系统（生产 compose）、启动 entrypoint 幂等迁移、volume 持久化 SQLite/uploads/reports/retrieval、不复制密钥/模型缓存进镜像、BGE 模型不自动下载；
-- CI：三线 GitHub Actions（后端固定依赖 + Alembic + 791 测试；前端 npm ci/test/build；Playwright 浏览器冒烟），并发取消 + 最小权限，CI 默认不调真实 LLM、不下载真实 BGE；
+- CI：三线 GitHub Actions（后端固定依赖 + Alembic + pytest；前端 npm ci/test/build；Playwright 浏览器冒烟），并发取消 + 最小权限，CI 默认不调真实 LLM、不下载真实 BGE。当前后端收集 959 项，最近完整成功基线为 791 passed；前端 116 passed；
 - Playwright：真实浏览器验收（登录/核验/发现/报告/下载/跨用户隔离/390px 移动端），失败自动保留截图/trace/video。
 
 ## 12. 真实评测指标如何解释？
@@ -66,5 +66,5 @@ MCP Server 是独立服务，客户端调用时不能只靠共享密钥（一旦
 
 ## 13. 项目不足和后续规划？
 
-- 不足：SQLite 单机、单 Worker、确定性规则覆盖面有限、真实 BGE 依赖模型缓存、未公网部署；
-- 规划：PostgreSQL 化、更多规则类型与黄金数据集、检索评测指标提升（验证集 recall@3 0.6429 → 目标 0.8+）、公网部署与 TLS、对象存储。
+- 不足：SQLite 单机、单 Worker、确定性规则覆盖面有限、真实 BGE 依赖模型缓存；虽已通过 IP 地址证书公网部署，但尚无域名/备案，登录后全链路和高并发未完成线上验收；
+- 规划：PostgreSQL 化、更多规则类型与黄金数据集、检索指标提升（验证集 recall@3 0.6429 → 目标 0.8+）、修复 no-answer 误召回、完善证书续期/监控/备份恢复与对象存储。

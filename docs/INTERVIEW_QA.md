@@ -2,20 +2,20 @@
 
 ## 1. 你这个项目是做什么的？
 
-这是一个多用户多模态文档与数据分析 Agent 平台（版本号 2.0.0-rc.1）。用户可以注册（需邀请码）、创建工作区、上传 CSV/Excel/PDF/图片/Markdown 文件，系统自动解析并理解文件内容；用户确认文件角色和关系后，通过自然语言创建分析任务，Supervisor 检查完整性、生成计划让用户确认，然后独立 Worker 异步执行：File Understanding、Data Analysis、Document Research、Report、Quality Review 五个专业 Agent 协作完成，最终生成带引用和图表的 Markdown/DOCX/PDF 报告。整个过程通过 SSE 实时展示进度，有配额、监控、评估和备份系统，并有完整的 Docker Compose 国内单机生产部署包。
+这是一个多用户多模态文档与数据分析 Agent 平台，当前版本为 `3.0.2`。V3 工程投标审查主线使用确定性抽取、规则引擎、DeepSeek Verification、MCP 工具、BM25+BGE+RRF 混合检索、四节点 Supervisor 和 Quality Gate 生成可核验报告；V2 通用线保留五类文件理解、任务计划、独立 Worker、SSE 和三格式报告。项目已通过 IP 地址证书完成单机 HTTPS 公网部署。
 
 ## 2. 为什么这个项目算 Agent，而不是普通 CRUD 系统？
 
-普通 CRUD 主要是对固定数据增删改查。这个项目的核心特征是：
+普通 CRUD 主要是对固定数据增删改查。当前 V3 主线更准确的定位是**受控的工作流型 Agent**：
 
-- 有一个 Supervisor 负责理解用户需求、检查信息完整性、生成版本化执行计划和调度子 Agent；
-- 五个专业 Agent 各有独立职责边界，通过结构化状态协作；
-- 系统具备追问、计划确认、工具调用、质量审核的完整决策-执行-验证闭环；
-- 执行过程可观测：每一步 Agent/工具/模型调用的输入输出、状态和耗时都有记录；
-- 有 Tool Registry 和 Prompt Registry 集中管理可调用能力和版本；
-- 有循环和调用次数上限防止无限执行。
+- 确定性 Review Pipeline 先完成材料抽取和规则检查，模型不能绕过业务规则；
+- Verification Agent 在预检通过后规划固定 MCP 工具，并结合 BM25+BGE+RRF 检索核验证据；
+- 四节点 Supervisor 按 `extraction → verification → quality_review → reporting` 推进结构化状态；
+- Quality Gate 校验来源哈希、定位信息和输入快照，不满足条件时阻止报告交付；
+- 模型调用、工具调用和重试都有边界，执行过程可以追踪和复核；
+- 候选结论需要人工确认，系统没有包装成完全自主的多 Agent 协作。
 
-它不是"把用户输入发给模型再显示回复"，而是"理解需求、制定计划、调度执行、质量检查、交付报告"的完整 Agent 系统。
+V2 兼容线另有 Supervisor、计划确认和五个专业步骤，不能把这套旧链路写成 V3 当前主链。项目之所以不只是 CRUD，是因为它把模型决策限制在可追踪的任务状态、工具边界和质量门控之内，形成“抽取—核验—审查—交付”的闭环。
 
 ## 3. 为什么从 V1 单 Agent 改成 V2 Supervisor + 子 Agent？
 
@@ -106,7 +106,7 @@ V2 做了三个核心改变：把"理解需求+调度"交给 Supervisor，把"�
 
 ## 14. RAG 如何保证引用？
 
-PDF 上传后 PyMuPDF 按页提取并分块保存（含页码、块序号、字符范围）。检索时基于关键词/TF-IDF 匹配返回相关片段及页码。Document Research Agent 生成的每条事实必须附带 `citation_id`、文件 ID 和页码/块 ID。Report Agent 用引用 ID 生成脚注，确定性代码校验每个引用 ID 是否可解析到真实的 chunk 记录。Quality Review Agent 检查引用覆盖率和存在性。引用保证来自确定性校验（ID 可解析性、页码存在性），不是依赖模型承诺。当前 RAG 使用 TF-IDF 检索，非语义向量检索。
+两条主线需要分开讲。V2 通用分析线把 PDF 按页提取并分块，使用关键词/TF-IDF 返回带页码和 chunk ID 的片段；引用 ID 必须解析到真实记录。V3 工程审查线按 PDF 页、Excel 行区间和 Markdown 分节构建确定性 Corpus，使用 BM25+BGE+RRF 混合检索；检索命中只形成候选证据，人工采纳前服务端重新校验 locator、内容哈希和文件归属。Quality Gate 再复算 Evidence、来源文件与 input snapshot，不能解析或哈希不一致的引用不得进入报告。当前主线不是“只用 TF-IDF”。
 
 ## 15. Quality Review 如何防止数字和引用错误？
 
@@ -140,26 +140,20 @@ Quality Review Agent 做七项检查：报告结构完整性、数字与工具�
 
 ## 22. 国内部署方案？
 
-使用 Docker Compose + Nginx 同域方案：`web`（Nginx + React 静态产物，80/443）反代 `/api` 到 `backend`（单 Uvicorn，8000），独立 `worker` 共享 SQLite 和 storage 持久卷。关键配置：Nginx SSE 无缓冲、SPA fallback、安全头、上传大小限制；SQLite WAL + busy timeout + 外键 + 连接 pre-ping；非 root 容器运行（UID 10001）；全套运维脚本（首次部署、备份/恢复、升级、回滚、清理、健康检查）。部署文档在 `docs/V2_07_*.md`。
+使用 Docker Compose + Nginx 同域方案：`web`（Nginx + React 静态产物，80/443）反代 `/api` 到 `backend`，独立 `worker` 与 `mcp` 服务共享受控持久数据。关键配置包括 SSE 无缓冲、SPA fallback、安全头、上传限制、SQLite WAL、非 root/只读根文件系统，以及部署、备份、升级和回滚脚本。当前实例为 <https://43.153.181.237/>，部署事实与待办见 `docs/DEPLOYMENT_V3.md`；`docs/V2_07_*` 只作为 V2 历史材料。
 
 ## 23. 当前最大限制？
 
-代码主线已封板（`2.0.0-rc.1`），以下为关键限制：
+当前关键限制：
 
-1. 未购买服务器/域名/ICP 备案/HTTPS 证书；
-2. 未执行公网部署和真实网络测试；
-3. 未使用真实 DeepSeek 进行端到端质量评估；
-4. deterministic 评估 1.0 是规则自检，不代表模型准确率；
-5. SQLite 单 Worker 只适合约 5 人低并发；
-6. 文件理解仍为同步 HTTP 处理；
-7. 未支持 Agent 节点暂停/恢复；
-8. 不支持强制终止外部 LLM 调用；
-9. RAG 使用 TF-IDF 检索，非语义向量检索；
-10. 未迁移 PostgreSQL/对象存储/专业队列；
-11. 单机无高可用；
-12. 未创建 Git Tag/GitHub Release；
-13. 未建设自动化 E2E 回归测试；
-14. 未配置 CI/CD。
+1. 已通过 IP 地址证书公网部署，但尚无域名、ICP/公安备案，`public_launch_enabled` 仍为 false；
+2. 公网只完成匿名页面与健康检查验收，登录后的上传、核验、MCP、报告和跨用户隔离尚未形成当前版本的全链自动化记录；
+3. 已完成真实 DeepSeek+BGE+MCP 评测，但 validation recall@3=0.6429、no-answer FP 率=1.0，不能声称模型或 RAG 高准确率；
+4. SQLite 单 Worker 只适合低并发，未迁移 PostgreSQL、对象存储或专业队列；
+5. 文件理解仍有同步 HTTP 路径，未支持任意 Agent 节点暂停/恢复，也不能强制撤回已经发出的外部调用；
+6. V3 已使用 BM25+BGE+RRF 混合检索；TF-IDF 仅属于 V2 历史事实，不能再代表当前工程审查主线；
+7. 后端当前收集 959 项，但本轮完整重跑未在 300 秒内完成，不能写“959 项全部通过”；
+8. 当前为单机部署，没有高可用与故障切换验证；现有 Git Tag 为 `v3.0.2`，但匿名线上接口尚未暴露 build version，仍需发布标识证明部署 commit。
 
 ## 24. 代码是否由 AI 辅助？
 
